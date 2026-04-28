@@ -1,7 +1,13 @@
 ---
 name: review-agent
-description: 'SUBAGENTE DE REVIEW - Revisa la implementación de una fase y retorna status APPROVED / NEEDS_REVISION / FAILED. NO modifica código.'
+description: >
+  Revisa código implementado y retorna APPROVED, NEEDS_REVISION o FAILED. Usa proactivamente
+  después de cada fase de implementación — nunca saltes este paso. Si retorna NEEDS_REVISION,
+  vuelve a invocar implement-agent con los issues listados. Si retorna FAILED, consulta
+  al usuario antes de continuar. NO modifica código, solo lo evalúa.
 tools: [Read, Glob, Grep, Bash]
+model: sonnet
+color: yellow
 ---
 
 # Review Agent

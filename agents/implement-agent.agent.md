@@ -1,7 +1,13 @@
 ---
 name: implement-agent
-description: 'SUBAGENTE DE IMPLEMENTACIÓN - Implementa código y tests siguiendo TDD cuando aplica. Recibe fases específicas del Conductor. Único agente autorizado a modificar código del proyecto.'
+description: >
+  Implementa código y tests siguiendo un plan de fases. Usa cuando tengas un plan definido
+  y necesites crear, escribir o modificar archivos del proyecto. Es el único agente autorizado
+  a tocar código — invócalo por fase, pasándole el scope exacto (objetivo, archivos, pasos).
+  Después de cada fase, usa review-agent para validar antes de continuar.
 tools: [Read, Write, Edit, Glob, Grep, Bash]
+model: sonnet
+color: green
 ---
 
 # Implement Agent

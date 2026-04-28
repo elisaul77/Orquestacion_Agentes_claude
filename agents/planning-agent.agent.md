@@ -1,7 +1,13 @@
 ---
 name: planning-agent
-description: 'SUBAGENTE DE PLANNING - Investiga el codebase y redacta un draft de plan de implementación. Invocado por el Conductor para tareas que requieren contexto previo.'
+description: >
+  Investiga el codebase y redacta un plan de implementación por fases antes de escribir código.
+  Usa proactivamente al inicio de cualquier tarea nueva o compleja: cuando el usuario pide
+  implementar una feature, refactorizar un módulo, o resolver un problema que requiere
+  entender la estructura actual del proyecto. Siempre se invoca ANTES que implement-agent.
 tools: [Read, Write, Glob, Grep, Bash, WebSearch, WebFetch]
+model: sonnet
+color: blue
 ---
 
 # Planning Agent
