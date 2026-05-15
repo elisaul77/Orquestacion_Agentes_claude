@@ -1,19 +1,25 @@
-# NEXUS Landing Page — AGENTS.md
+# Orquestacion Agentes Claude — AGENTS.md
 
 ## Visión General
 
 ```mermaid
 flowchart LR
     USER["👤 Usuario"] -->|"petición"| CONDUCTOR["🎭 Conductor<br/>NUNCA toca código"]
-    CONDUCTOR -->|"investiga"| PA["📋 planning-agent"]
+    CONDUCTOR -->|"investiga + workspace scan"| PA["📋 planning-agent"]
     CONDUCTOR -->|"implementa"| IA["💻 implement-agent"]
-    CONDUCTOR -->|"revisa"| RA["🔍 review-agent"]
-    PA -.->|"draft del plan"| CONDUCTOR
+    CONDUCTOR -->|"revisa + seguridad"| RA["🔍 review-agent"]
+    CONDUCTOR -->|"diseña equipo nuevo"| AA["🏗️ AgentArchitect"]
+    PA -.->|"workspace scan + draft del plan"| CONDUCTOR
     IA -.->|"reporte"| CONDUCTOR
     RA -.->|"APPROVED/NEEDS_REVISION/FAILED"| CONDUCTOR
+    AA -.->|"archivos .agent.md generados"| CONDUCTOR
     CONDUCTOR --> USER
 
     style CONDUCTOR fill:#ff9800,color:#fff
+    style PA fill:#2196f3,color:#fff
+    style IA fill:#4caf50,color:#fff
+    style RA fill:#ffc107,color:#000
+    style AA fill:#9c27b0,color:#fff
 ```
 
 **Principio:** El Conductor COORDINA. Los subagentes EJECUTAN. La firma `🤖 [<agent>] ...` confirma qué subagente respondió.
@@ -25,9 +31,10 @@ flowchart LR
 | El Conductor (esta skill) | Los Subagentes |
 |---------------------------|----------------|
 | ✅ Planifica y coordina | ✅ Ejecutan trabajo concreto |
-| ✅ Escribe en `plans/*.md` | ✅ planning-agent: investiga + draft |
-| ✅ Actualiza TodoWrite | ✅ implement-agent: código y tests |
-| ✅ Anuncia delegaciones | ✅ review-agent: verdicto APPROVED/... |
+| ✅ Hace mini-entrevista (Q1, Q2, Q3) | ✅ planning-agent: workspace scan + draft |
+| ✅ Escribe en `plans/*.md` | ✅ implement-agent: código y tests |
+| ✅ Actualiza TodoWrite | ✅ review-agent: veredicto + seguridad |
+| ✅ Anuncia delegaciones | ✅ AgentArchitect: genera nuevos agentes |
 | ❌ **NUNCA** Read/Grep/Edit sobre código | ❌ No tocan planes ni docs de coordinación |
 | ❌ **NUNCA** ejecuta Bash sobre el repo | ❌ No delegan a otros subagentes |
 
@@ -35,11 +42,12 @@ flowchart LR
 
 ## Subagentes Registrados
 
-| Subagente | Archivo | `subagent_type` | Firma de respuesta |
-|-----------|---------|-----------------|---------------------|
-| planning-agent | `.claude/agents/planning-agent.agent.md` | `planning-agent` | `🤖 [planning-agent] ...` |
-| implement-agent | `.claude/agents/implement-agent.agent.md` | `implement-agent` | `🤖 [implement-agent] ...` |
-| review-agent | `.claude/agents/review-agent.agent.md` | `review-agent` | `🤖 [review-agent] ...` |
+| Subagente | Archivo | `subagent_type` | Modelo | Firma |
+|-----------|---------|-----------------|--------|-------|
+| planning-agent | `agents/planning-agent.agent.md` | `planning-agent` | sonnet | `🤖 [planning-agent] Investigando...` |
+| implement-agent | `agents/implement-agent.agent.md` | `implement-agent` | sonnet | `🤖 [implement-agent] Ejecutando Fase {N}...` |
+| review-agent | `agents/review-agent.agent.md` | `review-agent` | sonnet | `🤖 [review-agent] Revisando Fase {N}...` |
+| AgentArchitect | `agents/AgentArchitect.agent.md` | `AgentArchitect` | opus | `🏗️ [AgentArchitect] Diseñando equipo...` |
 
 ---
 
@@ -47,8 +55,7 @@ flowchart LR
 
 | Skill | Trigger | Versión |
 |-------|---------|---------|
-| `subagent-pool` | "delegar", "orquestar", "conductor", "tarea compleja" | 4.0 |
-| `arquitec-dev-ia` | crear AGENTS.md, skills, diagramas | — |
+| `subagent-pool` | "delegar", "orquestar", "conductor", "tarea compleja" | 5.0 |
 
 ---
 
@@ -60,23 +67,26 @@ flowchart LR
 | "delegar a..." | `subagent-pool` |
 | "orquesta la separación / refactor / feature" | `subagent-pool` |
 | "Fase 1:", "siguiente fase" | `subagent-pool` |
+| "diseña un equipo de agentes para..." | `subagent-pool` → `AgentArchitect` |
 
 ---
 
-## Flujo de Trabajo
+## Flujo de Trabajo v5.0
 
-1. Conductor muestra **bloque de identidad** `🎭 CONDUCTOR ACTIVADO`
-2. Conductor crea TodoWrite con fases iniciales
-3. Conductor delega a `planning-agent` → recibe draft del plan
-4. Conductor presenta plan al usuario → ⏸️ **PAUSA**
-5. Usuario aprueba → Conductor escribe a `plans/{tarea}-plan.md`
-6. Por cada fase:
-   - `implement-agent` ejecuta → reporta
-   - `review-agent` verifica → APPROVED / NEEDS_REVISION / FAILED
+1. Conductor muestra **bloque de identidad** `🎭 CONDUCTOR ACTIVADO — v5.0`
+2. Conductor hace **mini-entrevista** (Q1 proyecto, Q2 sub-dominios, Q3 pausas)
+3. Conductor decide arquitectura (plana vs sub-coordinadores)
+4. Conductor crea TodoWrite con fases iniciales
+5. Conductor delega a `planning-agent` → recibe workspace scan + draft del plan
+6. Conductor presenta plan al usuario → ⏸️ **PAUSA**
+7. Usuario aprueba → Conductor escribe a `plans/{tarea}-plan.md`
+8. Por cada fase:
+   - `implement-agent` ejecuta (recibe convenciones del workspace scan) → reporta
+   - `review-agent` verifica (criterios + convenciones + seguridad) → APPROVED / NEEDS_REVISION / FAILED
    - Si NEEDS_REVISION: re-delega a `implement-agent`
    - Conductor actualiza TodoWrite ✓
    - Conductor presenta resumen + commit msg → ⏸️ **PAUSA**
-7. Conductor escribe `plans/{tarea}-complete.md`
+9. Conductor escribe `plans/{tarea}-complete.md`
 
 ---
 
@@ -86,6 +96,7 @@ flowchart LR
 ## Plan: {nombre}
 
 ### Estado
+- [x] Fase 0: Workspace scan + investigación ✅
 - [x] Fase 1: {título} ✅ APPROVED
 - [🔄] Fase 2: {título} ← EN CURSO (delegado a implement-agent)
 - [ ] Fase 3: {título}
@@ -96,19 +107,10 @@ flowchart LR
 
 ---
 
-## Convenciones del Proyecto
-
-- **Idioma:** Español (código en inglés)
-- **Stack:** HTML + CSS + JS vanilla (sin build, sin deps)
-- **Pausas:** Tras plan y tras cada fase
-- **Commits:** conventional commits (`feat:`, `fix:`, `refactor:`, ...)
-- **TDD:** `implement-agent` escribe tests primero cuando aplica
-
----
-
 ## Recursos
 
-- **Skill:** `.claude/skills/subagent-pool/SKILL.md`
-- **Templates de prompts:** `.claude/skills/subagent-pool/assets/prompts.md`
-- **Troubleshooting:** `.claude/skills/subagent-pool/assets/agent-definitions.md`
-- **Agentes:** `.claude/agents/*.agent.md`
+- **Skill:** `skills/subagent-pool/SKILL.md`
+- **Templates de prompts:** `skills/subagent-pool/assets/prompts.md`
+- **Definiciones + troubleshooting:** `skills/subagent-pool/assets/agent-definitions.md`
+- **Protocolo de entrevista completo:** `skills/subagent-pool/assets/interview-protocol.md`
+- **Agentes:** `agents/*.agent.md`
