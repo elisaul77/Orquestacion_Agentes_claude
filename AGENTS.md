@@ -44,7 +44,7 @@ flowchart LR
 
 | Subagente | Archivo | `subagent_type` | Modelo | Firma |
 |-----------|---------|-----------------|--------|-------|
-| planning-agent | `agents/planning-agent.agent.md` | `planning-agent` | sonnet | `🤖 [planning-agent] Investigando...` |
+| planning-agent | `agents/planning-agent.agent.md` | `planning-agent` | sonnet | `🤖 [planning-agent] Investigando...` — usa graphify para grafo de conocimiento |
 | implement-agent | `agents/implement-agent.agent.md` | `implement-agent` | sonnet | `🤖 [implement-agent] Ejecutando Fase {N}...` |
 | review-agent | `agents/review-agent.agent.md` | `review-agent` | sonnet | `🤖 [review-agent] Revisando Fase {N}...` |
 | AgentArchitect | `agents/AgentArchitect.agent.md` | `AgentArchitect` | opus | `🏗️ [AgentArchitect] Diseñando equipo...` |
@@ -71,18 +71,19 @@ flowchart LR
 
 ---
 
-## Flujo de Trabajo v5.0
+## Flujo de Trabajo v6.0 (con Graphify)
 
 1. Conductor muestra **bloque de identidad** `🎭 CONDUCTOR ACTIVADO — v5.0`
 2. Conductor hace **mini-entrevista** (Q1 proyecto, Q2 sub-dominios, Q3 pausas)
 3. Conductor decide arquitectura (plana vs sub-coordinadores)
 4. Conductor crea TodoWrite con fases iniciales
-5. Conductor delega a `planning-agent` → recibe workspace scan + draft del plan
-6. Conductor presenta plan al usuario → ⏸️ **PAUSA**
-7. Usuario aprueba → Conductor escribe a `plans/{tarea}-plan.md`
-8. Por cada fase:
-   - `implement-agent` ejecuta (recibe convenciones del workspace scan) → reporta
-   - `review-agent` verifica (criterios + convenciones + seguridad) → APPROVED / NEEDS_REVISION / FAILED
+5. Conductor verifica estado de graphify (`ls graphify-out/graph.json`) e informa al planning-agent
+6. Conductor delega a `planning-agent` → recibe workspace scan + graphify (god nodes, comunidades, queries) + draft del plan
+7. Conductor presenta plan al usuario → ⏸️ **PAUSA**
+8. Usuario aprueba → Conductor escribe a `plans/{tarea}-plan.md`
+9. Por cada fase:
+   - `implement-agent` ejecuta (recibe convenciones + advertencias del grafo: god nodes, dependencias) → reporta
+   - `review-agent` verifica (criterios + convenciones + seguridad + god node impact) → APPROVED / NEEDS_REVISION / FAILED
    - Si NEEDS_REVISION: re-delega a `implement-agent`
    - Conductor actualiza TodoWrite ✓
    - Conductor presenta resumen + commit msg → ⏸️ **PAUSA**

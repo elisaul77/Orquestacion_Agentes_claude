@@ -6,7 +6,7 @@ description: >
 license: MIT
 metadata:
   author: elisaul77
-  version: "5.0"
+  version: "6.0"
   scope: [root]
   auto_invoke: "delegar, orquestar, conductor, planificar, compleja, separar, refactorizar"
 model: opus
@@ -18,7 +18,7 @@ agents:
 allowed-tools: Task, Write, Edit
 ---
 
-# Subagent Pool Skill — Conductor Pattern v5.0
+# Subagent Pool Skill — Conductor Pattern v6.0 (con Graphify)
 
 > **Instrucción crítica:** Cuando esta skill se active, asumes el rol de **CONDUCTOR**.
 > El Conductor **NUNCA** lee, escribe, edita o ejecuta código. **SIEMPRE delega** a un subagente.
@@ -31,13 +31,16 @@ allowed-tools: Task, Write, Edit
 Cada vez que esta skill se active, **DEBES** comenzar con este bloque exacto en tu primera respuesta:
 
 ```
-🎭 CONDUCTOR ACTIVADO — v5.0
+🎭 CONDUCTOR ACTIVADO — v6.0
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📦 Equipo de subagentes disponible:
-   • planning-agent   → Workspace scan + investigación + draft de plan
+   • planning-agent   → Graphify + workspace scan + investigación + draft de plan
    • implement-agent  → Implementación de código y tests
    • review-agent     → Revisión, seguridad y verificación de calidad
    • AgentArchitect   → Diseño de nuevas orquestaciones de agentes
+
+🔬 planning-agent usa graphify para construir un grafo de conocimiento del proyecto:
+   detecta god nodes, dependencias ocultas y comunidades (fronteras de fases).
 
 🚫 Como Conductor, NO ejecuto: Read/Edit/Write sobre código, Grep, Bash.
 ✅ Solo coordino vía Task tool. Para todo trabajo concreto delego.
@@ -77,6 +80,37 @@ Antes de invocar cualquier subagente, el Conductor hace **3 preguntas**. Puedes 
 > (Defaults si no responde: sí al plan, sí después de cada fase)
 
 > Omite la pregunta si el usuario ya proporcionó esa información en su petición inicial.
+
+---
+
+## 🔬 Graphify en el flujo de planificación
+
+El **planning-agent** usa `graphify` para construir un grafo de conocimiento del proyecto antes de redactar el plan. Esto reemplaza el Glob/Grep manual en proyectos medianos y grandes.
+
+### Qué aporta graphify al planning
+
+| Output de graphify | Cómo lo usa el planning-agent |
+|-------------------|-------------------------------|
+| **God Nodes** (nodos más conectados) | Identifica archivos de alto riesgo — el plan debe minimizar cambios en god nodes o darles una fase propia |
+| **Comunidades detectadas** | Fronteras naturales para las fases — una comunidad = candidato a una fase |
+| **Conexiones sorpresivas** | Dependencias ocultas que el implement-agent debe respetar |
+| **`graphify query`** | Responde preguntas específicas sobre el codebase en segundos |
+| **`graphify path A B`** | Revela cómo se conectan dos módulos — útil para planear integraciones |
+
+### El Conductor informa al planning-agent sobre el grafo
+
+Cuando el Conductor delega a `planning-agent`, incluye en el prompt:
+
+```
+## Estado de graphify
+{una de estas opciones:}
+- graphify-out/graph.json existe → planning-agent debe actualizar y consultar
+- No existe, proyecto > 20 archivos → planning-agent debe construir y consultar
+- No existe, proyecto ≤ 20 archivos → usar investigación manual (más rápido)
+- Proyecto nuevo/vacío → saltar graphify
+```
+
+Si el Conductor no sabe el estado, planning-agent lo detecta con `ls graphify-out/graph.json`.
 
 ---
 

@@ -1,4 +1,4 @@
-# Agent Definitions & Troubleshooting — v5.0
+# Agent Definitions & Troubleshooting — v6.0
 
 > Las **definiciones canónicas** de cada agente viven en `.claude/agents/*.agent.md`.
 > Este archivo es una **guía rápida + troubleshooting** del pool.
@@ -34,7 +34,7 @@ flowchart LR
 | Agente | `subagent_type` | Modelo | Tools | Modifica código | Firma |
 |--------|-----------------|--------|-------|-----------------|-------|
 | Conductor (esta skill) | — | **opus** | Task, Write/Edit (solo plans/) | ❌ NUNCA | `🎭 CONDUCTOR ACTIVADO` |
-| planning-agent | `planning-agent` | sonnet | Read, Glob, Grep, Bash (read), WebSearch, WebFetch, Write (solo plans/) | ❌ | `🤖 [planning-agent] Investigando...` |
+| planning-agent | `planning-agent` | sonnet | Read, Glob, Grep, Bash (graphify + inspección), WebSearch, WebFetch, Write (solo plans/) | ❌ | `🤖 [planning-agent] Investigando...` |
 | implement-agent | `implement-agent` | sonnet | Read, Edit, Write, Glob, Grep, Bash | ✅ | `🤖 [implement-agent] Ejecutando Fase {N}...` |
 | review-agent | `review-agent` | sonnet | Read, Glob, Grep, Bash (read) | ❌ | `🤖 [review-agent] Revisando Fase {N}...` |
 | AgentArchitect | `AgentArchitect` | **opus** | Task, Read, Write, Edit, Glob, Grep, Bash | Solo .agent.md | `🏗️ [AgentArchitect] Diseñando equipo...` |
@@ -46,6 +46,8 @@ flowchart LR
 | Necesidad | Delegar a |
 |-----------|-----------|
 | Escanear workspace / detectar convenciones | `planning-agent` |
+| Construir/actualizar grafo graphify del proyecto | `planning-agent` |
+| Identificar god nodes y dependencias ocultas | `planning-agent` (via graphify) |
 | Investigar archivos / patrones del codebase | `planning-agent` |
 | Diseñar el plan de fases | `planning-agent` |
 | Escribir o editar código del proyecto | `implement-agent` |
@@ -125,7 +127,29 @@ Posible fallback a general-purpose. Verifica .claude/agents/.
 
 **Causa:** El Conductor no pasó el workspace scan al implement-agent.
 
-**Acción:** Incluir siempre en el prompt de implement-agent la sección "Convenciones del proyecto" del output de planning-agent.
+**Acción:** Incluir siempre en el prompt de implement-agent la sección "Convenciones del proyecto" y "Advertencias del grafo" del output de planning-agent.
+
+---
+
+### Síntoma: El implement-agent rompió módulos que no estaban en su scope
+
+**Causa probable:** Tocó un god node sin saber sus dependencias.
+
+**Verificar:**
+1. ¿El planning-agent listó ese archivo como god node?
+2. ¿El Conductor pasó las "Advertencias del grafo" en el prompt del implement-agent?
+
+**Acción:** Re-delegar a implement-agent con las advertencias del grafo explícitas. Si el grafo no se construyó aún, pedirle al planning-agent que lo construya con `graphify . --no-viz`.
+
+---
+
+### Síntoma: planning-agent tardó mucho en investigar el proyecto
+
+**Causa:** Usó Glob/Grep/Read manual en un proyecto grande cuando debería haber usado graphify.
+
+**Verificar:** ¿El Conductor incluyó el estado de graphify en el prompt del planning-agent?
+
+**Acción:** Para proyectos > 20 archivos, siempre indicar en el prompt: "construir graphify si no existe". El grafo se construye una vez y las consultas posteriores son instantáneas.
 
 ---
 

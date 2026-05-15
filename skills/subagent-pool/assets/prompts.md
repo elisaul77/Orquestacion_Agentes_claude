@@ -59,20 +59,31 @@ Task(
 {stack, propósito, restricciones que el usuario nos dio}
 
 ## Proyecto existente o nuevo
-{respuesta de Q1 — si existente, hacer workspace scan primero}
+{respuesta de Q1 — si existente, hacer workspace scan + graphify}
+
+## Estado de graphify
+{UNA de estas opciones — el Conductor la determina con `ls graphify-out/graph.json`:}
+- "graphify-out/graph.json existe → actualizar con --update y consultar"
+- "No existe, proyecto grande (> 20 archivos) → construir con --no-viz y consultar"
+- "No existe, proyecto pequeño (≤ 20 archivos) → usar investigación manual"
+- "Proyecto nuevo/vacío → saltar graphify"
 
 ## Tu trabajo (planning-agent)
-1. Si proyecto existente: workspace scan (README, estructura, AGENTS.md/CLAUDE.md, convenciones)
-2. Investigar archivos relevantes con Glob/Grep/Read
-3. Identificar patrones y convenciones
-4. Definir 3-10 fases incrementales
-5. Retornar draft del plan en markdown
+1. Workspace scan (README, estructura, AGENTS.md/CLAUDE.md, convenciones)
+2. Graphify (según estado indicado arriba):
+   - Si existe: `graphify . --update --no-viz` → queries + leer GRAPH_REPORT.md
+   - Si no existe y proyecto grande: `graphify . --no-viz` → queries + leer GRAPH_REPORT.md
+   - Si proyecto pequeño/nuevo: Glob/Grep/Read manual
+3. Identificar patrones, god nodes, comunidades, dependencias ocultas
+4. Definir 3-10 fases usando comunidades graphify como fronteras naturales
+5. Retornar draft del plan
 
 ## Output esperado
-- Resultados del workspace scan (idioma, stack, patrones, instrucciones encontradas)
-- Archivos relevantes con paths y propósitos
-- Funciones/clases clave con file:line
-- Plan estructurado: cada fase con objective, files, tests, steps
+- Workspace scan (idioma, stack, patrones, instrucciones)
+- Graphify: god nodes en el scope, comunidades involucradas, conexiones sorpresivas
+- Archivos relevantes con nivel de riesgo (alto si son god nodes)
+- Plan estructurado: cada fase con objective, files, god_nodes_risk, tests, steps
+- Advertencias del grafo para el implement-agent
 - Open questions si hay ambigüedad
 
 ## Identidad
@@ -83,7 +94,7 @@ Inicia tu respuesta con: '🤖 [planning-agent] Investigando...'
 
 **Anuncio que el Conductor da al usuario antes de invocar:**
 ```
-📋 Delegando workspace scan + investigación a planning-agent...
+📋 Delegando workspace scan + graphify + investigación a planning-agent...
 ```
 
 ---
@@ -105,8 +116,13 @@ Task(
 - Stack: {detectado}
 - Patrones de código: {detectados}
 
+## Advertencias del grafo (graphify)
+{Copiar directamente del output de planning-agent — si no hay, poner "Ninguna"}
+- ⚠️ {archivo} es god node ({N} conexiones) — cambios aquí impactan {módulos}
+- ⚠️ {ModA} y {ModB} comparten {dato/interfaz} — coordinar cambios
+
 ## Archivos a modificar/crear
-- {path1}
+- {path1} {🔴 god node si aplica}
 - {path2}
 
 ## Tests a escribir (si aplica)
@@ -122,7 +138,8 @@ Task(
 
 ## Restricciones
 - SOLO modifica los archivos listados arriba
-- Respeta las convenciones del proyecto
+- Respeta convenciones detectadas
+- Tener especial cuidado con archivos marcados como god nodes
 - NO escribas planes o documentos de tracking
 - Reporta al final con el formato estándar
 
@@ -167,12 +184,17 @@ Task(
 ## Notas del implement-agent
 {si dejó notas para el reviewer}
 
+## Advertencias del grafo (graphify)
+{Copiar del plan — god nodes y conexiones sorpresivas que impactan esta fase}
+- ⚠️ {archivo} es god node — verificar que no se rompieron sus {N} dependencias
+
 ## Tu trabajo (review-agent)
 1. Leer archivos modificados
 2. Verificar cada criterio de aceptación
 3. Verificar que se respetan las convenciones del proyecto
-4. Buscar bugs, edge cases, security issues (OWASP Top 10 si aplica)
-5. Retornar status: APPROVED / NEEDS_REVISION / FAILED
+4. Si hay god nodes en la lista: verificar que sus dependencias no se rompieron
+5. Buscar bugs, edge cases, security issues (OWASP Top 10 si aplica)
+6. Retornar status: APPROVED / NEEDS_REVISION / FAILED
 
 ## Identidad
 Inicia tu respuesta con: '🤖 [review-agent] Revisando Fase {N}...'
