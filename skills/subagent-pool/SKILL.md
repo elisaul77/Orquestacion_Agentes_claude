@@ -6,7 +6,7 @@ description: >
 license: MIT
 metadata:
   author: elisaul77
-  version: "6.0"
+  version: "7.0"
   scope: [root]
   auto_invoke: "delegate, orchestrate, conductor, plan, complex, separate, refactor"
 model: opus
@@ -18,7 +18,7 @@ agents:
 allowed-tools: Task, Write, Edit
 ---
 
-# Subagent Pool Skill — Conductor Pattern v6.0 (with Graphify)
+# Subagent Pool Skill — Conductor Pattern v7.0 (with Graphify)
 
 > **Critical instruction:** When this skill activates, you assume the role of **CONDUCTOR**.
 > The Conductor **NEVER** reads, writes, edits, or executes code. **ALWAYS delegates** to a subagent.
@@ -62,7 +62,7 @@ allowed-tools: Task, Write, Edit
 Every time this skill activates, you **MUST** begin with this exact block in your first response:
 
 ```
-🎭 CONDUCTOR ACTIVATED — v6.0
+🎭 CONDUCTOR ACTIVATED — v7.0
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📦 Available subagent team:
    • planning-agent   → Graphify + workspace scan + research + plan draft
@@ -91,6 +91,58 @@ Every time this skill activates, you **MUST** begin with this exact block in you
 | Verification | **Delegate** to `review-agent` | Run tests/linter yourself |
 
 > ⚠️ **COMMON VIOLATION:** If you are about to use `Read`, `Grep`, `Bash` — **stop** and delegate.
+
+---
+
+## ⚡ Parallel Dispatch — MANDATORY
+
+**ALL independent Task calls MUST appear in a single message response.**
+One Task per message = sequential = wrong. This is the single most common performance error.
+
+```
+✅ CORRECT — 3 subagents dispatched in ONE response:
+   [Task call 1: planning-agent]
+   [Task call 2: review-agent for prior phase]
+   [Task call 3: implement-agent for unrelated module]
+
+❌ WRONG — 3 separate messages:
+   Response 1: [Task call 1]  → wait
+   Response 2: [Task call 2]  → wait
+   Response 3: [Task call 3]
+```
+
+**When can phases run in parallel?** When phase N+1 does NOT depend on N's output.
+If unsure → sequential. If clearly independent → parallel in one message.
+
+---
+
+## 🔀 Fork vs Fresh Subagent
+
+| Situation | Use | Why |
+|-----------|-----|-----|
+| Quick research query that needs current conversation context | **Fork** (omit `subagent_type`) | Inherits context + shares prompt cache → cheaper |
+| Full planning investigation (workspace scan, graphify) | **Fresh** `planning-agent` | Clean context, deterministic, isolated |
+| Implementation phase | **Fresh** `implement-agent` | Isolation prevents context contamination |
+| Code review | **Fresh** `review-agent` | Independent judgment, no bias from prior turns |
+| Parallel research on independent questions | **Multiple Forks in ONE message** | Each inherits context, all share cache |
+
+> **Never set `model` on a fork** — a different model cannot reuse the parent's prompt cache.
+> **Don't peek** — never Read the `output_file` of a running fork/subagent. Wait for the completion notification.
+
+---
+
+## ⏱️ Cache Heartbeat — 5-Minute Window
+
+The prompt cache expires after **5 minutes of inactivity**. A cache miss on the next dispatch costs significantly more tokens.
+
+| Phase gap | Action |
+|-----------|--------|
+| < 5 min | Normal flow — cache stays warm |
+| > 5 min (user thinking, long approval) | Send a lightweight status message to the user to keep the session alive |
+| Forced pause > 5 min | Acceptable — just note the next dispatch will be slower (cold cache) |
+
+> **Between phases**: always send the summary + commit message to the user immediately after APPROVED.
+> This is the natural heartbeat — it costs nothing and keeps the cache warm.
 
 ---
 
@@ -246,36 +298,21 @@ sequenceDiagram
 
 ### Step 2 — Delegate research to `planning-agent`
 
+> **Directive rule:** prompt = what to do + scope + constraints. Do NOT re-explain background the agent can infer from context.
+
 ```
 Task(
   description="Research: {brief task}",
   subagent_type="planning-agent",
   prompt="""
-## Task
-{detailed description}
+Investigate and draft a plan for: {one-line task description}
 
-## Project context
-{what the user told us: stack, purpose, constraints}
+Scope: {existing project | new folder} — {stack if known, else "detect"}
+Graphify: {EXISTS at graphify-out/graph.json | NOT_EXISTS, project ~N files}
+Out of scope: {what NOT to touch}
+Constraints: {hard limits — no new deps, must stay in X dir, etc.}
 
-## Existing project or new
-{answer to Q1 — if existing, run workspace scan first}
-
-## Your job (planning-agent)
-1. If existing project: workspace scan (README, structure, conventions, AGENTS.md/CLAUDE.md)
-2. Research relevant files with Glob/Grep/Read
-3. Identify codebase patterns and conventions
-4. Define 3-10 incremental phases
-5. Return plan draft
-
-## Expected output
-- Workspace scan results
-- Relevant files with paths
-- Detected conventions (language, stack, patterns)
-- Structured plan with phases (objective, files, tests, steps)
-- Open questions if there is ambiguity
-
-## Identity
-Start your response with: '🤖 [planning-agent] Investigating...'
+Return: workspace scan + phased plan draft + open questions.
 """
 )
 ```
@@ -294,79 +331,47 @@ Write to `plans/{task-name}-plan.md`. Update TodoWrite with real phases.
 
 ### Step 5 — For each phase: Implementation
 
+> **Directive rule:** state what to build + files + steps. Skip context the agent doesn't need to know.
+
 ```
 Task(
   description="Phase {N}: {short title}",
   subagent_type="implement-agent",
   prompt="""
-## Phase {N}: {title}
+Phase {N}: {title}
 
-## Objective
-{what is achieved in this phase}
-
-## Project conventions (from workspace scan)
-- Language: {detected by planning-agent}
-- Stack: {detected}
-- Patterns: {detected}
-
-## Files to modify/create
-- {exact list with paths}
-
-## Tests to write (if applicable)
-- {test names}
-
-## Steps
-1. {step 1}
-2. {step 2}
-
-## Constraints
-- ONLY modify files listed above
-- Respect detected conventions
-- Do NOT write planning documents
-- Report at the end with: modified files, test status, verification
-
-## Identity
-Start your response with: '🤖 [implement-agent] Running Phase {N}...'
+Objective: {one sentence — what this phase achieves}
+Files: {exact paths to modify/create}
+Steps: {numbered list, specific}
+Conventions: lang={detected}, stack={detected}, pattern={detected}
+Constraints: only touch files listed above; no new dependencies
+Graph warnings: {god nodes or surprising connections if any, else omit}
 """
 )
 ```
 
 **Announce to user:** `💻 Delegating Phase {N} to implement-agent...`
+**Mark task:** `TaskUpdate(id, status="in_progress")` immediately on dispatch, `TaskUpdate(id, status="completed")` immediately on receipt of report — never batch.
 
 ### Step 6 — For each phase: Review
 
+> **Directive rule:** give the agent exactly what it needs to verify — objective, criteria, files. Nothing else.
+
 ```
 Task(
-  description="Review Phase {N}",
+  description="Review Phase {N}: {title}",
   subagent_type="review-agent",
   prompt="""
-## Review Phase {N}: {title}
+Review Phase {N}: {title}
 
-## Phase objective
-{copy of the objective}
-
-## Acceptance criteria
-- {criterion 1}
-- {criterion 2}
-
-## Project conventions
-- {same ones passed to implement-agent}
-
-## Modified files (per implement-agent)
-- {list}
-
-## Notes from implement-agent
-{if any were left}
-
-## Your job (review-agent)
-1. Read modified files
-2. Verify acceptance criteria
-3. Verify respect for project conventions
-4. Look for bugs, edge cases, security issues (OWASP Top 10 if applicable)
-5. Return Status: APPROVED / NEEDS_REVISION / FAILED
-
-## Identity
-Start your response with: '🤖 [review-agent] Reviewing Phase {N}...'
+Objective: {one sentence}
+Modified files: {list from implement-agent report}
+Criteria:
+  - {criterion 1}
+  - {criterion 2}
+Conventions: lang={detected}, stack={detected}
+Security: {apply OWASP | N/A — no external inputs}
+Return: APPROVED / NEEDS_REVISION / FAILED + issues with file:line
 """
 )
 ```
@@ -464,6 +469,11 @@ Interview the user, design the agent pyramid, generate the files in .claude/agen
 7. ❌ **Not passing workspace scan conventions** to implement-agent and review-agent
 8. ❌ **Forgetting the visible TODO in every response**
 9. ❌ **Generic names in multi-orchestration** → use domain prefixes
+10. ❌ **Sequential Task dispatch when agents are independent** → all independent Tasks in ONE message
+11. ❌ **Reading `output_file` of a running subagent/fork** → wait for the completion notification; reading mid-flight floods your context with tool noise
+12. ❌ **Batching TaskUpdate** → mark `in_progress` on dispatch and `completed` on receipt, immediately, one by one
+13. ❌ **Setting `model` on a fork** → a different model cannot reuse the parent's prompt cache; forks inherit the parent model
+14. ❌ **Verbose Task prompts that re-explain context** → write directives (what + files + constraints), not background essays
 
 ---
 

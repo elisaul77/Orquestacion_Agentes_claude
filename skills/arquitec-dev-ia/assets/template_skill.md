@@ -2,14 +2,20 @@
 ---
 name: {skill-name}
 description: >
-  {What this skill does in one line}.
-  Trigger: {When the agent should invoke this skill}.
+  {What this skill does — max 250 chars, most important info first}
+when_to_use: >
+  Use when {situation}. Trigger phrases: "{phrase1}", "{phrase2}".
 license: MIT
 metadata:
   author: eliflowi
   version: "1.0"
   scope: [{root|ui|api|infra}]
-  auto_invoke: "{Action that triggers this skill}"
+# Optional advanced fields:
+# context: fork           # isolated subagent (no parent context)
+# effort: high            # low | medium | high | max
+# model: inherit          # or a specific model id
+# argument-hint: "<arg>"  # shown in UI when user types /skill <arg>
+# arguments: [foo, bar]   # named args → $foo, $bar in body
 allowed-tools: Read, Edit, Write, Glob, Grep, Bash
 ---
 

@@ -67,8 +67,8 @@ flowchart LR
 
 | Skill | Trigger | Version |
 |-------|---------|---------|
-| `subagent-pool` | "delegate", "orchestrate", "conductor", "complex task" | 6.0 |
-| `arquitec-dev-ia` | "create AGENTS.md", "document architecture", "structure for AI" | 2.0 |
+| `subagent-pool` | "delegate", "orchestrate", "conductor", "complex task" | 7.0 |
+| `arquitec-dev-ia` | "create AGENTS.md", "document architecture", "structure for AI", "output style", "add rules" | 4.0 |
 | `graphify` | `/graphify` | — |
 
 ---
@@ -85,9 +85,9 @@ flowchart LR
 
 ---
 
-## Workflow v6.0 (with Graphify)
+## Workflow v7.0 (with Graphify)
 
-1. Conductor shows **identity block** `🎭 CONDUCTOR ACTIVATED — v6.0`
+1. Conductor shows **identity block** `🎭 CONDUCTOR ACTIVATED — v7.0`
 2. Conductor runs **mini-interview** (Q1 project, Q2 sub-domains, Q3 pauses)
 3. Conductor decides architecture (flat vs sub-coordinators)
 4. Conductor creates TodoWrite with initial phases
