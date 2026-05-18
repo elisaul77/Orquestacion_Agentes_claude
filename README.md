@@ -5,6 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill%20v6.0-blueviolet.svg)](https://claude.ai/code)
 [![Conductor Pattern](https://img.shields.io/badge/Pattern-Conductor%20%2B%20Subagentes-orange.svg)](#arquitectura)
+[![Graphify](https://img.shields.io/badge/Graphify-Knowledge%20Graph-teal.svg)](https://github.com/safishamsi/graphify)
 [![GitHub Sponsors](https://img.shields.io/badge/GitHub-Sponsors-pink?style=for-the-badge&logo=githubsponsors)](https://github.com/sponsors/elisaul77)
 [![PayPal](https://img.shields.io/badge/PayPal-Donate-blue?style=for-the-badge&logo=paypal)](https://paypal.me/eflorezp)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support-yellow?style=for-the-badge&logo=buymeacoffee)](https://buymeacoffee.com/elisaul77)
@@ -62,8 +63,10 @@ flowchart LR
 git clone https://github.com/elisaul77/Orquestacion_Agentes_claude.git
 cd Orquestacion_Agentes_claude
 
-# Copiar skill
+# Copiar skills
 cp -r skills/subagent-pool ~/.claude/skills/
+cp -r skills/arquitec-dev-ia ~/.claude/skills/
+cp -r skills/graphify ~/.claude/skills/
 
 # Copiar agentes
 cp agents/*.agent.md ~/.claude/agents/
@@ -72,10 +75,12 @@ cp agents/*.agent.md ~/.claude/agents/
 ### Opción B — Instalar directamente con curl
 
 ```bash
-# Skill principal
-mkdir -p ~/.claude/skills/subagent-pool/assets
-curl -sSL https://raw.githubusercontent.com/elisaul77/Orquestacion_Agentes_claude/master/skills/subagent-pool/SKILL.md \
-  -o ~/.claude/skills/subagent-pool/SKILL.md
+# Skills
+for skill in subagent-pool arquitec-dev-ia graphify; do
+  mkdir -p ~/.claude/skills/${skill}
+  curl -sSL "https://raw.githubusercontent.com/elisaul77/Orquestacion_Agentes_claude/master/skills/${skill}/SKILL.md" \
+    -o ~/.claude/skills/${skill}/SKILL.md
+done
 
 # Agentes
 for agent in planning-agent implement-agent review-agent AgentArchitect; do
@@ -83,6 +88,9 @@ for agent in planning-agent implement-agent review-agent AgentArchitect; do
     -o ~/.claude/agents/${agent}.agent.md
 done
 ```
+
+> **Nota:** El skill `graphify` requiere instalar la herramienta por separado.
+> Ver la sección [Graphify — Grafo de Conocimiento](#-graphify--grafo-de-conocimiento) más abajo.
 
 ---
 
@@ -124,12 +132,18 @@ Activa el Conductor con cualquiera de estas frases en Claude Code:
 Orquestacion_Agentes_claude/
 ├── AGENTS.md                          # Visión general, reglas y diagrama del sistema
 ├── skills/
-│   └── subagent-pool/
-│       ├── SKILL.md                   # Skill principal — rol del Conductor
-│       └── assets/
-│           ├── prompts.md             # Templates de prompts para cada subagente
-│           ├── agent-definitions.md   # Definiciones y troubleshooting
-│           └── interview-protocol.md  # Protocolo de mini-entrevista completo
+│   ├── subagent-pool/
+│   │   ├── SKILL.md                   # Skill principal — rol del Conductor
+│   │   └── assets/
+│   │       ├── prompts.md             # Templates de prompts para cada subagente
+│   │       ├── agent-definitions.md   # Definiciones y troubleshooting
+│   │       └── interview-protocol.md  # Protocolo de mini-entrevista completo
+│   ├── arquitec-dev-ia/
+│   │   ├── SKILL.md                   # Skill de documentación de contexto IA
+│   │   ├── assets/                    # Templates AGENTS.md, CLAUDE.md, skills
+│   │   └── references/                # Documentación de referencia
+│   └── graphify/
+│       └── SKILL.md                   # Skill de grafo de conocimiento (ver sección abajo)
 ├── agents/
 │   ├── planning-agent.agent.md        # Investiga y redacta el plan (con graphify)
 │   ├── implement-agent.agent.md       # Implementa código y tests por fase
@@ -139,6 +153,86 @@ Orquestacion_Agentes_claude/
 ├── FUNDING.md
 └── README.md
 ```
+
+---
+
+## 🧠 Graphify — Grafo de Conocimiento
+
+Este stack incluye el skill **[graphify](https://github.com/safishamsi/graphify)**, una herramienta de terceros que convierte cualquier repositorio de código, documentos, PDFs, imágenes y videos en un **grafo de conocimiento consultable**.
+
+El `planning-agent` lo usa automáticamente para investigar el codebase antes de planificar — reemplaza el Glob/Grep manual en proyectos medianos y grandes, revelando dependencias y conexiones ocultas que no serían evidentes leyendo archivos uno por uno.
+
+> Proyecto original: **[github.com/safishamsi/graphify](https://github.com/safishamsi/graphify)**
+
+### Instalación de Graphify
+
+Graphify se instala por separado como herramienta global. Requiere Python 3.10+ y `uv` (recomendado).
+
+```bash
+# Instalar con uv (recomendado)
+uv tool install graphifyy
+
+# Registrar el skill en Claude Code
+graphify install
+```
+
+> El nombre del paquete en PyPI es `graphifyy` (doble y), pero el comando CLI es `graphify`.
+
+**Alternativa con pipx:**
+```bash
+pipx install graphifyy
+graphify install
+```
+
+**Verificar instalación:**
+```bash
+graphify --version
+```
+
+### Uso básico
+
+```bash
+# En Claude Code — analizar el proyecto actual
+/graphify .
+
+# Analizar un path específico
+/graphify ./src
+
+# Analizar un repositorio remoto directamente
+/graphify https://github.com/owner/repo
+
+# Consulta semántica sobre el grafo generado
+/graphify query "¿dónde se maneja la autenticación?"
+
+# Camino más corto entre dos conceptos
+/graphify path "AuthModule" "Database"
+
+# Actualización incremental (solo archivos nuevos/modificados)
+/graphify . --update
+
+# Exportar como servidor MCP para acceso programático
+/graphify . --mcp
+```
+
+### Outputs generados
+
+Tras ejecutar `/graphify .`, se crea la carpeta `graphify-out/` con:
+
+| Archivo | Descripción |
+|---------|-------------|
+| `graph.html` | Grafo interactivo — abrir en navegador |
+| `GRAPH_REPORT.md` | Reporte con nodos clave, conexiones sorpresa y preguntas sugeridas |
+| `graph.json` | Datos raw del grafo para consultas programáticas |
+
+### Integración con el planning-agent
+
+El `planning-agent` de este stack detecta automáticamente si existe `graphify-out/` en el proyecto. Si está disponible, lo usa para:
+
+1. Identificar los **god nodes** (componentes más conectados)
+2. Descubrir dependencias entre módulos sin leer todos los archivos
+3. Generar un plan de implementación informado por la estructura real del código
+
+Si `graphify-out/` no existe, el agente hace workspace scan manual con Glob/Grep.
 
 ---
 
