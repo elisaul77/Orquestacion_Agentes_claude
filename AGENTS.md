@@ -1,18 +1,18 @@
 # Orquestacion Agentes Claude — AGENTS.md
 
-## Visión General
+## Overview
 
 ```mermaid
 flowchart LR
-    USER["👤 Usuario"] -->|"petición"| CONDUCTOR["🎭 Conductor<br/>NUNCA toca código"]
-    CONDUCTOR -->|"investiga + workspace scan"| PA["📋 planning-agent"]
-    CONDUCTOR -->|"implementa"| IA["💻 implement-agent"]
-    CONDUCTOR -->|"revisa + seguridad"| RA["🔍 review-agent"]
-    CONDUCTOR -->|"diseña equipo nuevo"| AA["🏗️ AgentArchitect"]
-    PA -.->|"workspace scan + draft del plan"| CONDUCTOR
-    IA -.->|"reporte"| CONDUCTOR
+    USER["👤 User"] -->|"request"| CONDUCTOR["🎭 Conductor<br/>NEVER touches code"]
+    CONDUCTOR -->|"investigate + workspace scan"| PA["📋 planning-agent"]
+    CONDUCTOR -->|"implement"| IA["💻 implement-agent"]
+    CONDUCTOR -->|"review + security"| RA["🔍 review-agent"]
+    CONDUCTOR -->|"design new team"| AA["🏗️ AgentArchitect"]
+    PA -.->|"workspace scan + plan draft"| CONDUCTOR
+    IA -.->|"report"| CONDUCTOR
     RA -.->|"APPROVED/NEEDS_REVISION/FAILED"| CONDUCTOR
-    AA -.->|"archivos .agent.md generados"| CONDUCTOR
+    AA -.->|"generated .agent.md files"| CONDUCTOR
     CONDUCTOR --> USER
 
     style CONDUCTOR fill:#ff9800,color:#fff
@@ -22,96 +22,110 @@ flowchart LR
     style AA fill:#9c27b0,color:#fff
 ```
 
-**Principio:** El Conductor COORDINA. Los subagentes EJECUTAN. La firma `🤖 [<agent>] ...` confirma qué subagente respondió.
+**Principle:** The Conductor COORDINATES. Subagents EXECUTE. The signature `🤖 [<agent>] ...` confirms which subagent responded.
 
 ---
 
-## Reglas de Oro del Conductor
+## Conductor Golden Rules
 
-| El Conductor (esta skill) | Los Subagentes |
-|---------------------------|----------------|
-| ✅ Planifica y coordina | ✅ Ejecutan trabajo concreto |
-| ✅ Hace mini-entrevista (Q1, Q2, Q3) | ✅ planning-agent: workspace scan + draft |
-| ✅ Escribe en `plans/*.md` | ✅ implement-agent: código y tests |
-| ✅ Actualiza TodoWrite | ✅ review-agent: veredicto + seguridad |
-| ✅ Anuncia delegaciones | ✅ AgentArchitect: genera nuevos agentes |
-| ❌ **NUNCA** Read/Grep/Edit sobre código | ❌ No tocan planes ni docs de coordinación |
-| ❌ **NUNCA** ejecuta Bash sobre el repo | ❌ No delegan a otros subagentes |
-
----
-
-## Subagentes Registrados
-
-| Subagente | Archivo | `subagent_type` | Modelo | Firma |
-|-----------|---------|-----------------|--------|-------|
-| planning-agent | `agents/planning-agent.agent.md` | `planning-agent` | sonnet | `🤖 [planning-agent] Investigando...` — usa graphify para grafo de conocimiento |
-| implement-agent | `agents/implement-agent.agent.md` | `implement-agent` | sonnet | `🤖 [implement-agent] Ejecutando Fase {N}...` |
-| review-agent | `agents/review-agent.agent.md` | `review-agent` | sonnet | `🤖 [review-agent] Revisando Fase {N}...` |
-| AgentArchitect | `agents/AgentArchitect.agent.md` | `AgentArchitect` | opus | `🏗️ [AgentArchitect] Diseñando equipo...` |
+| The Conductor (this skill) | The Subagents |
+|---------------------------|---------------|
+| ✅ Plans and coordinates | ✅ Execute concrete work |
+| ✅ Runs mini-interview (Q1, Q2, Q3) | ✅ planning-agent: workspace scan + draft |
+| ✅ Writes in `plans/*.md` | ✅ implement-agent: code and tests |
+| ✅ Updates TodoWrite | ✅ review-agent: verdict + security |
+| ✅ Announces delegations | ✅ AgentArchitect: generates new agents |
+| ❌ **NEVER** Read/Grep/Edit on code | ❌ Don't touch plans or coordination docs |
+| ❌ **NEVER** runs Bash on the repo | ❌ Don't delegate to other subagents |
 
 ---
 
-## Skills Disponibles
+## Language Policy
 
-| Skill | Trigger | Versión |
+| Agent | Language |
+|-------|----------|
+| **Conductor** | User's language (detects from first message) |
+| planning-agent | English |
+| implement-agent | English |
+| review-agent | English |
+| AgentArchitect | English |
+
+---
+
+## Registered Subagents
+
+| Subagent | File | `subagent_type` | Model | Signature |
+|----------|------|-----------------|-------|-----------|
+| planning-agent | `agents/planning-agent.agent.md` | `planning-agent` | sonnet | `🤖 [planning-agent] Investigating...` — uses graphify for knowledge graph |
+| implement-agent | `agents/implement-agent.agent.md` | `implement-agent` | sonnet | `🤖 [implement-agent] Running Phase {N}...` |
+| review-agent | `agents/review-agent.agent.md` | `review-agent` | sonnet | `🤖 [review-agent] Reviewing Phase {N}...` |
+| AgentArchitect | `agents/AgentArchitect.agent.md` | `AgentArchitect` | opus | `🏗️ [AgentArchitect] Designing team...` |
+
+---
+
+## Available Skills
+
+| Skill | Trigger | Version |
 |-------|---------|---------|
-| `subagent-pool` | "delegar", "orquestar", "conductor", "tarea compleja" | 5.0 |
+| `subagent-pool` | "delegate", "orchestrate", "conductor", "complex task" | 6.0 |
+| `arquitec-dev-ia` | "create AGENTS.md", "document architecture", "structure for AI" | 2.0 |
+| `graphify` | `/graphify` | — |
 
 ---
 
 ## Auto-invoke
 
-| Acción del usuario | Skill |
-|--------------------|-------|
-| "usa el conductor para..." | `subagent-pool` |
-| "delegar a..." | `subagent-pool` |
-| "orquesta la separación / refactor / feature" | `subagent-pool` |
-| "Fase 1:", "siguiente fase" | `subagent-pool` |
-| "diseña un equipo de agentes para..." | `subagent-pool` → `AgentArchitect` |
+| User action | Skill |
+|-------------|-------|
+| "use the conductor for..." | `subagent-pool` |
+| "delegate to..." | `subagent-pool` |
+| "orchestrate the separation / refactor / feature" | `subagent-pool` |
+| "Phase 1:", "next phase" | `subagent-pool` |
+| "design an agent team for..." | `subagent-pool` → `AgentArchitect` |
 
 ---
 
-## Flujo de Trabajo v6.0 (con Graphify)
+## Workflow v6.0 (with Graphify)
 
-1. Conductor muestra **bloque de identidad** `🎭 CONDUCTOR ACTIVADO — v5.0`
-2. Conductor hace **mini-entrevista** (Q1 proyecto, Q2 sub-dominios, Q3 pausas)
-3. Conductor decide arquitectura (plana vs sub-coordinadores)
-4. Conductor crea TodoWrite con fases iniciales
-5. Conductor verifica estado de graphify (`ls graphify-out/graph.json`) e informa al planning-agent
-6. Conductor delega a `planning-agent` → recibe workspace scan + graphify (god nodes, comunidades, queries) + draft del plan
-7. Conductor presenta plan al usuario → ⏸️ **PAUSA**
-8. Usuario aprueba → Conductor escribe a `plans/{tarea}-plan.md`
-9. Por cada fase:
-   - `implement-agent` ejecuta (recibe convenciones + advertencias del grafo: god nodes, dependencias) → reporta
-   - `review-agent` verifica (criterios + convenciones + seguridad + god node impact) → APPROVED / NEEDS_REVISION / FAILED
-   - Si NEEDS_REVISION: re-delega a `implement-agent`
-   - Conductor actualiza TodoWrite ✓
-   - Conductor presenta resumen + commit msg → ⏸️ **PAUSA**
-9. Conductor escribe `plans/{tarea}-complete.md`
+1. Conductor shows **identity block** `🎭 CONDUCTOR ACTIVATED — v6.0`
+2. Conductor runs **mini-interview** (Q1 project, Q2 sub-domains, Q3 pauses)
+3. Conductor decides architecture (flat vs sub-coordinators)
+4. Conductor creates TodoWrite with initial phases
+5. Conductor checks graphify status (`ls graphify-out/graph.json`) and informs planning-agent
+6. Conductor delegates to `planning-agent` → receives workspace scan + graphify (god nodes, communities, queries) + plan draft
+7. Conductor presents plan to user → ⏸️ **PAUSE**
+8. User approves → Conductor writes to `plans/{task}-plan.md`
+9. Per each phase:
+   - `implement-agent` executes (receives conventions + graph warnings: god nodes, dependencies) → reports
+   - `review-agent` verifies (criteria + conventions + security + god node impact) → APPROVED / NEEDS_REVISION / FAILED
+   - If NEEDS_REVISION: re-delegates to `implement-agent`
+   - Conductor updates TodoWrite ✓
+   - Conductor presents summary + commit msg → ⏸️ **PAUSE**
+10. Conductor writes `plans/{task}-complete.md`
 
 ---
 
-## TODO siempre visible
+## Always-visible TODO
 
 ```markdown
-## Plan: {nombre}
+## Plan: {name}
 
-### Estado
-- [x] Fase 0: Workspace scan + investigación ✅
-- [x] Fase 1: {título} ✅ APPROVED
-- [🔄] Fase 2: {título} ← EN CURSO (delegado a implement-agent)
-- [ ] Fase 3: {título}
+### Status
+- [x] Phase 0: Workspace scan + investigation ✅
+- [x] Phase 1: {title} ✅ APPROVED
+- [🔄] Phase 2: {title} ← IN PROGRESS (delegated to implement-agent)
+- [ ] Phase 3: {title}
 
-🎭 Última acción: {qué acabo de hacer}
-🎯 Siguiente: {qué viene}
+🎭 Last action: {what I just did}
+🎯 Next: {what comes next}
 ```
 
 ---
 
-## Recursos
+## Resources
 
 - **Skill:** `skills/subagent-pool/SKILL.md`
-- **Templates de prompts:** `skills/subagent-pool/assets/prompts.md`
-- **Definiciones + troubleshooting:** `skills/subagent-pool/assets/agent-definitions.md`
-- **Protocolo de entrevista completo:** `skills/subagent-pool/assets/interview-protocol.md`
-- **Agentes:** `agents/*.agent.md`
+- **Prompt templates:** `skills/subagent-pool/assets/prompts.md`
+- **Definitions + troubleshooting:** `skills/subagent-pool/assets/agent-definitions.md`
+- **Full interview protocol:** `skills/subagent-pool/assets/interview-protocol.md`
+- **Agents:** `agents/*.agent.md`

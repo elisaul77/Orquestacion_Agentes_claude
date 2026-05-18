@@ -1,106 +1,106 @@
-# Protocolo de Entrevista Completo — Agent Orchestration Design
+# Full Interview Protocol — Agent Orchestration Design
 
-> **Quién usa este archivo:** El **AgentArchitect** y el **Conductor** cuando diseñan una nueva orquestación.
-> Para el Conductor en modo operativo, basta con la mini-entrevista de 3 preguntas en SKILL.md.
-
----
-
-## Las 8 Preguntas (AOD Interview Protocol)
-
-Haz las preguntas **en orden**. Para cuando tengas suficiente para diseñar la pirámide.
-
-### Q1 — Punto de partida
-> ¿Partimos de una **carpeta vacía** o debo estudiar un **proyecto existente** primero?
-
-- **Carpeta vacía** → continuar a Q2
-- **Proyecto existente** → workspace scan:
-  1. Leer `README.md` en la raíz si existe
-  2. Leer `.claude/CLAUDE.md` o `AGENTS.md` si existen
-  3. Listar estructura top-level (`ls -la`)
-  4. Leer 3-5 archivos clave para inferir convenciones (paleta, idioma, stack, templates)
-  5. Resumir hallazgos al usuario en 4-8 bullets antes de continuar
-
-### Q2 — Propósito / Problem statement
-> Describe en 1-3 oraciones: **qué problema** quieres resolver y **cuál es el entregable final**.
-
-### Q3 — Artefacto(s) de entrada
-> ¿Con qué material empieza el equipo? Opciones típicas: código fuente, documentos (PDF/Word), datos (CSV/DB), APIs, UI, mix.
-
-### Q4 — Artefacto(s) de salida
-> ¿Qué entrega el equipo al terminar? Opciones típicas: código nuevo + tests, documentación estructurada en Markdown, dataset procesado, reporte, deployment.
-
-### Q5 — Sub-dominios
-> ¿El problema tiene sub-dominios claramente separables que justifiquen **sub-coordinadores** (ej: backend + frontend, migración + integración)? ¿Cuáles?
-
-### Q6 — Capacidades especiales
-Checklist (marca las que apliquen):
-- [ ] TDD / tests automatizados
-- [ ] Extracción + descripción de imágenes (visión)
-- [ ] Verificación de UI en navegador
-- [ ] Ejecución de terminal / scripts
-- [ ] Acceso a repos externos (GitHub)
-- [ ] Consultas web / documentación externa
-- [ ] Manipulación de Jupyter notebooks
-- [ ] Automatización de browser (clicks, formularios)
-
-### Q7 — Puntos de pausa del usuario
-> ¿En qué momentos el Conductor debe **pausar obligatoriamente** para esperar tu confirmación?
-
-Defaults seguros:
-1. Después de presentar el plan de fases
-2. Después de cada fase revisada y aprobada
-3. Al cerrar el proceso con el reporte final
-
-### Q8 — Idioma y convenciones corporativas
-> ¿Idioma de output (español/inglés)? ¿Hay convenciones corporativas (paleta de colores, templates, glosario) que los agentes deben respetar?
+> **Who uses this file:** The **AgentArchitect** and the **Conductor** when designing a new orchestration.
+> For the Conductor in operational mode, the 3-question mini-interview in SKILL.md is sufficient.
 
 ---
 
-## Agrupación sugerida de rondas
+## The 8 Questions (AOD Interview Protocol)
 
-**Ronda A** (independientes — hacer juntas):
-- Q2 propósito, Q3 input, Q4 output, Q8 idioma/convenciones
+Ask the questions **in order**. Stop when you have enough to design the pyramid.
 
-**Ronda B** (dependen de A):
-- Q5 sub-dominios, Q6 capacidades especiales
+### Q1 — Starting point
+> Are we starting from an **empty folder** or should I study an **existing project** first?
 
-**Ronda C** (confirmación):
-- Q7 puntos de pausa
+- **Empty folder** → continue to Q2
+- **Existing project** → workspace scan:
+  1. Read `README.md` at root if it exists
+  2. Read `.claude/CLAUDE.md` or `AGENTS.md` if they exist
+  3. List top-level structure (`ls -la`)
+  4. Read 3-5 key files to infer conventions (palette, language, stack, templates)
+  5. Summarize findings to user in 4-8 bullets before continuing
+
+### Q2 — Purpose / Problem statement
+> Describe in 1-3 sentences: **what problem** you want to solve and **what the final deliverable** is.
+
+### Q3 — Input artifact(s)
+> What material does the team start with? Typical options: source code, documents (PDF/Word), data (CSV/DB), APIs, UI, mix.
+
+### Q4 — Output artifact(s)
+> What does the team deliver when done? Typical options: new code + tests, structured Markdown documentation, processed dataset, report, deployment.
+
+### Q5 — Sub-domains
+> Does the problem have clearly separable sub-domains that justify **sub-coordinators** (e.g. backend + frontend, migration + integration)? Which ones?
+
+### Q6 — Special capabilities
+Checklist (mark those that apply):
+- [ ] TDD / automated tests
+- [ ] Image extraction + description (vision)
+- [ ] Browser UI verification
+- [ ] Terminal / script execution
+- [ ] Access to external repos (GitHub)
+- [ ] Web queries / external documentation
+- [ ] Jupyter notebook manipulation
+- [ ] Browser automation (clicks, forms)
+
+### Q7 — User pause points
+> At what moments should the Conductor **pause mandatory** to wait for your confirmation?
+
+Safe defaults:
+1. After presenting the phase plan
+2. After each reviewed and approved phase
+3. When closing the process with the final report
+
+### Q8 — Language and corporate conventions
+> Output language (Spanish/English)? Are there corporate conventions (color palette, templates, glossary) that agents must follow?
 
 ---
 
-## Reglas de la entrevista
+## Suggested round groupings
 
-- **Nunca preguntes todo de una vez** — máximo 4-5 preguntas por ronda
-- **Prefiere opciones múltiples** con un default recomendado cuando aplique (reduce fatiga)
-- **Siempre permite respuesta libre** además de las opciones
-- **Refleja comprensión** tras cada ronda: "Entonces el equipo debe {resumen} — ¿correcto?"
-- **Para de preguntar** cuando puedas completar el checklist de §7 de SKILL.md
+**Round A** (independent — ask together):
+- Q2 purpose, Q3 input, Q4 output, Q8 language/conventions
+
+**Round B** (depend on A):
+- Q5 sub-domains, Q6 special capabilities
+
+**Round C** (confirmation):
+- Q7 pause points
 
 ---
 
-## Reglas de decisión post-entrevista
+## Interview rules
 
-### ¿Agregar sub-coordinadores? (Q5)
-Solo si TODAS se cumplen:
-1. El sub-dominio tiene flujo de trabajo diferente (herramientas distintas, criterios de review distintos)
-2. Ejecutar en paralelo crea valor real
-3. Un único trío Analyst/Executor/Reviewer no puede manejar ambos sub-dominios
+- **Never ask everything at once** — maximum 4-5 questions per round
+- **Prefer multiple choice** with a recommended default when applicable (reduces fatigue)
+- **Always allow free-form response** in addition to the options
+- **Reflect understanding** after each round: "So the team must {summary} — correct?"
+- **Stop asking** when you can complete the §7 checklist in SKILL.md
 
-Si alguna falla → pirámide plana.
+---
 
-### ¿Fusionar Analyst + Executor?
-Solo si el análisis es trivial (< 10% del esfuerzo de la fase). Si no, mantenerlos separados.
+## Post-interview decision rules
 
-### ¿Dividir el Reviewer?
-Solo si la verificación requiere habilidades fundamentalmente distintas (ej. `CodeReviewer` + `UXReviewer`).
+### Add sub-coordinators? (Q5)
+Only if ALL are met:
+1. The sub-domain has a different workflow (different tools, different review criteria)
+2. Running in parallel with the other sub-domain creates real value
+3. A single Analyst/Executor/Reviewer trio cannot handle both sub-domains
 
-### Asignación de herramientas por rol
-| Rol | Tools |
-|-----|-------|
-| Conductor | `Task`, `Write`/`Edit` (solo plans/) |
-| Planner/Analyzer | `Read`, `Glob`, `Grep`, `Bash` (lectura), `WebSearch`, `WebFetch` |
+If any fails → flat pyramid.
+
+### Merge Analyst + Executor?
+Only if the analysis is trivial (< 10% of the phase effort). Otherwise keep them separate.
+
+### Split the Reviewer?
+Only if verification requires fundamentally different skills (e.g. `CodeReviewer` + `UXReviewer`).
+
+### Tool assignment by role
+| Role | Tools |
+|------|-------|
+| Conductor | `Task`, `Write`/`Edit` (plans/ only) |
+| Planner/Analyzer | `Read`, `Glob`, `Grep`, `Bash` (read), `WebSearch`, `WebFetch` |
 | Executor/Implementer | `Read`, `Edit`, `Write`, `Glob`, `Grep`, `Bash` |
-| Reviewer | `Read`, `Glob`, `Grep`, `Bash` (lectura) |
+| Reviewer | `Read`, `Glob`, `Grep`, `Bash` (read) |
 
-**NUNCA dar al Conductor herramientas de ejecución** (`Bash` directo sobre código, `Edit` sobre archivos del proyecto).
+**NEVER give the Conductor execution tools** (`Bash` directly on code, `Edit` on project files).

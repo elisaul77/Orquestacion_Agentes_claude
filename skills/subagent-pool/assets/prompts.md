@@ -1,355 +1,355 @@
-# Templates de Prompts — Conductor Pattern v5.0
+# Prompt Templates — Conductor Pattern v5.0
 
-> **Quién usa este archivo:** El **Conductor**, al construir el `prompt` de cada `Task(...)`.
-> Estos templates aseguran que cada subagente reciba lo mínimo necesario y retorne con la firma `🤖 [<agent>]`.
-
----
-
-## 🎭 Bloque de identidad del Conductor (apertura obligatoria)
-
-```
-🎭 CONDUCTOR ACTIVADO — v5.0
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📦 Equipo de subagentes disponible:
-   • planning-agent   → Workspace scan + investigación + draft de plan
-   • implement-agent  → Implementación de código y tests
-   • review-agent     → Revisión, seguridad y verificación de calidad
-   • AgentArchitect   → Diseño de nuevas orquestaciones de agentes
-
-🚫 Como Conductor, NO ejecuto: Read/Edit/Write sobre código, Grep, Bash.
-✅ Solo coordino vía Task tool. Para todo trabajo concreto delego.
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
+> **Who uses this file:** The **Conductor**, when building the `prompt` for each `Task(...)`.
+> These templates ensure each subagent receives the minimum necessary and returns with the `🤖 [<agent>]` signature.
 
 ---
 
-## 0️⃣ Template — Mini-Entrevista inicial
+## 🎭 Conductor identity block (mandatory opening)
 
-El Conductor pregunta **antes** de invocar cualquier subagente:
+```
+🎭 CONDUCTOR ACTIVATED — v5.0
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Available subagent team:
+   • planning-agent   → Workspace scan + investigation + plan draft
+   • implement-agent  → Code and test implementation
+   • review-agent     → Review, security and quality verification
+   • AgentArchitect   → Design of new agent orchestrations
+
+🚫 As Conductor, I do NOT execute: Read/Edit/Write on code, Grep, Bash.
+✅ I coordinate only via the Task tool. All concrete work is delegated.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+---
+
+## 0️⃣ Template — Initial Mini-Interview
+
+The Conductor asks **before** invoking any subagent:
 
 ```markdown
-Antes de comenzar, necesito 3 respuestas rápidas:
+Before we start, I need 3 quick answers:
 
-**Q1 — Punto de partida:**
-¿El proyecto es existente o carpeta nueva?
-(Si existente: planning-agent hará un workspace scan automático)
+**Q1 — Starting point:**
+Is the project existing or a new empty folder?
+(If existing: planning-agent will do an automatic workspace scan)
 
-**Q2 — Sub-dominios:**
-¿La tarea tiene áreas claramente separables (ej. frontend/backend)?
-(Determina si usamos pirámide plana o sub-coordinadores)
+**Q2 — Sub-domains:**
+Does the task have clearly separable areas (e.g. frontend/backend)?
+(Determines whether we use a flat pyramid or sub-coordinators)
 
-**Q3 — Pausas:**
-¿Quieres aprobar el plan antes de implementar? ¿Y pausar tras cada fase?
-(Default: sí a ambas)
+**Q3 — Pauses:**
+Do you want to approve the plan before implementing? And pause after each phase?
+(Default: yes to both)
 ```
 
 ---
 
-## 1️⃣ Template — Invocar `planning-agent`
+## 1️⃣ Template — Invoke `planning-agent`
 
 ```python
 Task(
-  description="Investigar: {tarea breve <60 chars>}",
+  description="Investigate: {brief task <60 chars>}",
   subagent_type="planning-agent",
   prompt="""
-## Tarea
-{descripción detallada de lo que el usuario pidió}
+## Task
+{detailed description of what the user requested}
 
-## Contexto del proyecto (lo que sé sin investigar)
-{stack, propósito, restricciones que el usuario nos dio}
+## Project context (what I know without investigating)
+{stack, purpose, constraints the user gave us}
 
-## Proyecto existente o nuevo
-{respuesta de Q1 — si existente, hacer workspace scan + graphify}
+## Existing or new project
+{Q1 answer — if existing, do workspace scan + graphify}
 
-## Estado de graphify
-{UNA de estas opciones — el Conductor la determina con `ls graphify-out/graph.json`:}
-- "graphify-out/graph.json existe → actualizar con --update y consultar"
-- "No existe, proyecto grande (> 20 archivos) → construir con --no-viz y consultar"
-- "No existe, proyecto pequeño (≤ 20 archivos) → usar investigación manual"
-- "Proyecto nuevo/vacío → saltar graphify"
+## Graphify status
+{ONE of these options — the Conductor determines with `ls graphify-out/graph.json`:}
+- "graphify-out/graph.json exists → update with --update and query"
+- "Doesn't exist, large project (> 20 files) → build with --no-viz and query"
+- "Doesn't exist, small project (≤ 20 files) → use manual investigation"
+- "New/empty project → skip graphify"
 
-## Tu trabajo (planning-agent)
-1. Workspace scan (README, estructura, AGENTS.md/CLAUDE.md, convenciones)
-2. Graphify (según estado indicado arriba):
-   - Si existe: `graphify . --update --no-viz` → queries + leer GRAPH_REPORT.md
-   - Si no existe y proyecto grande: `graphify . --no-viz` → queries + leer GRAPH_REPORT.md
-   - Si proyecto pequeño/nuevo: Glob/Grep/Read manual
-3. Identificar patrones, god nodes, comunidades, dependencias ocultas
-4. Definir 3-10 fases usando comunidades graphify como fronteras naturales
-5. Retornar draft del plan
+## Your work (planning-agent)
+1. Workspace scan (README, structure, AGENTS.md/CLAUDE.md, conventions)
+2. Graphify (per status above):
+   - If exists: `graphify . --update --no-viz` → queries + read GRAPH_REPORT.md
+   - If not exists and large project: `graphify . --no-viz` → queries + read GRAPH_REPORT.md
+   - If small/new project: manual Glob/Grep/Read
+3. Identify patterns, god nodes, communities, hidden dependencies
+4. Define 3-10 phases using graphify communities as natural boundaries
+5. Return plan draft
 
-## Output esperado
-- Workspace scan (idioma, stack, patrones, instrucciones)
-- Graphify: god nodes en el scope, comunidades involucradas, conexiones sorpresivas
-- Archivos relevantes con nivel de riesgo (alto si son god nodes)
-- Plan estructurado: cada fase con objective, files, god_nodes_risk, tests, steps
-- Advertencias del grafo para el implement-agent
-- Open questions si hay ambigüedad
+## Expected output
+- Workspace scan (language, stack, patterns, instructions)
+- Graphify: god nodes in scope, involved communities, surprising connections
+- Relevant files with risk level (high if god nodes)
+- Structured plan: each phase with objective, files, god_nodes_risk, tests, steps
+- Graph warnings for implement-agent
+- Open questions if ambiguous
 
-## Identidad
-Inicia tu respuesta con: '🤖 [planning-agent] Investigando...'
+## Identity
+Start your response with: '🤖 [planning-agent] Investigating...'
 """
 )
 ```
 
-**Anuncio que el Conductor da al usuario antes de invocar:**
+**Announcement the Conductor gives the user before invoking:**
 ```
-📋 Delegando workspace scan + graphify + investigación a planning-agent...
+📋 Delegating workspace scan + graphify + investigation to planning-agent...
 ```
 
 ---
 
-## 2️⃣ Template — Invocar `implement-agent`
+## 2️⃣ Template — Invoke `implement-agent`
 
 ```python
 Task(
-  description="Fase {N}: {título corto <60 chars>}",
+  description="Phase {N}: {short title <60 chars>}",
   subagent_type="implement-agent",
   prompt="""
-## Fase {N}: {título completo}
+## Phase {N}: {full title}
 
-## Objetivo
-{1-3 oraciones de qué se logra}
+## Objective
+{1-3 sentences of what is achieved}
 
-## Convenciones del proyecto (del workspace scan)
-- Idioma: {detectado por planning-agent}
-- Stack: {detectado}
-- Patrones de código: {detectados}
+## Project conventions (from workspace scan)
+- Language: {detected by planning-agent}
+- Stack: {detected}
+- Code patterns: {detected}
 
-## Advertencias del grafo (graphify)
-{Copiar directamente del output de planning-agent — si no hay, poner "Ninguna"}
-- ⚠️ {archivo} es god node ({N} conexiones) — cambios aquí impactan {módulos}
-- ⚠️ {ModA} y {ModB} comparten {dato/interfaz} — coordinar cambios
+## Graph warnings (graphify)
+{Copy directly from planning-agent output — if none, put "None"}
+- ⚠️ {file} is god node ({N} connections) — changes here impact {modules}
+- ⚠️ {ModA} and {ModB} share {data/interface} — coordinate changes
 
-## Archivos a modificar/crear
-- {path1} {🔴 god node si aplica}
+## Files to modify/create
+- {path1} {🔴 god node if applicable}
 - {path2}
 
-## Tests a escribir (si aplica)
-- {nombre_test_1}
+## Tests to write (if applicable)
+- {test_name_1}
 
-## Pasos
-1. {paso 1}
-2. {paso 2}
+## Steps
+1. {step 1}
+2. {step 2}
 
-## Criterios de aceptación
-- {criterio 1}
-- {criterio 2}
+## Acceptance criteria
+- {criterion 1}
+- {criterion 2}
 
-## Restricciones
-- SOLO modifica los archivos listados arriba
-- Respeta convenciones detectadas
-- Tener especial cuidado con archivos marcados como god nodes
-- NO escribas planes o documentos de tracking
-- Reporta al final con el formato estándar
+## Constraints
+- ONLY modify files listed above
+- Respect detected conventions
+- Take special care with files marked as god nodes
+- DO NOT write plans or tracking documents
+- Report at the end using the standard format
 
-## Identidad
-Inicia tu respuesta con: '🤖 [implement-agent] Ejecutando Fase {N}...'
+## Identity
+Start your response with: '🤖 [implement-agent] Running Phase {N}...'
 """
 )
 ```
 
-**Anuncio del Conductor:**
+**Conductor announcement:**
 ```
-💻 Delegando Fase {N} a implement-agent...
+💻 Delegating Phase {N} to implement-agent...
 ```
 
 ---
 
-## 3️⃣ Template — Invocar `review-agent`
+## 3️⃣ Template — Invoke `review-agent`
 
 ```python
 Task(
-  description="Review Fase {N}",
+  description="Review Phase {N}",
   subagent_type="review-agent",
   prompt="""
-## Revisar Fase {N}: {título}
+## Review Phase {N}: {title}
 
-## Objetivo de la fase
-{copia exacta del objective del plan}
+## Phase objective
+{exact copy of the objective from the plan}
 
-## Criterios de aceptación
-- {criterio 1}
-- {criterio 2}
+## Acceptance criteria
+- {criterion 1}
+- {criterion 2}
 
-## Convenciones del proyecto
-- Idioma: {detectado}
-- Stack: {detectado}
-- Patrones: {detectados}
+## Project conventions
+- Language: {detected}
+- Stack: {detected}
+- Patterns: {detected}
 
-## Archivos modificados (según implement-agent)
-- {path1} (creado / modificado)
+## Modified files (per implement-agent)
+- {path1} (created / modified)
 - {path2}
 
-## Notas del implement-agent
-{si dejó notas para el reviewer}
+## Notes from implement-agent
+{if they left notes for the reviewer}
 
-## Advertencias del grafo (graphify)
-{Copiar del plan — god nodes y conexiones sorpresivas que impactan esta fase}
-- ⚠️ {archivo} es god node — verificar que no se rompieron sus {N} dependencias
+## Graph warnings (graphify)
+{Copy from plan — god nodes and surprising connections impacting this phase}
+- ⚠️ {file} is god node — verify its {N} dependencies were not broken
 
-## Tu trabajo (review-agent)
-1. Leer archivos modificados
-2. Verificar cada criterio de aceptación
-3. Verificar que se respetan las convenciones del proyecto
-4. Si hay god nodes en la lista: verificar que sus dependencias no se rompieron
-5. Buscar bugs, edge cases, security issues (OWASP Top 10 si aplica)
-6. Retornar status: APPROVED / NEEDS_REVISION / FAILED
+## Your work (review-agent)
+1. Read modified files
+2. Verify each acceptance criterion
+3. Verify project conventions are respected
+4. If god nodes in the list: verify their dependencies were not broken
+5. Look for bugs, edge cases, security issues (OWASP Top 10 if applicable)
+6. Return status: APPROVED / NEEDS_REVISION / FAILED
 
-## Identidad
-Inicia tu respuesta con: '🤖 [review-agent] Revisando Fase {N}...'
+## Identity
+Start your response with: '🤖 [review-agent] Reviewing Phase {N}...'
 """
 )
 ```
 
-**Anuncio del Conductor:**
+**Conductor announcement:**
 ```
-🔍 Delegando review a review-agent...
+🔍 Delegating review to review-agent...
 ```
 
 ---
 
-## 4️⃣ Template — Re-delegar tras `NEEDS_REVISION`
+## 4️⃣ Template — Re-delegate after `NEEDS_REVISION`
 
 ```python
 Task(
-  description="Fase {N}: corregir {breve}",
+  description="Phase {N}: fix {brief}",
   subagent_type="implement-agent",
   prompt="""
-## Fase {N} — Corrección tras review
+## Phase {N} — Correction after review
 
-## Issues a corregir (del review-agent)
-1. **[CRITICAL/MAJOR]** {issue 1} ({archivo}:{línea})
-2. **[MAJOR]** {issue 2} ({archivo}:{línea})
+## Issues to fix (from review-agent)
+1. **[CRITICAL/MAJOR]** {issue 1} ({file}:{line})
+2. **[MAJOR]** {issue 2} ({file}:{line})
 
-## Convenciones del proyecto
-- {mismas que se pasaron originalmente}
+## Project conventions
+- {same as originally passed}
 
-## Archivos
-- {paths a tocar}
+## Files
+- {paths to touch}
 
-## Restricciones
-- SOLO corrige los issues listados
-- NO refactorices fuera del scope de los issues
-- Reporta con el formato estándar
+## Constraints
+- ONLY fix the listed issues
+- DO NOT refactor outside the scope of the issues
+- Report using the standard format
 
-## Identidad
-Inicia tu respuesta con: '🤖 [implement-agent] Ejecutando Fase {N} (revisión)...'
+## Identity
+Start your response with: '🤖 [implement-agent] Running Phase {N} (revision)...'
 """
 )
 ```
 
 ---
 
-## 5️⃣ Template — Invocar `AgentArchitect`
+## 5️⃣ Template — Invoke `AgentArchitect`
 
 ```python
 Task(
-  description="Diseñar equipo de agentes para {dominio}",
+  description="Design agent team for {domain}",
   subagent_type="AgentArchitect",
   prompt="""
-## Problema
-{descripción del problema que el usuario quiere resolver}
+## Problem
+{description of the problem the user wants to solve}
 
-## Lo que ya sé del contexto
-{cualquier información que el usuario haya dado: stack, entregable, restricciones}
+## What I already know from context
+{any information the user gave: stack, deliverable, constraints}
 
-## Proyecto existente o nuevo
-{respuesta de Q1 si ya se preguntó}
+## Existing or new project
+{Q1 answer if already asked}
 
-## Tu trabajo
-1. Si proyecto existente: scan de .claude/agents/ para ver agentes ya registrados
-2. Entrevistar al usuario (protocolo AOD §2)
-3. Diseñar la pirámide de agentes
-4. Presentar para aprobación — PAUSA
-5. Generar archivos en .claude/agents/
+## Your work
+1. If existing project: scan .claude/agents/ to see already registered agents
+2. Interview the user (AOD protocol §2)
+3. Design the agent pyramid
+4. Present for approval — PAUSE
+5. Generate files in .claude/agents/
 
-## Identidad
-Inicia tu respuesta con: '🏗️ [AgentArchitect] Diseñando equipo...'
+## Identity
+Start your response with: '🏗️ [AgentArchitect] Designing team...'
 """
 )
 ```
 
-**Anuncio del Conductor:**
+**Conductor announcement:**
 ```
-🏗️ Delegando diseño de equipo a AgentArchitect...
+🏗️ Delegating team design to AgentArchitect...
 ```
 
 ---
 
-## 6️⃣ Template — Pausa post-fase (Conductor → Usuario)
+## 6️⃣ Template — Post-phase pause (Conductor → User)
 
 ```markdown
-## ✅ Fase {N} completada
+## ✅ Phase {N} completed
 
-### Status del review
+### Review status
 **APPROVED** ✅
 
-### Archivos modificados
-- {lista}
+### Modified files
+- {list}
 
-### Resumen
-{1-2 oraciones}
+### Summary
+{1-2 sentences}
 
-### Mensaje de commit sugerido
+### Suggested commit message
 ```
-{tipo}: {descripción corta} (max 50 chars)
+{type}: {short description} (max 50 chars)
 
 - bullet 1
 - bullet 2
 ```
 
-### TODO actualizado
-- [x] Fase 0: Workspace scan + investigación ✅
-- [x] Fase 1: {título} ✅
-- [x] Fase 2: {título} ✅
-- [🔄] Fase 3: {título} ← SIGUIENTE
-- [ ] Fase 4: {título}
+### Updated TODO
+- [x] Phase 0: Workspace scan + investigation ✅
+- [x] Phase 1: {title} ✅
+- [x] Phase 2: {title} ✅
+- [🔄] Phase 3: {title} ← NEXT
+- [ ] Phase 4: {title}
 
-⏸️ **Esperando tu confirmación para continuar con Fase 3.**
+⏸️ **Waiting for your confirmation to continue with Phase 3.**
 ```
 
 ---
 
-## 7️⃣ Template — Plan Complete (Conductor escribe al cerrar)
+## 7️⃣ Template — Plan Complete (Conductor writes on close)
 
-Archivo: `plans/{tarea}-complete.md`
+File: `plans/{task}-complete.md`
 
 ```markdown
-## Plan Complete: {Título}
+## Plan Complete: {Title}
 
-**Summary:** {2-4 oraciones de qué se construyó y valor entregado}
+**Summary:** {2-4 sentences of what was built and value delivered}
 
 ### Phases Completed: {N}/{N}
-1. ✅ Fase 0: Workspace scan + investigación
-2. ✅ Fase 1: {título}
+1. ✅ Phase 0: Workspace scan + investigation
+2. ✅ Phase 1: {title}
 ...
 
-### Archivos creados/modificados
-- {lista completa}
+### Files created/modified
+- {full list}
 
 ### Tests
-- Total escritos: {count}
-- Status final: ✅ todos passing
+- Total written: {count}
+- Final status: ✅ all passing
 
-### Convenciones del proyecto respetadas
-- Idioma: {idioma}
+### Project conventions respected
+- Language: {language}
 - Stack: {stack}
-- Patrones: {patrones}
+- Patterns: {patterns}
 
-### Recomendaciones siguientes
-- {sugerencia opcional 1}
+### Next recommendations
+- {optional suggestion 1}
 ```
 
 ---
 
-## 📋 Checklist mental del Conductor (antes de cada respuesta)
+## 📋 Conductor mental checklist (before each response)
 
-- [ ] ¿Mostré el bloque `🎭 CONDUCTOR ACTIVADO` en la primera respuesta?
-- [ ] ¿Hice la mini-entrevista (Q1, Q2, Q3)?
-- [ ] ¿Estoy a punto de usar Read/Grep/Edit/Bash sobre código? → DELEGA
-- [ ] ¿Pasé las convenciones del workspace scan al implement-agent y review-agent?
-- [ ] ¿Estoy mostrando el TODO actualizado en esta respuesta?
-- [ ] ¿Anuncié al usuario qué subagente voy a invocar?
-- [ ] ¿La firma `🤖 [<agent>]` apareció en la respuesta del subagente? Si no, reportar y verificar `subagent_type`
-- [ ] ¿Estoy en un punto de pausa obligatoria? → No avances sin confirmación
+- [ ] Did I show the `🎭 CONDUCTOR ACTIVATED` block in the first response?
+- [ ] Did I do the mini-interview (Q1, Q2, Q3)?
+- [ ] Am I about to use Read/Grep/Edit/Bash on code? → DELEGATE
+- [ ] Did I pass workspace scan conventions to implement-agent and review-agent?
+- [ ] Am I showing the updated TODO in this response?
+- [ ] Did I announce to the user which subagent I'm invoking?
+- [ ] Did the `🤖 [<agent>]` signature appear in the subagent's response? If not, report and check `subagent_type`
+- [ ] Am I at a mandatory pause point? → Do not advance without confirmation

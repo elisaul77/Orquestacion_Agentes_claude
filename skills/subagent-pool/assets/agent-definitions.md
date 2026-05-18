@@ -1,23 +1,23 @@
 # Agent Definitions & Troubleshooting — v6.0
 
-> Las **definiciones canónicas** de cada agente viven en `.claude/agents/*.agent.md`.
-> Este archivo es una **guía rápida + troubleshooting** del pool.
+> The **canonical definitions** of each agent live in `.claude/agents/*.agent.md`.
+> This file is a **quick reference + troubleshooting guide** for the pool.
 
 ---
 
-## Mapa de Roles
+## Role Map
 
 ```mermaid
 flowchart LR
-    USER["👤 Usuario"] --> COND["🎭 Conductor<br/>(esta skill)"]
+    USER["👤 User"] --> COND["🎭 Conductor<br/>(this skill)"]
     COND -->|"Task subagent_type=planning-agent"| PA["📋 planning-agent<br/>Workspace Scan + Plan"]
-    COND -->|"Task subagent_type=implement-agent"| IA["💻 implement-agent<br/>Código + Tests"]
-    COND -->|"Task subagent_type=review-agent"| RA["🔍 review-agent<br/>QA + Seguridad"]
-    COND -->|"Task subagent_type=AgentArchitect"| AA["🏗️ AgentArchitect<br/>Diseño de equipos"]
-    PA -.->|"workspace scan + draft del plan"| COND
-    IA -.->|"reporte impl"| COND
+    COND -->|"Task subagent_type=implement-agent"| IA["💻 implement-agent<br/>Code + Tests"]
+    COND -->|"Task subagent_type=review-agent"| RA["🔍 review-agent<br/>QA + Security"]
+    COND -->|"Task subagent_type=AgentArchitect"| AA["🏗️ AgentArchitect<br/>Team Design"]
+    PA -.->|"workspace scan + plan draft"| COND
+    IA -.->|"impl report"| COND
     RA -.->|"APPROVED/NEEDS_REVISION/FAILED"| COND
-    AA -.->|"archivos .agent.md generados"| COND
+    AA -.->|"generated .agent.md files"| COND
     COND --> USER
 
     style COND fill:#ff9800,color:#fff
@@ -29,145 +29,145 @@ flowchart LR
 
 ---
 
-## Tabla Resumen
+## Summary Table
 
-| Agente | `subagent_type` | Modelo | Tools | Modifica código | Firma |
-|--------|-----------------|--------|-------|-----------------|-------|
-| Conductor (esta skill) | — | **opus** | Task, Write/Edit (solo plans/) | ❌ NUNCA | `🎭 CONDUCTOR ACTIVADO` |
-| planning-agent | `planning-agent` | sonnet | Read, Glob, Grep, Bash (graphify + inspección), WebSearch, WebFetch, Write (solo plans/) | ❌ | `🤖 [planning-agent] Investigando...` |
-| implement-agent | `implement-agent` | sonnet | Read, Edit, Write, Glob, Grep, Bash | ✅ | `🤖 [implement-agent] Ejecutando Fase {N}...` |
-| review-agent | `review-agent` | sonnet | Read, Glob, Grep, Bash (read) | ❌ | `🤖 [review-agent] Revisando Fase {N}...` |
-| AgentArchitect | `AgentArchitect` | **opus** | Task, Read, Write, Edit, Glob, Grep, Bash | Solo .agent.md | `🏗️ [AgentArchitect] Diseñando equipo...` |
-
----
-
-## Reglas de Delegación
-
-| Necesidad | Delegar a |
-|-----------|-----------|
-| Escanear workspace / detectar convenciones | `planning-agent` |
-| Construir/actualizar grafo graphify del proyecto | `planning-agent` |
-| Identificar god nodes y dependencias ocultas | `planning-agent` (via graphify) |
-| Investigar archivos / patrones del codebase | `planning-agent` |
-| Diseñar el plan de fases | `planning-agent` |
-| Escribir o editar código del proyecto | `implement-agent` |
-| Escribir tests | `implement-agent` |
-| Refactorizar | `implement-agent` |
-| Verificar calidad / dar APPROVED-NEEDS_REVISION-FAILED | `review-agent` |
-| Ejecutar tests para revisar (read-only) | `review-agent` |
-| Diseñar un nuevo equipo de agentes desde cero | `AgentArchitect` |
-| Generar archivos .agent.md para un nuevo dominio | `AgentArchitect` |
+| Agent | `subagent_type` | Model | Tools | Modifies code | Signature |
+|-------|-----------------|-------|-------|---------------|-----------|
+| Conductor (this skill) | — | **opus** | Task, Write/Edit (plans/ only) | ❌ NEVER | `🎭 CONDUCTOR ACTIVATED` |
+| planning-agent | `planning-agent` | sonnet | Read, Glob, Grep, Bash (graphify + inspection), WebSearch, WebFetch, Write (plans/ only) | ❌ | `🤖 [planning-agent] Investigating...` |
+| implement-agent | `implement-agent` | sonnet | Read, Edit, Write, Glob, Grep, Bash | ✅ | `🤖 [implement-agent] Running Phase {N}...` |
+| review-agent | `review-agent` | sonnet | Read, Glob, Grep, Bash (read-only) | ❌ | `🤖 [review-agent] Reviewing Phase {N}...` |
+| AgentArchitect | `AgentArchitect` | **opus** | Task, Read, Write, Edit, Glob, Grep, Bash | Only .agent.md | `🏗️ [AgentArchitect] Designing team...` |
 
 ---
 
-## Cuándo usar AgentArchitect vs pool base
+## Delegation Rules
 
-| Situación | Usar |
-|-----------|------|
-| Tarea de desarrollo estándar en proyecto existente | Pool base (planning/implement/review) |
-| Tarea compleja con dominio bien definido | Pool base con mini-entrevista |
-| Necesitas agentes con prefijo de dominio (multi-orquestación) | `AgentArchitect` primero |
-| Sub-dominios claramente separables (frontend/backend) | `AgentArchitect` primero |
-| Dominio muy especializado (visión, datos masivos, migración) | `AgentArchitect` primero |
+| Need | Delegate to |
+|------|-------------|
+| Workspace scan / detect conventions | `planning-agent` |
+| Build/update graphify knowledge graph | `planning-agent` |
+| Identify god nodes and hidden dependencies | `planning-agent` (via graphify) |
+| Investigate files / codebase patterns | `planning-agent` |
+| Design the phase plan | `planning-agent` |
+| Write or edit project code | `implement-agent` |
+| Write tests | `implement-agent` |
+| Refactor | `implement-agent` |
+| Verify quality / return APPROVED-NEEDS_REVISION-FAILED | `review-agent` |
+| Run tests for review (read-only) | `review-agent` |
+| Design a new agent team from scratch | `AgentArchitect` |
+| Generate .agent.md files for a new domain | `AgentArchitect` |
 
 ---
 
-## Estructura de archivos del flujo
+## When to use AgentArchitect vs base pool
+
+| Situation | Use |
+|-----------|-----|
+| Standard development task on existing project | Base pool (planning/implement/review) |
+| Complex task with well-defined domain | Base pool with mini-interview |
+| Need domain-prefixed agents (multi-orchestration) | `AgentArchitect` first |
+| Clearly separable sub-domains (frontend/backend) | `AgentArchitect` first |
+| Highly specialized domain (vision, massive data, migration) | `AgentArchitect` first |
+
+---
+
+## Flow file structure
 
 ```
-proyecto/
+project/
 ├── plans/
-│   ├── {tarea}-plan.md              ← plan aprobado (Conductor)
-│   └── {tarea}-complete.md         ← reporte final (Conductor)
+│   ├── {task}-plan.md              ← approved plan (Conductor)
+│   └── {task}-complete.md         ← final report (Conductor)
 ├── .claude/
 │   ├── agents/
 │   │   ├── planning-agent.agent.md
 │   │   ├── implement-agent.agent.md
 │   │   ├── review-agent.agent.md
 │   │   ├── AgentArchitect.agent.md
-│   │   └── {Prefix}Conductor.agent.md  ← generado por AgentArchitect (si aplica)
+│   │   └── {Prefix}Conductor.agent.md  ← generated by AgentArchitect (if applicable)
 │   └── skills/
 │       └── subagent-pool/
 │           ├── SKILL.md
 │           └── assets/
-│               ├── agent-definitions.md    ← este archivo
+│               ├── agent-definitions.md    ← this file
 │               ├── prompts.md
 │               └── interview-protocol.md
-└── {código del proyecto}
+└── {project code}
 ```
 
 ---
 
 ## 🚨 Troubleshooting
 
-### Síntoma: El subagente no responde con su firma `🤖 [<agent>]`
+### Symptom: Subagent doesn't respond with its `🤖 [<agent>]` signature
 
-**Causa probable:** Fallback a `general-purpose` porque no encontró el `subagent_type`.
+**Likely cause:** Fallback to `general-purpose` because `subagent_type` was not found.
 
-**Verificar:**
-1. `ls .claude/agents/` — ¿existe el archivo `{agent}.agent.md`?
-2. ¿El frontmatter tiene `name: {agent}` con nombre EXACTO al `subagent_type`?
-3. ¿El `subagent_type` que pasaste a `Task(...)` es exactamente el nombre registrado?
+**Check:**
+1. `ls .claude/agents/` — does the file `{agent}.agent.md` exist?
+2. Does the frontmatter have `name: {agent}` with the EXACT name matching `subagent_type`?
+3. Is the `subagent_type` you passed to `Task(...)` exactly the registered name?
 
-**Reportar al usuario** si no aparece la firma:
+**Report to user** if signature doesn't appear:
 ```
-⚠️ El subagente no se identificó como [{agent}].
-Posible fallback a general-purpose. Verifica .claude/agents/.
+⚠️ Subagent did not identify as [{agent}].
+Possible fallback to general-purpose. Check .claude/agents/.
 ```
 
 ---
 
-### Síntoma: El Conductor está leyendo archivos del repo
+### Symptom: Conductor is reading files from the repo
 
-**Acción:** Cancelar, mostrar bloque de identidad y delegar a `planning-agent`.
-
----
-
-### Síntoma: Las convenciones del proyecto no se respetan en la implementación
-
-**Causa:** El Conductor no pasó el workspace scan al implement-agent.
-
-**Acción:** Incluir siempre en el prompt de implement-agent la sección "Convenciones del proyecto" y "Advertencias del grafo" del output de planning-agent.
+**Action:** Cancel, show identity block and delegate to `planning-agent`.
 
 ---
 
-### Síntoma: El implement-agent rompió módulos que no estaban en su scope
+### Symptom: Project conventions are not respected in implementation
 
-**Causa probable:** Tocó un god node sin saber sus dependencias.
+**Cause:** Conductor did not pass the workspace scan to implement-agent.
 
-**Verificar:**
-1. ¿El planning-agent listó ese archivo como god node?
-2. ¿El Conductor pasó las "Advertencias del grafo" en el prompt del implement-agent?
-
-**Acción:** Re-delegar a implement-agent con las advertencias del grafo explícitas. Si el grafo no se construyó aún, pedirle al planning-agent que lo construya con `graphify . --no-viz`.
+**Action:** Always include a "Project conventions" section and "Graph warnings" from planning-agent's output in the implement-agent prompt.
 
 ---
 
-### Síntoma: planning-agent tardó mucho en investigar el proyecto
+### Symptom: implement-agent broke modules outside its scope
 
-**Causa:** Usó Glob/Grep/Read manual en un proyecto grande cuando debería haber usado graphify.
+**Likely cause:** Touched a god node without knowing its dependencies.
 
-**Verificar:** ¿El Conductor incluyó el estado de graphify en el prompt del planning-agent?
+**Check:**
+1. Did planning-agent list that file as a god node?
+2. Did the Conductor pass "Graph warnings" in the implement-agent prompt?
 
-**Acción:** Para proyectos > 20 archivos, siempre indicar en el prompt: "construir graphify si no existe". El grafo se construye una vez y las consultas posteriores son instantáneas.
+**Action:** Re-delegate to implement-agent with explicit graph warnings. If the graph hasn't been built yet, ask planning-agent to build it with `graphify . --no-viz`.
 
 ---
 
-## Pasos para registrar un nuevo subagente manualmente
+### Symptom: planning-agent took too long investigating the project
 
-1. Crear `.claude/agents/{name}.agent.md` con frontmatter:
+**Cause:** Used manual Glob/Grep/Read on a large project instead of graphify.
+
+**Check:** Did the Conductor include graphify status in the planning-agent prompt?
+
+**Action:** For projects > 20 files, always indicate in the prompt: "build graphify if it doesn't exist". The graph is built once and subsequent queries are instant.
+
+---
+
+## Steps to manually register a new subagent
+
+1. Create `.claude/agents/{name}.agent.md` with frontmatter:
    ```yaml
    ---
    name: {name}
-   description: '{rol corto}'
+   description: '{short role}'
    tools: [Read, Edit, ...]
    model: sonnet
    color: {color}
    ---
    ```
-2. Cuerpo: rol, restricciones, output format con firma `🤖 [{name}] ...`
-3. Agregar fila en la tabla de este archivo
-4. Actualizar `agents:` en SKILL.md
-5. Probar con un `Task` explícito y verificar que aparezca la firma
+2. Body: role, restrictions, output format with signature `🤖 [{name}] ...`
+3. Add row to the table in this file
+4. Update `agents:` in SKILL.md
+5. Test with an explicit `Task` and verify the signature appears
 
-> Alternativa: delegar todo a `AgentArchitect`.
+> Alternative: delegate everything to `AgentArchitect`.

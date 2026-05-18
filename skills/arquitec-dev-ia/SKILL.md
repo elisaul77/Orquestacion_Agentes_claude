@@ -1,83 +1,82 @@
 ---
 name: arquitect-dev-ia
 description: >
-  Documentación de contexto IA para proyectos: AGENTS.md, CLAUDE.md, copilot-instructions.md,
-  skills y diagramas Mermaid. NO crea agentes ejecutables (.agent.md) — para eso usar AgentArchitect.
-  Trigger: Cuando se necesite crear o refactorizar documentación de contexto para que agentes IA
-  entiendan el proyecto, sus convenciones y su arquitectura.
+  AI context documentation for projects: AGENTS.md, CLAUDE.md, copilot-instructions.md,
+  skills and Mermaid diagrams. Does NOT create executable agents (.agent.md) — use AgentArchitect for that.
+  Trigger: When context documentation needs to be created or refactored so AI agents
+  understand the project, its conventions and architecture.
 license: MIT
 metadata:
   author: eliflowi
   version: "2.0"
   scope: [root]
-  auto_invoke: "Crear AGENTS.md, CLAUDE.md, copilot-instructions.md, documentar arquitectura, estructurar proyecto para IA"
+  auto_invoke: "Create AGENTS.md, CLAUDE.md, copilot-instructions.md, document architecture, structure project for AI"
 allowed-tools: Read, Edit, Write, Glob, Grep, Bash, WebFetch, WebSearch, Task
 ---
 
-# Arquitecto de Documentación de Contexto IA
+# AI Context Documentation Architect
 
-> Skill para crear y mantener **documentación de contexto** orientada a agentes IA:
-> `AGENTS.md`, `CLAUDE.md`, `copilot-instructions.md`, skills y diagramas Mermaid.
+> Skill for creating and maintaining **context documentation** oriented towards AI agents:
+> `AGENTS.md`, `CLAUDE.md`, `copilot-instructions.md`, skills and Mermaid diagrams.
 >
-> ⚠️ **Límite de responsabilidad**: Esta skill NO crea agentes ejecutables (`.agent.md`).
-> Para diseñar y generar equipos de agentes Claude Code → usar **AgentArchitect**.
+> ⚠️ **Scope limit**: This skill does NOT create executable agents (`.agent.md`).
+> To design and generate Claude Code agent teams → use **AgentArchitect**.
 
 ---
 
-## Cuándo Usar
+## When to Use
 
-| ✅ Esta skill | ❌ Usar AgentArchitect en su lugar |
+| ✅ This skill | ❌ Use AgentArchitect instead |
 |---|---|
-| Crear/actualizar `AGENTS.md` (root o componente) | Crear agentes `.agent.md` en `.claude/agents/` |
-| Crear/actualizar `CLAUDE.md` | Diseñar equipos Conductor + especialistas |
-| Crear/actualizar `copilot-instructions.md` | Definir herramientas y modelos de agentes |
-| Crear nuevas skills (SKILL.md) | Establecer jerarquía de orquestación |
-| Documentar arquitectura con diagramas Mermaid | |
-| Estructurar mono-repo para trabajo con IA | |
-| Definir convenciones y cultura del proyecto | |
-| Reducir contexto innecesario para evitar alucinaciones | |
+| Create/update `AGENTS.md` (root or component) | Create `.agent.md` agents in `.claude/agents/` |
+| Create/update `CLAUDE.md` | Design Conductor + specialists teams |
+| Create/update `copilot-instructions.md` | Define agent tools and models |
+| Create new skills (SKILL.md) | Establish orchestration hierarchy |
+| Document architecture with Mermaid diagrams | |
+| Structure mono-repo for AI work | |
+| Define project conventions and culture | |
+| Reduce unnecessary context to avoid hallucinations | |
 
 ---
 
-
-## Filosofía Central
+## Core Philosophy
 
 ```mermaid
 flowchart TD
-    USER["👤 Usuario"] -->|petición| AGENT["🤖 Agente\nOrquestador"]
-    AGENT -->|"1. consulta"| AGENTS_ROOT["📄 AGENTS.md Root"]
-    AGENTS_ROOT -->|"2. dirige a"| AGENTS_COMP["📄 AGENTS.md\nComponente"]
-    AGENTS_COMP -->|"3. invoca"| SKILL["⚡ Skill\nEspecífica"]
-    SKILL -->|"4. contexto preciso"| AGENT
-    AGENT -->|"5. trabaja"| CODEBASE["💻 Codebase"]
-    CODEBASE -->|"6. resultado"| USER
+    USER["👤 User"] -->|request| AGENT["🤖 Orchestrator\nAgent"]
+    AGENT -->|"1. consults"| AGENTS_ROOT["📄 AGENTS.md Root"]
+    AGENTS_ROOT -->|"2. directs to"| AGENTS_COMP["📄 AGENTS.md\nComponent"]
+    AGENTS_COMP -->|"3. invokes"| SKILL["⚡ Specific\nSkill"]
+    SKILL -->|"4. precise context"| AGENT
+    AGENT -->|"5. works"| CODEBASE["💻 Codebase"]
+    CODEBASE -->|"6. result"| USER
 
     style AGENTS_ROOT fill:#4caf50,color:#fff
     style SKILL fill:#2196f3,color:#fff
     style AGENT fill:#ff9800,color:#fff
 ```
 
-**Principio clave**: Menos contexto = menos alucinación. El agente solo debe recibir
-lo que necesita, cuando lo necesita.
+**Key principle**: Less context = less hallucination. The agent should only receive
+what it needs, when it needs it.
 
 ---
 
-## Arquitectura de Documentación IA
+## AI Documentation Architecture
 
-### Jerarquía de Archivos
+### File Hierarchy
 
 ```mermaid
 flowchart TB
-    subgraph ROOT["📁 Raíz del Proyecto"]
-        AGENTS_ROOT["AGENTS.md\n(índice general)"]
-        CLAUDE_MD["CLAUDE.md\n(contexto para Claude Code)"]
-        COPILOT["copilot-instructions.md\n(para GitHub Copilot)"]
+    subgraph ROOT["📁 Project Root"]
+        AGENTS_ROOT["AGENTS.md\n(general index)"]
+        CLAUDE_MD["CLAUDE.md\n(context for Claude Code)"]
+        COPILOT["copilot-instructions.md\n(for GitHub Copilot)"]
     end
 
-    subgraph COMPS["📁 Componentes / Sub-proyectos"]
-        AGENTS_A["componenteA/AGENTS.md"]
-        AGENTS_B["componenteB/AGENTS.md"]
-        COPILOT_A["componenteA/.github/copilot-instructions.md"]
+    subgraph COMPS["📁 Components / Sub-projects"]
+        AGENTS_A["componentA/AGENTS.md"]
+        AGENTS_B["componentB/AGENTS.md"]
+        COPILOT_A["componentA/.github/copilot-instructions.md"]
     end
 
     subgraph SKILLS["📁 .claude/skills/"]
@@ -86,89 +85,89 @@ flowchart TB
         SK3["skill-c/SKILL.md\n+ assets/\n+ references/"]
     end
 
-    AGENTS_ROOT -->|"referencia a"| COMPS
-    AGENTS_ROOT -->|"lista disponibles"| SKILLS
-    AGENTS_A -->|"invoca"| SK1
-    AGENTS_A -->|"invoca"| SK2
-    AGENTS_B -->|"invoca"| SK3
+    AGENTS_ROOT -->|"references"| COMPS
+    AGENTS_ROOT -->|"lists available"| SKILLS
+    AGENTS_A -->|"invokes"| SK1
+    AGENTS_A -->|"invokes"| SK2
+    AGENTS_B -->|"invokes"| SK3
 
     style ROOT fill:#e8f5e9
     style SKILLS fill:#e3f2fd
     style COMPS fill:#fff3e0
 ```
 
-### Regla de Tamaño
+### Size Rule
 
-| Archivo | Líneas Recomendadas | Máximo |
-|---------|-------------------|--------|
+| File | Recommended Lines | Maximum |
+|------|-------------------|---------|
 | `AGENTS.md` root | ~150 | 250 |
-| `AGENTS.md` componente | ~150 | 300 |
+| `AGENTS.md` component | ~150 | 300 |
 | `copilot-instructions.md` | ~100 | 250 |
 | `SKILL.md` | ~100 | 300 |
 
-> **Si supera el máximo → dividir en archivos por componente o extraer a skills.**
+> **If it exceeds the maximum → split into component files or extract to skills.**
 
 ---
 
-## Patrón: AGENTS.md Root
+## Pattern: AGENTS.md Root
 
-El AGENTS.md root es el **punto de entrada** para cualquier agente. Debe contener:
+The AGENTS.md root is the **entry point** for any agent. It must contain:
 
 ```mermaid
 flowchart LR
-    subgraph AGENTS_STRUCTURE["Estructura AGENTS.md Root"]
+    subgraph AGENTS_STRUCTURE["AGENTS.md Root Structure"]
         direction TB
-        A["1. Visión general del proyecto\n(diagrama Mermaid obligatorio)"]
-        B["2. Mapa de componentes\n(tabla con ubicación y stack)"]
-        C["3. Skills disponibles\n(tabla con nombre, descripción, link)"]
-        D["4. Auto-invoke\n(tabla acción → skill)"]
-        E["5. Convenciones globales\n(idioma, commits, Docker)"]
+        A["1. Project overview\n(mandatory Mermaid diagram)"]
+        B["2. Component map\n(table with location and stack)"]
+        C["3. Available skills\n(table with name, description, link)"]
+        D["4. Auto-invoke\n(table action → skill)"]
+        E["5. Global conventions\n(language, commits, Docker)"]
     end
 
     A --> B --> C --> D --> E
 ```
 
-### Template Mínimo
+### Minimal Template
 
 ```markdown
-# Proyecto — AGENTS.md
+# Project — AGENTS.md
 
-## Visión General
-<!-- Diagrama Mermaid de arquitectura -->
+## Overview
+<!-- Mermaid architecture diagram -->
 
-## Componentes
-| Componente | Ubicación | Stack | AGENTS.md |
+## Components
+| Component | Location | Stack | AGENTS.md |
 |---|---|---|---|
 
-## Skills Disponibles
-| Skill | Descripción | URL |
+## Available Skills
+| Skill | Description | URL |
 |---|---|---|
 
 ## Auto-invoke Skills
-| Acción | Skill |
+| Action | Skill |
 |---|---|
 
-## Convenciones
-- Idioma: español
+## Conventions
+- Language: English
 - Commits: conventional-commits
-- Todo en Docker
+- Everything in Docker
 ```
 
 ---
 
-## Patrón: Skills
+## Pattern: Skills
 
-### Estructura de Carpeta
+### Folder Structure
 
 ```mermaid
 flowchart TB
-    subgraph SKILL_DIR["skills/{nombre-skill}/"]
-        SKILL_MD["SKILL.md\n(obligatorio)"]
-        ASSETS["assets/\n(opcional)"]
-        REFS["references/\n(opcional)"]
+    subgraph SKILL_DIR["skills/{skill-name}/"]
+        SKILL_MD["SKILL.md\n(required)"]
+        ASSETS["assets/\n(optional)"]
+        REFS["references/\n(optional)"]
 
-        ASSETS --> TMPL["template.py\nschema.json\nejemplos"]
-        REFS --> DOCS["docs.md\nlinks a docs locales"]
+        ASSETS --> TMPL["template.py\nschema.json\nexamples"]
+        REFS --> DOCS["docs.md\nlinks to local docs"]
     end
 
     style SKILL_MD fill:#4caf50,color:#fff
@@ -176,37 +175,37 @@ flowchart TB
     style REFS fill:#e3f2fd
 ```
 
-### Frontmatter Obligatorio
+### Required Frontmatter
 
 ```yaml
 ---
-name: nombre-skill            # lowercase, guiones
+name: skill-name            # lowercase, hyphens
 description: >
-  Qué hace esta skill.
-  Trigger: Cuándo invocarla.
+  What this skill does.
+  Trigger: When to invoke it.
 license: MIT
 metadata:
   author: eliflowi
   version: "1.0"
-  scope: [root|ui|api|infra]  # dónde aplica
-  auto_invoke: "Acción que trigerea esta skill"
+  scope: [root|ui|api|infra]  # where it applies
+  auto_invoke: "Action that triggers this skill"
 allowed-tools: Read, Edit, Write, Glob, Grep, Bash
 ---
 ```
 
-### Decisión: assets/ vs references/
+### Decision: assets/ vs references/
 
 ```mermaid
 flowchart TD
-    NEED{"¿Qué necesitas\nagregar?"}
-    NEED -->|"Templates de código"| ASSETS["assets/"]
-    NEED -->|"Schemas JSON"| ASSETS
-    NEED -->|"Configs de ejemplo"| ASSETS
-    NEED -->|"Links a docs locales"| REFS["references/"]
-    NEED -->|"Guías existentes"| REFS
+    NEED{"What do you\nneed to add?"}
+    NEED -->|"Code templates"| ASSETS["assets/"]
+    NEED -->|"JSON schemas"| ASSETS
+    NEED -->|"Example configs"| ASSETS
+    NEED -->|"Links to local docs"| REFS["references/"]
+    NEED -->|"Existing guides"| REFS
 
-    ASSETS --> RULE_A["Archivos que el agente\ncopia/adapta"]
-    REFS --> RULE_R["Punteros a archivos\nque ya existen en el repo"]
+    ASSETS --> RULE_A["Files the agent\ncopies/adapts"]
+    REFS --> RULE_R["Pointers to files\nalready in the repo"]
 
     style ASSETS fill:#ff9800,color:#fff
     style REFS fill:#2196f3,color:#fff
@@ -214,138 +213,87 @@ flowchart TD
 
 ---
 
-## Patrón: Diagramas Mermaid
+## Pattern: Mermaid Diagrams
 
-**Regla crítica**: Siempre preferir diagramas Mermaid sobre texto narrativo para:
+**Critical rule**: Always prefer Mermaid diagrams over narrative text for:
 
 ```mermaid
 flowchart LR
-    subgraph USAR_MERMAID["✅ Usar Mermaid Para"]
-        A["Arquitectura de servicios"]
-        B["Flujos de red / Docker"]
-        C["Árboles de decisión"]
-        D["Secuencias de operación"]
-        E["Jerarquía de carpetas clave"]
-        F["Dependencias entre componentes"]
+    subgraph USE_MERMAID["✅ Use Mermaid For"]
+        A["Service architecture"]
+        B["Network / Docker flows"]
+        C["Decision trees"]
+        D["Operation sequences"]
+        E["Key folder hierarchy"]
+        F["Dependencies between components"]
     end
 
-    subgraph NO_MERMAID["❌ No Usar Mermaid Para"]
-        G["Listas simples"]
-        H["Configs literales"]
-        I["Comandos bash"]
+    subgraph NO_MERMAID["❌ Don't Use Mermaid For"]
+        G["Simple lists"]
+        H["Literal configs"]
+        I["Bash commands"]
     end
 ```
 
-### Tipos de Diagrama por Situación
+### Diagram Types by Situation
 
-| Situación | Tipo Mermaid | Ejemplo |
+| Situation | Mermaid Type | Example |
 |-----------|-------------|---------|
-| Arquitectura de servicios | `flowchart TB` | Contenedores, puertos, redes |
-| Flujo de request | `sequenceDiagram` | HTTP request → response |
-| Decisiones | `flowchart TD` con nodos `{}` | Árbol de troubleshooting |
-| Topología de red | `flowchart LR` con subgraphs | Docker networks |
-| Timeline de deploy | `sequenceDiagram` | Pasos de despliegue |
-| Relaciones de datos | `erDiagram` | Modelos/tablas DB |
-| Estados | `stateDiagram-v2` | Ciclo de vida de un recurso |
-
-### Ejemplo: Arquitectura de Servicios
-
-```mermaid
-flowchart TB
-    subgraph INTERNET["Internet"]
-        CLIENT["Cliente"]
-    end
-
-    subgraph SERVER["Servidor"]
-        subgraph PROXY["Reverse Proxy"]
-            NGINX[":80/:443"]
-        end
-        subgraph APP["Aplicación"]
-            API[":5000 API"]
-            WORKER["Celery Worker"]
-        end
-        subgraph DATA["Datos"]
-            DB["PostgreSQL"]
-            CACHE["Redis"]
-        end
-    end
-
-    CLIENT -->|HTTPS| NGINX
-    NGINX -->|proxy_pass| API
-    API --> DB
-    API --> CACHE
-    API --> WORKER
-
-    style PROXY fill:#e3f2fd
-    style APP fill:#e8f5e9
-    style DATA fill:#fff3e0
-```
-
-### Ejemplo: Flujo de Decisión
-
-```mermaid
-flowchart TD
-    START["¿Necesitas documentar\nalgo para agentes?"]
-    START -->|"Arquitectura global"| ROOT_AGENTS["Editar AGENTS.md root"]
-    START -->|"Componente específico"| COMP_AGENTS["Editar AGENTS.md componente"]
-    START -->|"Patrón reutilizable"| NEW_SKILL["Crear nueva Skill"]
-    START -->|"Instrucciones Copilot"| COPILOT["Editar copilot-instructions.md"]
-
-    NEW_SKILL --> SIZE{"¿Skill > 300 líneas?"}
-    SIZE -->|Sí| SPLIT["Dividir en skill + assets/"]
-    SIZE -->|No| KEEP["Mantener en SKILL.md"]
-
-    style START fill:#ff9800,color:#fff
-    style NEW_SKILL fill:#2196f3,color:#fff
-```
+| Service architecture | `flowchart TB` | Containers, ports, networks |
+| Request flow | `sequenceDiagram` | HTTP request → response |
+| Decisions | `flowchart TD` with `{}` nodes | Troubleshooting tree |
+| Network topology | `flowchart LR` with subgraphs | Docker networks |
+| Deploy timeline | `sequenceDiagram` | Deployment steps |
+| Data relationships | `erDiagram` | DB models/tables |
+| States | `stateDiagram-v2` | Resource lifecycle |
 
 ---
 
-## Relación con AgentArchitect y subagent-pool
+## Relationship with AgentArchitect and subagent-pool
 
-Esta skill produce **documentación de contexto** que los agentes ejecutables *leen*.
-El ciclo completo es:
+This skill produces **context documentation** that executable agents *read*.
+The complete cycle is:
 
 ```mermaid
 flowchart LR
-    A["arquitect-dev-ia\n📄 Crea documentación\nAGENTS.md, CLAUDE.md\ndiagramas, skills"]
-    B["AgentArchitect\n🏗️ Diseña y genera\n.agent.md ejecutables"]
-    C["subagent-pool\n⚙️ Orquesta la\nejecución del trabajo"]
+    A["arquitect-dev-ia\n📄 Creates documentation\nAGENTS.md, CLAUDE.md\ndiagrams, skills"]
+    B["AgentArchitect\n🏗️ Designs and generates\nexecutable .agent.md"]
+    C["subagent-pool\n⚙️ Orchestrates\nwork execution"]
 
-    A -->|"contexto que los agentes leen"| B
-    B -->|"agentes listos para usar"| C
+    A -->|"context that agents read"| B
+    B -->|"agents ready to use"| C
 
     style A fill:#4caf50,color:#fff
     style B fill:#9c27b0,color:#fff
     style C fill:#ff9800,color:#fff
 ```
 
-- **Esta skill** → primero, para que el proyecto sea legible para cualquier agente IA
-- **AgentArchitect** → cuando necesites crear un equipo de agentes ejecutables
-- **subagent-pool** → cuando el equipo ya existe y hay trabajo que orquestar
+- **This skill** → first, so the project is readable by any AI agent
+- **AgentArchitect** → when you need to create a team of executable agents
+- **subagent-pool** → when the team already exists and there is work to orchestrate
 
 ---
 
-## Flujo Completo: Crear Documentación IA para un Proyecto
+## Complete Flow: Create AI Documentation for a Project
 
 ```mermaid
 flowchart TD
-    A["1. Analizar estructura\ndel proyecto"] --> B["2. Identificar componentes\ny dependencias"]
-    B --> C["3. Crear AGENTS.md root\ncon diagrama de arquitectura"]
-    C --> D{"¿Proyecto tiene\nmúltiples componentes?"}
-    D -->|Sí| E["4a. Crear AGENTS.md\npor componente"]
-    D -->|No| F["4b. Documentar todo\nen AGENTS.md root"]
-    E --> G["5. Identificar patrones\nrepetitivos"]
+    A["1. Analyze project\nstructure"] --> B["2. Identify components\nand dependencies"]
+    B --> C["3. Create root AGENTS.md\nwith architecture diagram"]
+    C --> D{"Does project have\nmultiple components?"}
+    D -->|Yes| E["4a. Create AGENTS.md\nper component"]
+    D -->|No| F["4b. Document everything\nin root AGENTS.md"]
+    E --> G["5. Identify repeatable\npatterns"]
     F --> G
-    G --> H{"¿Patrones reutilizables\ndetectados?"}
-    H -->|Sí| I["6a. Crear Skills\npara cada patrón"]
-    H -->|No| J["6b. Documentar en\nAGENTS.md directamente"]
-    I --> K["7. Registrar skills en\nAGENTS.md (auto-invoke)"]
+    G --> H{"Reusable patterns\ndetected?"}
+    H -->|Yes| I["6a. Create Skills\nfor each pattern"]
+    H -->|No| J["6b. Document in\nAGENTS.md directly"]
+    I --> K["7. Register skills in\nAGENTS.md (auto-invoke)"]
     J --> K
-    K --> L["8. Crear copilot-instructions.md\n(si usa Copilot)"]
-    L --> M["9. Validar: ¿cada archivo\n< 300 líneas?"]
-    M -->|No| N["Refactorizar: extraer a skills"]
-    M -->|Sí| O["✅ Documentación lista"]
+    K --> L["8. Create copilot-instructions.md\n(if using Copilot)"]
+    L --> M["9. Validate: does each file\nhave < 300 lines?"]
+    M -->|No| N["Refactor: extract to skills"]
+    M -->|Yes| O["✅ Documentation ready"]
     N --> M
 
     style A fill:#e3f2fd
@@ -354,123 +302,54 @@ flowchart TD
 
 ---
 
-## Convenciones para eliflowi.com
+## Documentation Completeness Checklist
 
-Estas son las convenciones específicas de este servidor multi-proyecto:
-
-```mermaid
-flowchart LR
-    subgraph CONVENCIONES["Convenciones Globales"]
-        direction TB
-        LANG["🗣️ Idioma: Español\n(código, docs, commits)"]
-        DOCKER["🐳 Docker siempre\n(cero servicios nativos)"]
-        MERMAID["📊 Diagramas > Texto\n(Mermaid obligatorio)"]
-        ENV["🔒 .env nunca en git\n(cada proyecto su .env)"]
-        HEALTH["❤️ Health checks\n(en todos los servicios)"]
-    end
-```
-
-| Convención | Regla |
-|-----------|-------|
-| Idioma | Español en todo: código, comments, docs, commits |
-| Docker | Todo se ejecuta en contenedores, sin excepción |
-| Diagramas | Mermaid obligatorio para arquitectura, flujos y decisiones |
-| `.env` | Nunca en git — cada proyecto espera su propio `.env` |
-| Health checks | Todos los servicios principales deben tenerlo |
-| IPs fijas | En `infrastructure/`, cada servicio tiene IP estática `172.22.0.x` |
-| Volúmenes externos | En `apigateway/`, crear con `docker volume create` previo |
+- [ ] `AGENTS.md` root with Mermaid architecture diagram
+- [ ] `AGENTS.md` per component (if applicable)
+- [ ] Skills for repeatable patterns (commits, PRs, testing, etc.)
+- [ ] Auto-invoke table in each `AGENTS.md`
+- [ ] `copilot-instructions.md` for Copilot
+- [ ] No documentation file exceeds 300 lines
+- [ ] All architecture documented with Mermaid diagrams
+- [ ] Complete frontmatter in each skill (`name`, `description`, `allowed-tools`, `metadata.scope`)
+- [ ] `assets/` with templates and examples when the skill is complex
+- [ ] `references/` pointing to local docs (not web URLs)
 
 ---
 
-## Checklist: Documentación IA Completa
-
-```mermaid
-flowchart LR
-    subgraph CHECK["✅ Checklist"]
-        direction TB
-        C1["AGENTS.md root existe\ny tiene diagrama de arquitectura"]
-        C2["Cada componente con\nsu propio AGENTS.md"]
-        C3["Skills creadas para\npatrones repetitivos"]
-        C4["Auto-invoke table\ncompleta en AGENTS.md"]
-        C5["copilot-instructions.md\nactualizado"]
-        C6["Ningún archivo de docs > 300 líneas"]
-        C7["Diagramas Mermaid en\ntoda arquitectura"]
-    end
-```
-
-- [ ] `AGENTS.md` root con diagrama de arquitectura Mermaid
-- [ ] `AGENTS.md` por componente (si aplica)
-- [ ] Skills para patrones repetitivos (commits, PRs, testing, etc.)
-- [ ] Tabla auto-invoke en cada `AGENTS.md`
-- [ ] `copilot-instructions.md` para Copilot
-- [ ] Ningún archivo de documentación supera 300 líneas
-- [ ] Toda arquitectura documentada con diagramas Mermaid
-- [ ] Frontmatter completo en cada skill (`name`, `description`, `allowed-tools`, `metadata.scope`)
-- [ ] `assets/` con templates y ejemplos cuando la skill es compleja
-- [ ] `references/` apuntando a docs locales (no URLs web)
-
----
-
-## Comandos Útiles
+## Useful Commands
 
 ```bash
-# Contar líneas de un archivo de agente
+# Count lines in an agent file
 wc -l AGENTS.md
 
-# Buscar todas las skills del proyecto
+# Find all project skills
 find . -name "SKILL.md" -type f
 
-# Buscar todos los AGENTS.md
+# Find all AGENTS.md
 find . -name "AGENTS.md" -type f
 
-# Buscar copilot-instructions
+# Find copilot-instructions
 find . -path "*/.github/copilot-instructions.md" -type f
 
-# Verificar que Mermaid es válido (si hay herramienta instalada)
-# npx @mermaid-js/mermaid-cli -i archivo.md -o output.svg
-
-# Ver estructura de skills
+# View skills structure
 tree .claude/skills/ 2>/dev/null || find .claude/skills -type f | head -20
 ```
 
 ---
 
-## Anti-patrones
+## Anti-patterns
 
-```mermaid
-flowchart LR
-    subgraph BAD["❌ Anti-patrones"]
-        direction TB
-        X1["AGENTS.md de 800+ líneas\n→ El agente alucina"]
-        X2["Todo en texto narrativo\n→ Ambigüedad"]
-        X3["Skills sin frontmatter\n→ No se auto-invocan"]
-        X4["Duplicar docs existentes\n→ Se desincroniza"]
-        X5["URLs web en references/\n→ Usar paths locales"]
-        X6["Un solo AGENTS.md gigante\n→ Dividir por componente"]
-    end
-
-    subgraph GOOD["✅ Buenas prácticas"]
-        direction TB
-        Y1["Max 300 líneas/archivo"]
-        Y2["Diagramas Mermaid"]
-        Y3["Frontmatter completo"]
-        Y4["Referencias locales"]
-        Y5["Paths locales"]
-        Y6["Dividir por scope"]
-    end
-
-    X1 -.->|corregir| Y1
-    X2 -.->|corregir| Y2
-    X3 -.->|corregir| Y3
-    X4 -.->|corregir| Y4
-    X5 -.->|corregir| Y5
-    X6 -.->|corregir| Y6
-```
+- ❌ `AGENTS.md` of 800+ lines → agent hallucinates
+- ❌ Everything in narrative text → ambiguity
+- ❌ Skills without frontmatter → won't auto-invoke
+- ❌ Duplicate existing docs → gets out of sync
+- ❌ Web URLs in references/ → use local paths
+- ❌ One giant AGENTS.md → split by component
 
 ---
 
 ## Resources
 
-- **Templates**: Ver [assets/](assets/) para templates de AGENTS.md y SKILL.md
-- **Referencia**: Ver [references/](references/) para la guía de arquitectura del servidor eliflowi.com
-```
+- **Templates**: See [assets/](assets/) for AGENTS.md and SKILL.md templates
+- **Reference**: See [references/](references/) for the server architecture guide
