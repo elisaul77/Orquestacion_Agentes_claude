@@ -306,6 +306,15 @@ Activa el skill `subagent-pool` y el Conductor invocará a los agentes via `suba
 - ❌ Crear sub-coordinadores sin que las 3 condiciones se cumplan
 - ❌ Olvidar el MANDATORY block en el Conductor generado
 - ❌ Omitir el Reviewer — las puertas de calidad son obligatorias
+- ❌ Crear `AGENTS.md`, `CLAUDE.md` o documentación de contexto — eso es responsabilidad de **arquitect-dev-ia**
+
+## Relación con otras herramientas
+
+| Necesidad | Herramienta |
+|---|---|
+| Documentar arquitectura, convenciones, contexto del proyecto | skill `arquitect-dev-ia` |
+| Diseñar y generar equipo de agentes `.agent.md` | **AgentArchitect** (este agente) |
+| Ejecutar trabajo con el equipo generado | skill `subagent-pool` |
 
 ---
 
