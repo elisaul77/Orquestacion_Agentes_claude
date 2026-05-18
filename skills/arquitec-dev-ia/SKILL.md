@@ -1,22 +1,23 @@
 ---
 name: arquitect-dev-ia
 description: >
-  AI context documentation for projects: AGENTS.md, CLAUDE.md, copilot-instructions.md,
-  skills and Mermaid diagrams. Does NOT create executable agents (.agent.md) — use AgentArchitect for that.
+  AI context documentation for projects: AGENTS.md, CLAUDE.md, rules/, output-styles/,
+  skills and Mermaid diagrams. Runs graphify first to map real dependencies, then writes
+  .claude/project-context.md as a documentation seal. Does NOT create executable agents.
 when_to_use: >
   Use when context documentation needs to be created or refactored so AI agents understand
-  the project, its conventions and architecture. Trigger phrases: "create AGENTS.md",
-  "document the project for AI", "set up CLAUDE.md", "create a skill", "structure project
-  for AI agents", "output style", "add rules", "@include".
+  the project. Trigger phrases: "create AGENTS.md", "document the project for AI",
+  "set up CLAUDE.md", "create a skill", "structure project for AI agents", "output style",
+  "add rules", "@include", "document project", "prepare project for orchestration".
 license: MIT
 metadata:
   author: eliflowi
-  version: "4.0"
+  version: "5.0"
   scope: [root]
 allowed-tools: Read, Edit, Write, Glob, Grep, Bash, WebFetch, WebSearch, Task
 ---
 
-# AI Context Documentation Architect v4.0
+# AI Context Documentation Architect v5.0
 
 > Skill for creating and maintaining **context documentation** oriented towards AI agents:
 > `AGENTS.md`, `CLAUDE.md`, `.claude/rules/*.md`, `CLAUDE.local.md`, `copilot-instructions.md`, skills and Mermaid diagrams.
@@ -563,30 +564,143 @@ flowchart LR
 
 ---
 
+## 🗺️ Step 0: Graphify Integration (MANDATORY for existing projects)
+
+Before writing a single documentation file, **map the project with graphify**.
+Documentation without knowing real dependencies = Mermaid diagrams that lie.
+
+### Decision tree
+
+```
+Is this a new/empty project?
+  YES → skip graphify, document based on structure
+  NO  → run graphify FIRST, then document
+
+Does graphify-out/graph.json already exist?
+  YES → run: graphify . --update --no-viz
+  NO, project > 20 files → run: graphify . --no-viz
+  NO, project ≤ 20 files → manual research (faster)
+```
+
+### What graphify gives you for documentation
+
+| Graphify output | How to use it in documentation |
+|---|---|
+| **God Nodes** | Mark as `⚠️ high-risk` in AGENTS.md; create dedicated `.claude/rules/` entry |
+| **Detected communities** | Map directly to components in AGENTS.md — one community = one component section |
+| **Surprising connections** | Document as hidden dependencies in the relevant component's AGENTS.md |
+| **GRAPH_REPORT.md** | Use the architecture summary as the base for the Mermaid diagram |
+| **`graphify query "stack"`** | Confirm exact technologies before writing conventions |
+
+### Queries to run before documenting
+
+```bash
+graphify query "What are the main architectural layers of this project?"
+graphify query "What is the primary programming language and framework?"
+graphify query "Which files have the most dependencies?"
+cat graphify-out/GRAPH_REPORT.md   # god nodes + communities section
+```
+
+---
+
+## 📋 Project Context Marker — `.claude/project-context.md`
+
+This file is the **documentation seal** of the project. It is written at the end
+of every documentation session and read by `subagent-pool` before any orchestration.
+
+**If this file is missing, `subagent-pool` will refuse to start.**
+
+### When to write it
+- At the END of every `arquitect-dev-ia` session (mandatory)
+- When updating documentation (overwrite with new date)
+- When the orchestration stack version changes
+
+### Format (write to `.claude/project-context.md`)
+
+```markdown
+---
+orchestration-stack: "subagent-pool v8.0 · arquitec-dev-ia v5.0"
+documented-at: "YYYY-MM-DDTHH:MM:SSZ"
+graphify-graph: "exists"           # "exists" | "missing"
+graphify-nodes: 0                  # number from graph.json
+graphify-communities: 0            # number of communities detected
+stack: "TypeScript · Node.js · Docker"
+language: "English"
+---
+
+# Project Context — [Project Name]
+
+## Architecture Summary
+[2-3 sentences: what the project does, its main components, key technology decisions]
+
+## God Nodes (High-Risk Files)
+<!-- from graphify GRAPH_REPORT.md — empty if graphify not run -->
+- `path/to/file.ts` — N connections — changes impact: [module list]
+
+## Code Communities
+| Community | Description | Key Files |
+|---|---|---|
+| Auth | ... | src/auth/* |
+
+## Components Documented
+| Component | AGENTS.md | CLAUDE.md | Skills |
+|---|---|---|---|
+| Root | ✅ | ✅ | commit, pr-review |
+
+## Stack & Conventions
+- **Language**: English / Spanish
+- **Runtime**: Node.js 20 / Python 3.12 / ...
+- **Testing**: vitest / pytest / ...
+- **Commits**: conventional commits
+- **Docker**: yes / no
+
+## Available Skills
+| Skill | when_to_use trigger |
+|---|---|
+| commit | "commit changes", "git commit" |
+```
+
+### How `subagent-pool` uses this file
+1. Reads the frontmatter → validates stack version compatibility
+2. Reads "Architecture Summary" → gives planning-agent pre-context (saves a full investigation cycle)
+3. Reads "God Nodes" → warns implement-agent about high-risk files
+4. Reads "Code Communities" → planning-agent validates its graphify findings against this baseline
+
+---
+
 ## Complete Flow: Create AI Documentation for a Project
 
 ```mermaid
 flowchart TD
-    A["1. Analyze project\nstructure"] --> B["2. Identify components\nand dependencies"]
-    B --> C["3. Create root AGENTS.md\nwith architecture diagram"]
-    C --> D{"Does project have\nmultiple components?"}
-    D -->|Yes| E["4a. Create AGENTS.md\nper component"]
-    D -->|No| F["4b. Document everything\nin root AGENTS.md"]
-    E --> G["5. Identify repeatable\npatterns"]
-    F --> G
-    G --> H{"Reusable patterns\ndetected?"}
-    H -->|Yes| I["6a. Create Skills\nfor each pattern"]
-    H -->|No| J["6b. Document in\nAGENTS.md directly"]
-    I --> K["7. Register skills in\nAGENTS.md (auto-invoke)"]
+    G0["0. Run graphify\n(if existing project)"] --> G1{"graphify-out/\ngraph.json exists?"}
+    G1 -->|"Yes"| G2["graphify --update --no-viz"]
+    G1 -->|"No, > 20 files"| G3["graphify --no-viz"]
+    G1 -->|"No, ≤ 20 files"| A
+    G2 --> GR["Read GRAPH_REPORT.md\n(god nodes + communities)"]
+    G3 --> GR
+    GR --> A
+
+    A["1. Analyze structure\nusing graphify communities"] --> B["2. Map components\nfrom real dependencies"]
+    B --> C["3. Create root AGENTS.md\nwith verified Mermaid diagram"]
+    C --> D{"Multiple\ncomponents?"}
+    D -->|Yes| E["4a. AGENTS.md per component\naligned with communities"]
+    D -->|No| F["4b. All in root AGENTS.md"]
+    E --> GG["5. Mark god nodes\nas ⚠️ in AGENTS.md"]
+    F --> GG
+    GG --> H{"Reusable\npatterns?"}
+    H -->|Yes| I["6a. Create Skills"]
+    H -->|No| J["6b. Document in AGENTS.md"]
+    I --> K["7. Register skills\n(auto-invoke table)"]
     J --> K
-    K --> L["8. Create copilot-instructions.md\n(if using Copilot)"]
-    L --> M["9. Validate: does each file\nhave < 300 lines?"]
-    M -->|No| N["Refactor: extract to skills"]
-    M -->|Yes| O["✅ Documentation ready"]
+    K --> L["8. Write .claude/rules/\n(conditional by language/type)"]
+    L --> M["9. Validate size < 40k chars"]
+    M -->|No| N["Extract to docs/ + @include"]
+    M -->|Yes| SEAL["✅ Write .claude/project-context.md\n(documentation seal)"]
     N --> M
 
-    style A fill:#e3f2fd
-    style O fill:#4caf50,color:#fff
+    style G0 fill:#9c27b0,color:#fff
+    style SEAL fill:#4caf50,color:#fff
+    style GR fill:#673ab7,color:#fff
 ```
 
 ---

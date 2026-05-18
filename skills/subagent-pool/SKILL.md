@@ -1,24 +1,27 @@
 ---
 name: subagent-pool
 description: >
-  Orchestration skill with Conductor + Subagents pattern. The Conductor PLANS and COORDINATES, NEVER touches code.
-  Trigger: When the user asks to "delegate", "orchestrate", "use the conductor", "conductor pattern", or complex implementation tasks.
+  Orchestration skill with Conductor + Subagents pattern. Validates .claude/project-context.md before starting.
+  The Conductor PLANS and COORDINATES, NEVER touches code. Trigger: "delegate", "orchestrate", "conductor", complex tasks.
+when_to_use: >
+  Use when the task is complex (≥3 files, new module, refactor across components), or when the user says "orchestrate",
+  "delegate", "conductor", "use subagents", "complex task", "separate", or "refactor". Validates .claude/project-context.md
+  before orchestrating — if missing, pauses and suggests running arquitec-dev-ia first.
 license: MIT
 metadata:
   author: elisaul77
-  version: "7.0"
+  version: "8.0"
   scope: [root]
-  auto_invoke: "delegate, orchestrate, conductor, plan, complex, separate, refactor"
 model: opus
 agents:
   - planning-agent
   - implement-agent
   - review-agent
   - AgentArchitect
-allowed-tools: Task, Write, Edit
+allowed-tools: Task, Write, Edit, Read
 ---
 
-# Subagent Pool Skill — Conductor Pattern v7.0 (with Graphify)
+# Subagent Pool Skill — Conductor Pattern v8.0 (with Graphify + Project Context Validation)
 
 > **Critical instruction:** When this skill activates, you assume the role of **CONDUCTOR**.
 > The Conductor **NEVER** reads, writes, edits, or executes code. **ALWAYS delegates** to a subagent.
@@ -62,7 +65,7 @@ allowed-tools: Task, Write, Edit
 Every time this skill activates, you **MUST** begin with this exact block in your first response:
 
 ```
-🎭 CONDUCTOR ACTIVATED — v7.0
+🎭 CONDUCTOR ACTIVATED — v8.0
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📦 Available subagent team:
    • planning-agent   → Graphify + workspace scan + research + plan draft
@@ -70,11 +73,13 @@ Every time this skill activates, you **MUST** begin with this exact block in you
    • review-agent     → Review, security, and quality verification
    • AgentArchitect   → Design of new agent orchestrations
 
+🔐 Step 0: Validating .claude/project-context.md before orchestrating...
+
 🔬 planning-agent uses graphify to build a project knowledge graph:
    detects god nodes, hidden dependencies, and communities (phase boundaries).
 
-🚫 As Conductor, I do NOT execute: Read/Edit/Write on code, Grep, Bash.
-✅ I only coordinate via the Task tool. All concrete work is delegated.
+🚫 As Conductor, I do NOT execute: Edit/Write on code, Grep, Bash on repo.
+✅ I only Read .claude/project-context.md and coordinate via Task.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -84,13 +89,14 @@ Every time this skill activates, you **MUST** begin with this exact block in you
 
 | Rule | Allowed for Conductor | Forbidden for Conductor |
 |------|-----------------------|------------------------|
-| Tools | `Task`, `Write`/`Edit` ONLY in `plans/` | `Read`, `Grep`, `Glob`, `Bash`, `Edit` on code |
-| Action | Coordinate, delegate, write plans | Read repo files, execute commands, modify code |
+| Tools | `Task`, `Write`/`Edit` ONLY in `plans/`, `Read` ONLY on `.claude/project-context.md` | `Read` on code, `Grep`, `Glob`, `Bash` |
+| Action | Coordinate, delegate, write plans, validate project-context.md | Read code files, execute commands, modify code |
 | Research | **Delegate** to `planning-agent` | Do the research yourself |
 | Implementation | **Delegate** to `implement-agent` | Modify code files |
 | Verification | **Delegate** to `review-agent` | Run tests/linter yourself |
 
-> ⚠️ **COMMON VIOLATION:** If you are about to use `Read`, `Grep`, `Bash` — **stop** and delegate.
+> ⚠️ **COMMON VIOLATION:** If you are about to use `Read` on a code file, `Grep`, or `Bash` — **stop** and delegate.
+> ✅ **EXCEPTION:** `Read` is allowed ONLY for `.claude/project-context.md` — the documentation seal file.
 
 ---
 
@@ -146,7 +152,96 @@ The prompt cache expires after **5 minutes of inactivity**. A cache miss on the 
 
 ---
 
-## 📋 Step 0 — Mini-Interview (MANDATORY before delegating)
+## 🔐 Step 0 — Project Context Validation (MANDATORY FIRST)
+
+**Before the mini-interview and before ANY subagent dispatch**, the Conductor validates `.claude/project-context.md`.
+
+### Decision Tree
+
+```
+Does .claude/project-context.md exist?
+│
+├─ NO ──→ ⛔ HALT. Show warning. Suggest arquitec-dev-ia. Wait for user.
+│
+└─ YES ──→ Read it silently. Extract metadata. Proceed to Step 1 (mini-interview).
+```
+
+### Case A — File MISSING
+
+Show this block and **stop**. Do NOT proceed with orchestration until the user confirms.
+
+```
+⛔ ORCHESTRATION BLOCKED — No project-context.md found
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+.claude/project-context.md does not exist.
+
+This file is the documentation seal that tells the Conductor:
+  • Project architecture and key components
+  • God nodes (high-risk files) to avoid touching unexpectedly
+  • Detected communities (phase candidates)
+  • Stack and conventions for implementation
+  • Available skills
+
+Without it, the Conductor cannot plan effectively or avoid god-node collisions.
+
+💡 Suggested action:
+   Run: Skill("arquitec-dev-ia")
+   This will: graphify the project → generate documentation → write .claude/project-context.md
+
+   Or if this is a brand-new empty project (no existing code),
+   type "proceed without context" to skip and start with an empty plan.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+> **"proceed without context"** — if the user explicitly types this, skip Step 0 and continue to Step 1 with no pre-context. Set `project_context = NONE`.
+
+### Case B — File PRESENT
+
+Read `.claude/project-context.md` silently. Extract and store internally:
+
+| Field | Source in project-context.md | Used in |
+|-------|------------------------------|---------|
+| `stack` | `stack:` frontmatter | Every prompt to implement-agent and review-agent |
+| `language` | `language:` frontmatter | Every prompt — code language and variable naming |
+| `graphify-graph` | `graphify-graph:` frontmatter | Graphify status for planning-agent |
+| `graphify-nodes` | `graphify-nodes:` frontmatter | Graph size estimate |
+| `orchestration-stack` | `orchestration-stack:` frontmatter | Version alignment check |
+| `## God Nodes` section | Body | Graph warnings in implement-agent prompt |
+| `## Code Communities` section | Body | Phase boundary suggestions to planning-agent |
+| `## Architecture Summary` section | Body | Context for planning-agent initial prompt |
+| `## Stack & Conventions` section | Body | Conventions for implement-agent and review-agent |
+
+Print a one-line confirmation (do NOT dump the file):
+
+```
+✅ project-context.md loaded — stack: {stack}, lang: {language}, graph: {graphify-graph}, god nodes: {N}
+```
+
+Then continue to Step 1 (mini-interview).
+
+### Passing context to planning-agent
+
+When delegating to `planning-agent`, prepend this section to the prompt:
+
+```
+## Pre-loaded project context (from .claude/project-context.md)
+
+Architecture:
+{## Architecture Summary section content, trimmed to ~200 chars}
+
+Stack: {stack}
+Language: {language}
+God Nodes: {## God Nodes section content, bullet list}
+Communities: {## Code Communities section, bullet list}
+Graphify: {graphify-graph} ({graphify-nodes} nodes)
+
+Use this as starting context. Validate and extend with your own workspace scan.
+```
+
+---
+
+## 📋 Step 1 — Mini-Interview (MANDATORY before delegating)
 
 Before invoking any subagent, the Conductor asks **3 questions**. You can group Q1+Q3 if they are independent.
 
@@ -255,17 +350,25 @@ sequenceDiagram
 
     U->>C: Complex request
     C->>C: Show identity block
+    C->>C: Read .claude/project-context.md (Step 0)
+    alt project-context.md MISSING
+        C->>U: ⛔ BLOCKED — suggest arquitec-dev-ia ⏸️ PAUSE
+        U->>C: "proceed without context" OR runs arquitec-dev-ia first
+    else project-context.md EXISTS
+        C->>C: Extract stack · god nodes · communities · graphify status
+        C->>U: ✅ context loaded (one-line summary)
+    end
     C->>U: Mini-interview Q1+Q3 ⏸️ PAUSE
     U->>C: Answers
     C->>C: Decide architecture (flat / sub-coordinators)
     C->>C: TodoWrite with initial phases
-    C->>P: Task(subagent_type="planning-agent") with context + Q1
+    C->>P: Task(subagent_type="planning-agent") with pre-context + Q1
     P-->>C: Workspace scan + Plan draft + conventions
     C->>U: Present plan ⏸️ PAUSE
     U->>C: Approve / adjust
     C->>C: Write final plan in plans/
     loop For each phase of the plan
-        C->>I: Task(subagent_type="implement-agent") with conventions
+        C->>I: Task(subagent_type="implement-agent") with conventions + god node warnings
         I-->>C: Implementation report
         C->>R: Task(subagent_type="review-agent") with conventions
         R-->>C: APPROVED / NEEDS_REVISION / FAILED
@@ -285,18 +388,22 @@ sequenceDiagram
 
 ## 📜 Step-by-Step Protocol
 
-### Step 0 — Activation + Mini-Interview
+### Step 0 — Context Validation + Activation
 1. Show the `🎭 CONDUCTOR ACTIVATED` block
-2. Run the mini-interview (Q1, Q2, Q3)
-3. Decide architecture (flat vs sub-coordinators)
+2. Read `.claude/project-context.md` — block if missing (see 🔐 Step 0 section above)
+3. Print one-line context summary (or warn if missing)
 
-### Step 1 — Initial TodoWrite
+### Step 1 — Mini-Interview
+1. Ask Q1 (starting point), Q2 (sub-domains), Q3 (pause points)
+2. Decide architecture (flat vs sub-coordinators)
+
+### Step 2 — Initial TodoWrite
 ```
 - [ ] Phase 0: Workspace scan + research (planning-agent)
 - [ ] Phase 1..N: (will be filled in after receiving the plan)
 ```
 
-### Step 2 — Delegate research to `planning-agent`
+### Step 3 — Delegate research to `planning-agent`
 
 > **Directive rule:** prompt = what to do + scope + constraints. Do NOT re-explain background the agent can infer from context.
 
@@ -312,6 +419,15 @@ Graphify: {EXISTS at graphify-out/graph.json | NOT_EXISTS, project ~N files}
 Out of scope: {what NOT to touch}
 Constraints: {hard limits — no new deps, must stay in X dir, etc.}
 
+## Pre-loaded project context (from .claude/project-context.md)
+{IF project_context != NONE:}
+Architecture: {## Architecture Summary — trimmed to ~200 chars}
+Stack: {stack} | Language: {language}
+God Nodes (high-risk): {## God Nodes bullet list}
+Communities: {## Code Communities bullet list}
+Graphify status: {graphify-graph} ({graphify-nodes} nodes)
+{ELSE: "No project-context.md found — perform full workspace scan."}
+
 Return: workspace scan + phased plan draft + open questions.
 """
 )
@@ -323,13 +439,13 @@ Return: workspace scan + phased plan draft + open questions.
 Presenting to user for approval...
 ```
 
-### Step 3 — Approval pause
+### Step 4 — Approval pause
 Present the plan. **Do NOT continue without "approved", "ok", "yes", "go".**
 
-### Step 4 — Write the approved plan
+### Step 5 — Write the approved plan
 Write to `plans/{task-name}-plan.md`. Update TodoWrite with real phases.
 
-### Step 5 — For each phase: Implementation
+### Step 6 — For each phase: Implementation
 
 > **Directive rule:** state what to build + files + steps. Skip context the agent doesn't need to know.
 
@@ -343,9 +459,9 @@ Phase {N}: {title}
 Objective: {one sentence — what this phase achieves}
 Files: {exact paths to modify/create}
 Steps: {numbered list, specific}
-Conventions: lang={detected}, stack={detected}, pattern={detected}
+Conventions: lang={language from project-context}, stack={stack from project-context}, pattern={detected}
 Constraints: only touch files listed above; no new dependencies
-Graph warnings: {god nodes or surprising connections if any, else omit}
+Graph warnings (from project-context.md + planning-agent): {god nodes and surprising connections — NEVER omit if present}
 """
 )
 ```
@@ -353,7 +469,7 @@ Graph warnings: {god nodes or surprising connections if any, else omit}
 **Announce to user:** `💻 Delegating Phase {N} to implement-agent...`
 **Mark task:** `TaskUpdate(id, status="in_progress")` immediately on dispatch, `TaskUpdate(id, status="completed")` immediately on receipt of report — never batch.
 
-### Step 6 — For each phase: Review
+### Step 7 — For each phase: Review
 
 > **Directive rule:** give the agent exactly what it needs to verify — objective, criteria, files. Nothing else.
 
@@ -378,7 +494,7 @@ Return: APPROVED / NEEDS_REVISION / FAILED + issues with file:line
 
 **Announce to user:** `🔍 Delegating review to review-agent...`
 
-### Step 7 — Feedback loop
+### Step 8 — Feedback loop
 
 | Status | Conductor action |
 |--------|-----------------|
@@ -386,7 +502,7 @@ Return: APPROVED / NEEDS_REVISION / FAILED + issues with file:line
 | `NEEDS_REVISION` | Re-delegate to `implement-agent` with specific feedback from review-agent |
 | `FAILED` | Consult user before continuing |
 
-### Step 8 — Closure
+### Step 9 — Closure
 Write `plans/{task}-complete.md` with final summary.
 
 ---
@@ -460,20 +576,22 @@ Interview the user, design the agent pyramid, generate the files in .claude/agen
 
 ## 🚨 Anti-patterns (DO NOT DO)
 
-1. ❌ **Conductor reading repo files** → Delegate to `planning-agent`
-2. ❌ **Conductor running `grep`/`bash`** → Delegate to `planning-agent`
-3. ❌ **Conductor editing code** → Delegate to `implement-agent`
-4. ❌ **Skipping the mini-interview** → Q1, Q2, Q3 are mandatory
-5. ❌ **Skipping mandatory pauses** → After the plan and after each phase
-6. ❌ **Calling `subagent_type="general-purpose"`** when a specialist is available
-7. ❌ **Not passing workspace scan conventions** to implement-agent and review-agent
-8. ❌ **Forgetting the visible TODO in every response**
-9. ❌ **Generic names in multi-orchestration** → use domain prefixes
-10. ❌ **Sequential Task dispatch when agents are independent** → all independent Tasks in ONE message
-11. ❌ **Reading `output_file` of a running subagent/fork** → wait for the completion notification; reading mid-flight floods your context with tool noise
-12. ❌ **Batching TaskUpdate** → mark `in_progress` on dispatch and `completed` on receipt, immediately, one by one
-13. ❌ **Setting `model` on a fork** → a different model cannot reuse the parent's prompt cache; forks inherit the parent model
-14. ❌ **Verbose Task prompts that re-explain context** → write directives (what + files + constraints), not background essays
+1. ❌ **Skipping project-context.md validation** → ALWAYS read `.claude/project-context.md` as the very first action
+2. ❌ **Proceeding when project-context.md is missing** → HALT and suggest `arquitec-dev-ia` (unless user typed "proceed without context")
+3. ❌ **Conductor reading repo code files** → Delegate to `planning-agent` (only `.claude/project-context.md` is allowed)
+4. ❌ **Conductor running `grep`/`bash`** → Delegate to `planning-agent`
+5. ❌ **Conductor editing code** → Delegate to `implement-agent`
+6. ❌ **Skipping the mini-interview** → Q1, Q2, Q3 are mandatory
+7. ❌ **Skipping mandatory pauses** → After the plan and after each phase
+8. ❌ **Calling `subagent_type="general-purpose"`** when a specialist is available
+9. ❌ **Not passing project-context conventions** (stack, language, god nodes) to implement-agent and review-agent
+10. ❌ **Forgetting the visible TODO in every response**
+11. ❌ **Generic names in multi-orchestration** → use domain prefixes
+12. ❌ **Sequential Task dispatch when agents are independent** → all independent Tasks in ONE message
+13. ❌ **Reading `output_file` of a running subagent/fork** → wait for the completion notification; reading mid-flight floods your context with tool noise
+14. ❌ **Batching TaskUpdate** → mark `in_progress` on dispatch and `completed` on receipt, immediately, one by one
+15. ❌ **Setting `model` on a fork** → a different model cannot reuse the parent's prompt cache; forks inherit the parent model
+16. ❌ **Verbose Task prompts that re-explain context** → write directives (what + files + constraints), not background essays
 
 ---
 

@@ -67,8 +67,8 @@ flowchart LR
 
 | Skill | Trigger | Version |
 |-------|---------|---------|
-| `subagent-pool` | "delegate", "orchestrate", "conductor", "complex task" | 7.0 |
-| `arquitec-dev-ia` | "create AGENTS.md", "document architecture", "structure for AI", "output style", "add rules" | 4.0 |
+| `subagent-pool` | "delegate", "orchestrate", "conductor", "complex task" | 8.0 |
+| `arquitec-dev-ia` | "create AGENTS.md", "document architecture", "structure for AI", "output style", "add rules", "prepare for orchestration" | 5.0 |
 | `graphify` | `/graphify` | — |
 
 ---
@@ -85,18 +85,19 @@ flowchart LR
 
 ---
 
-## Workflow v7.0 (with Graphify)
+## Workflow v8.0 (with Graphify + Project Context Validation)
 
-1. Conductor shows **identity block** `🎭 CONDUCTOR ACTIVATED — v7.0`
-2. Conductor runs **mini-interview** (Q1 project, Q2 sub-domains, Q3 pauses)
-3. Conductor decides architecture (flat vs sub-coordinators)
-4. Conductor creates TodoWrite with initial phases
-5. Conductor checks graphify status (`ls graphify-out/graph.json`) and informs planning-agent
-6. Conductor delegates to `planning-agent` → receives workspace scan + graphify (god nodes, communities, queries) + plan draft
-7. Conductor presents plan to user → ⏸️ **PAUSE**
-8. User approves → Conductor writes to `plans/{task}-plan.md`
-9. Per each phase:
-   - `implement-agent` executes (receives conventions + graph warnings: god nodes, dependencies) → reports
+1. Conductor shows **identity block** `🎭 CONDUCTOR ACTIVATED — v8.0`
+2. Conductor reads `.claude/project-context.md` → **HALT if missing** (suggest `arquitec-dev-ia` first)
+3. Conductor runs **mini-interview** (Q1 project, Q2 sub-domains, Q3 pauses)
+4. Conductor decides architecture (flat vs sub-coordinators)
+5. Conductor creates TodoWrite with initial phases
+6. Conductor delegates to `planning-agent` with pre-context (stack, god nodes, communities, graphify status from project-context.md)
+7. `planning-agent` validates/extends the context with workspace scan + graphify → plan draft
+8. Conductor presents plan to user → ⏸️ **PAUSE**
+9. User approves → Conductor writes to `plans/{task}-plan.md`
+10. Per each phase:
+    - `implement-agent` executes (receives conventions + god node warnings from project-context.md + planning-agent) → reports
    - `review-agent` verifies (criteria + conventions + security + god node impact) → APPROVED / NEEDS_REVISION / FAILED
    - If NEEDS_REVISION: re-delegates to `implement-agent`
    - Conductor updates TodoWrite ✓
@@ -124,7 +125,9 @@ flowchart LR
 
 ## Resources
 
-- **Skill:** `skills/subagent-pool/SKILL.md`
+- **Skill (orchestration):** `skills/subagent-pool/SKILL.md`
+- **Skill (documentation):** `skills/arquitec-dev-ia/SKILL.md`
+- **Project context template:** `skills/arquitec-dev-ia/assets/template_project_context.md`
 - **Prompt templates:** `skills/subagent-pool/assets/prompts.md`
 - **Definitions + troubleshooting:** `skills/subagent-pool/assets/agent-definitions.md`
 - **Full interview protocol:** `skills/subagent-pool/assets/interview-protocol.md`
