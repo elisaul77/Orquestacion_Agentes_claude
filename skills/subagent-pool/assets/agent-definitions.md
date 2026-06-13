@@ -1,4 +1,4 @@
-# Agent Definitions & Troubleshooting — v7.0
+# Agent Definitions & Troubleshooting — v6.0
 
 > The **canonical definitions** of each agent live in `.claude/agents/*.agent.md`.
 > This file is a **quick reference + troubleshooting guide** for the pool.

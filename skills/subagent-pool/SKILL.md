@@ -10,9 +10,9 @@ when_to_use: >
 license: MIT
 metadata:
   author: elisaul77
-  version: "8.0"
+  version: "8.1"
   scope: [root]
-model: opus
+model: inherit
 agents:
   - planning-agent
   - implement-agent
@@ -21,7 +21,7 @@ agents:
 allowed-tools: Task, Write, Edit, Read
 ---
 
-# Subagent Pool Skill — Conductor Pattern v8.0 (with Graphify + Project Context Validation)
+# Subagent Pool Skill — Conductor Pattern v8.1 (with Graphify + Project Context Validation)
 
 > **Critical instruction:** When this skill activates, you assume the role of **CONDUCTOR**.
 > The Conductor **NEVER** reads, writes, edits, or executes code. **ALWAYS delegates** to a subagent.
@@ -65,7 +65,7 @@ allowed-tools: Task, Write, Edit, Read
 Every time this skill activates, you **MUST** begin with this exact block in your first response:
 
 ```
-🎭 CONDUCTOR ACTIVATED — v8.0
+🎭 CONDUCTOR ACTIVATED — v8.1
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📦 Available subagent team:
    • planning-agent   → Graphify + workspace scan + research + plan draft
@@ -392,6 +392,7 @@ sequenceDiagram
 1. Show the `🎭 CONDUCTOR ACTIVATED` block
 2. Read `.claude/project-context.md` — block if missing (see 🔐 Step 0 section above)
 3. Print one-line context summary (or warn if missing)
+4. **Resume check** — if `plans/*-state.md` exists and is not `STATUS: COMPLETE`, read it and offer to resume from its `Current` phase (skipping completed phases) instead of restarting the interview.
 
 ### Step 1 — Mini-Interview
 1. Ask Q1 (starting point), Q2 (sub-domains), Q3 (pause points)
@@ -428,7 +429,20 @@ Communities: {## Code Communities bullet list}
 Graphify status: {graphify-graph} ({graphify-nodes} nodes)
 {ELSE: "No project-context.md found — perform full workspace scan."}
 
-Return: workspace scan + phased plan draft + open questions.
+## Return contract (respond EXACTLY in this shape)
+STATUS: PLAN_READY | NEED_CLARIFICATION
+WORKSPACE: {stack, key dirs, conventions — terse}
+PHASES:
+  - Phase N: {title}
+    Objective: {one sentence}
+    Rationale: {why this phase exists / the criterion implement-agent should use to self-correct}
+    Files (each tagged): path ✓exists | path ⊕create — verified via ls/Glob
+    Steps: {numbered}
+    Graph warnings: {god nodes / surprising connections touched, or "none"}
+OPEN_QUESTIONS: {list, or "none"}
+
+> IMPORTANT: every path under Files MUST be verified with ls/Glob and tagged
+> ✓exists or ⊕create. Never list an unverified path.
 """
 )
 ```
@@ -457,11 +471,26 @@ Task(
 Phase {N}: {title}
 
 Objective: {one sentence — what this phase achieves}
-Files: {exact paths to modify/create}
+Rationale: {why — the criterion to self-correct if a step looks wrong; e.g. "extend existing middleware, don't duplicate"}
+Files (tagged by planning-agent):
+  - path ✓exists | path ⊕create
 Steps: {numbered list, specific}
 Conventions: lang={language from project-context}, stack={stack from project-context}, pattern={detected}
 Constraints: only touch files listed above; no new dependencies
+Edit discipline: surgical edits only. For JSON/config, modify ONLY the named key —
+  never replace whole blocks. Before any delete/overwrite, STOP and return STATUS: BLOCKED
+  with what's there and why, awaiting confirmation.
 Graph warnings (from project-context.md + planning-agent): {god nodes and surprising connections — NEVER omit if present}
+
+## Return contract (respond EXACTLY in this shape)
+STATUS: DONE | BLOCKED | PARTIAL
+FILES_CHANGED:
+  - path:lines — what changed
+COMMANDS_RUN:
+  - command → result (exit code)
+TESTS: {result, or "none run" + why}
+DEVIATIONS: {what you did differently from the plan and why, or "none"}
+NEXT: {what remains, or "complete"}
 """
 )
 ```
@@ -481,13 +510,21 @@ Task(
 Review Phase {N}: {title}
 
 Objective: {one sentence}
-Modified files: {list from implement-agent report}
+Rationale (from plan): {why this phase exists — judge against intent, not just literal steps}
+Modified files: {FILES_CHANGED list from implement-agent report}
+Reported deviations: {DEVIATIONS from implement-agent report, or "none"}
 Criteria:
   - {criterion 1}
   - {criterion 2}
 Conventions: lang={detected}, stack={detected}
 Security: {apply OWASP | N/A — no external inputs}
-Return: APPROVED / NEEDS_REVISION / FAILED + issues with file:line
+
+## Return contract (respond EXACTLY in this shape)
+STATUS: APPROVED | NEEDS_REVISION | FAILED
+FINDINGS:
+  - file:line — issue or confirmation
+REQUIRED_CHANGES: {specific + actionable if NEEDS_REVISION, else "none"}
+DEVIATION_VERDICT: {are the implementer's deviations acceptable? or "none reported"}
 """
 )
 ```
@@ -498,12 +535,28 @@ Return: APPROVED / NEEDS_REVISION / FAILED + issues with file:line
 
 | Status | Conductor action |
 |--------|-----------------|
-| `APPROVED` | TodoWrite ✓ mark phase, present summary + commit, ⏸️ pause |
-| `NEEDS_REVISION` | Re-delegate to `implement-agent` with specific feedback from review-agent |
+| `APPROVED` | TodoWrite ✓ mark phase, **write checkpoint** (below), present summary + commit, ⏸️ pause |
+| `NEEDS_REVISION` | Re-delegate to `implement-agent` with `REQUIRED_CHANGES` from review-agent |
 | `FAILED` | Consult user before continuing |
 
+#### Checkpoint after every APPROVED phase
+
+The Conductor has `Write` on `plans/`. After each APPROVED phase, overwrite `plans/{task}-state.md` so the run survives a usage-limit cutoff or interruption:
+
+```
+## State — last updated: Phase {N} APPROVED
+Plan file: plans/{task}-plan.md
+Completed: [Phase 0, 1, ... N]
+Current: Phase {N+1} — {not started | dispatched to implement-agent}
+Conventions: lang={language}, stack={stack}
+God nodes to watch: {list}
+Resume: re-read plan + this state, continue from Phase {N+1}.
+```
+
+> On a fresh session after a cutoff, the Conductor reads `plans/{task}-state.md` first and resumes from `Current`, skipping completed phases.
+
 ### Step 9 — Closure
-Write `plans/{task}-complete.md` with final summary.
+Write `plans/{task}-complete.md` with final summary. Mark `plans/{task}-state.md` as `STATUS: COMPLETE`.
 
 ---
 
@@ -592,6 +645,10 @@ Interview the user, design the agent pyramid, generate the files in .claude/agen
 14. ❌ **Batching TaskUpdate** → mark `in_progress` on dispatch and `completed` on receipt, immediately, one by one
 15. ❌ **Setting `model` on a fork** → a different model cannot reuse the parent's prompt cache; forks inherit the parent model
 16. ❌ **Verbose Task prompts that re-explain context** → write directives (what + files + constraints), not background essays
+17. ❌ **Dispatching with unverified paths** → planning-agent must tag every path `✓exists`/`⊕create`; never pass a path nobody checked
+18. ❌ **Omitting the Return contract** → every Task prompt MUST end with the agent's structured Return contract so the handoff is parseable
+19. ❌ **Skipping the checkpoint** → write `plans/{task}-state.md` after every APPROVED phase so a cutoff never loses progress
+20. ❌ **Dropping the Rationale** → implement-agent and review-agent need the "why" to self-correct and judge intent, not just steps
 
 ---
 
