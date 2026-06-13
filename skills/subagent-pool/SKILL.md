@@ -10,7 +10,7 @@ when_to_use: >
 license: MIT
 metadata:
   author: elisaul77
-  version: "8.1"
+  version: "8.2"
   scope: [root]
 model: inherit
 agents:
@@ -436,6 +436,7 @@ PHASES:
   - Phase N: {title}
     Objective: {one sentence}
     Rationale: {why this phase exists / the criterion implement-agent should use to self-correct}
+    Contracts/Invariants: {falsifiable guarantees this phase must uphold — output vocabulary/range, aggregate scope, order, type/representation, null-vs-missing, cross-module consumer expectations; or "none beyond criteria"}
     Files (each tagged): path ✓exists | path ⊕create — verified via ls/Glob
     Steps: {numbered}
     Graph warnings: {god nodes / surprising connections touched, or "none"}
@@ -472,6 +473,7 @@ Phase {N}: {title}
 
 Objective: {one sentence — what this phase achieves}
 Rationale: {why — the criterion to self-correct if a step looks wrong; e.g. "extend existing middleware, don't duplicate"}
+Contracts/Invariants (from plan): {falsifiable guarantees this phase must satisfy; if you must break one, report it under DEVIATIONS}
 Files (tagged by planning-agent):
   - path ✓exists | path ⊕create
 Steps: {numbered list, specific}
@@ -511,6 +513,7 @@ Review Phase {N}: {title}
 
 Objective: {one sentence}
 Rationale (from plan): {why this phase exists — judge against intent, not just literal steps}
+Contracts/Invariants (from plan): {the falsifiable guarantees to verify; derive any others from objective+criteria, then try to break each before reading the code — tag violations [INVARIANT]}
 Modified files: {FILES_CHANGED list from implement-agent report}
 Reported deviations: {DEVIATIONS from implement-agent report, or "none"}
 Criteria:
@@ -523,6 +526,7 @@ Security: {apply OWASP | N/A — no external inputs}
 STATUS: APPROVED | NEEDS_REVISION | FAILED
 FINDINGS:
   - file:line — issue or confirmation
+  - {invariant violation tagged [INVARIANT] if any}
 REQUIRED_CHANGES: {specific + actionable if NEEDS_REVISION, else "none"}
 DEVIATION_VERDICT: {are the implementer's deviations acceptable? or "none reported"}
 """
