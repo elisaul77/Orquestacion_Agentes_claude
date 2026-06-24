@@ -146,7 +146,7 @@ Sin dinero también puedes ayudar:
 
 ¿Quieres discutir un sponsorship corporativo o tienes preguntas?
 
-- **Email**: elisaul77@gmail.com
+- **Email**: wcwxtctco@mozmail.com
 - **GitHub**: [@elisaul77](https://github.com/elisaul77)
 - **PayPal**: [paypal.me/eflorezp](https://paypal.me/eflorezp)
 
