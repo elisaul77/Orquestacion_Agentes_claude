@@ -1,0 +1,84 @@
+# Evidence behind v9.0
+
+Reference for humans and for the Conductor when a rule needs justifying. Not loaded by default.
+Research done 2026-10-09. Several items are preprints; findings are summarized from abstracts and official write-ups.
+
+## Contents
+1. Token economy and instruction design
+2. Effort scaling and multi-agent cost
+3. Creativity and diversity
+4. Governance, verification and termination
+5. Communication and clarification
+6. Model capabilities (what no longer needs explaining)
+
+---
+
+## 1. Token economy and instruction design
+
+| Finding | Rule in v9 |
+|---|---|
+| Anthropic's skill guide: "Claude is already very smart — only add context Claude doesn't already have"; keep SKILL.md under 500 lines; push details to one-level-deep reference files. | SKILL.md cut from 667 to ~200 lines; templates moved to `assets/prompts.md`. |
+| ETH Zurich *Evaluating AGENTS.md* (arXiv 2602.11988): LLM-generated context files slightly lowered success and raised cost >20%; extra instructions widen the agent's search instead of narrowing it. | Removed explanations of things models already do (TDD, what graphify is, generic OWASP prose, identity banners). |
+| Microsoft *Less Context, Better Agents* (2026): keeping only the last few tool results raised completion (71% → 79%) while cutting tokens ~64%. | Files over relays: plans and reports go to `plans/` and are passed by path. Status in one line; TODO only at pauses. |
+| Anthropic skill guide: test with Haiku, Sonnet and Opus — Haiku needs more guidance, Opus needs less. | "Match detail to the agent's model" rule. |
+
+## 2. Effort scaling and multi-agent cost
+
+| Finding | Rule in v9 |
+|---|---|
+| Anthropic multi-agent research system: multi-agent beat single-agent by 90% on breadth-first research, but used ~15× the tokens of chat; token spend explained ~80% of the variance; weaker fit for tightly coupled work like coding. Prompts embed effort-scaling rules so simple queries don't over-invest. | Tiers S/M/L; tier S is not orchestrated. |
+| Same source: lead agents must give each subagent objective, output format, tool guidance and boundaries; parallel subagents and parallel tool calls cut time sharply. | Outcome-based delegation with return contracts; parallel dispatch by default. |
+| Same source: subagents should write artifacts to the filesystem and return lightweight references. | `PLAN_FILE` in planning contract. |
+
+## 3. Creativity and diversity
+
+| Finding | Rule in v9 |
+|---|---|
+| *Verbalized Sampling* (Zhang et al., arXiv 2510.01171): mode collapse comes from typicality bias in preference data; asking for several responses **with probabilities** raised creative diversity 1.6–2.1× without hurting accuracy. More capable models benefit more. | Forks return options with probabilities, including a low-probability one. |
+| *Diversity Collapse in Multi-Agent LLM Systems* (arXiv 2604.18005): stronger models add less diversity per sample; authority-led groups and densely connected agents converge prematurely. Recommendation: preserve independence and disagreement. | Forks don't see each other; the Conductor hides its preference until convergence. |
+| *Creative Generation via Multi-Agent Debate* (arXiv 2609.00683): debate suppresses diversity through identity drift and majority pull; fixed distinct perspectives counter it. | Each fork gets a fixed, distinct lens. |
+| *Creativity in LLM-based Multi-Agent Systems: A Survey* (EMNLP 2025, arXiv 2505.21116): persona design and divergent→convergent phases are the main levers. | Divergent round is a separate step before planning converges. |
+
+## 4. Governance, verification and termination
+
+| Finding | Rule in v9 |
+|---|---|
+| MAST — *Why Do Multi-Agent LLM Systems Fail?* (Cemri et al., NeurIPS 2025): 14 failure modes in 3 groups — specification/design, inter-agent misalignment, **task verification and termination**. Most failures come from system design, not model limits. | Explicit stopping rules (max 2 revision loops), verdict-gated completion, structured return contracts. |
+| Singapore IMDA agentic AI framework / 2026 Singapore Consensus (arXiv 2608.14611): human checkpoints for high-stakes, irreversible, outlier and user-defined actions; tiered autonomy (auto / notify / approve). Critique: a checkpoint that doesn't change control is rubber-stamping. | Governance tiers; per-phase pauses only where they change control. |
+| EvilGenie (arXiv 2511.21654) and SpecBench (arXiv 2605.21384): coding agents, including Claude Code and Codex, sometimes game tests; the gap between visible and held-out tests grows with code size. LLM judges detect clear cases well. | Never weaken tests; reviewer checks test diffs and runs an independent check (`INDEPENDENT_CHECK`, `[TEST-INTEGRITY]`). |
+| Self-preference bias in LLM-as-a-judge (NeurIPS 2024, arXiv 2410.21819): judges favor text familiar to them. | Prefer a reviewer on a different model than the implementer. |
+
+## 5. Communication and clarification
+
+| Finding | Rule in v9 |
+|---|---|
+| *Ask or Assume?* (arXiv 2603.26233): a coding setup with calibrated uncertainty that asks only on complex issues resolved 69.4% vs 61.2% for single-agent. | Ask-or-assume rule: ask only when a wrong guess is expensive; otherwise state the assumption. |
+| *Structured Uncertainty guided Clarification* (ACL 2026 Findings): choosing questions by expected value of information covered more ambiguous tasks with 1.5–2.7× fewer questions. | Max 3 questions, each with a proposed default, all in one message. |
+| UQ for LLM agents survey (arXiv 2609.07395): overconfidence grows at later trajectory steps. | `CONFIDENCE` line in implementer contract; Conductor separates verified from believed. |
+
+## 6. Model capabilities (what no longer needs explaining)
+
+METR's 2026 reports put frontier 50% time horizons in the many-hours range, doubling every ~4–7 months; long-horizon reliability still suffers from compounding errors, goal drift and context rot (arXiv 2608.01964, 2607.05775). Implications:
+- Delegate outcomes + criteria; don't script obvious steps for capable models.
+- Keep external state (`plans/*-state.md`) because long runs still drift and get cut off.
+- Keep verification independent of the worker because reliability, not capability, is the bottleneck.
+
+## Sources
+
+- Anthropic — Skill authoring best practices: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
+- Anthropic — How we built our multi-agent research system: https://www.anthropic.com/engineering/multi-agent-research-system
+- Verbalized Sampling: https://arxiv.org/abs/2510.01171
+- Why Do Multi-Agent LLM Systems Fail? (MAST): https://arxiv.org/abs/2503.13657
+- Diversity Collapse in Multi-Agent LLM Systems: https://arxiv.org/abs/2604.18005
+- Creative Generation via Multi-Agent Debate: https://arxiv.org/abs/2609.00683
+- Creativity in LLM-based Multi-Agent Systems (survey): https://arxiv.org/abs/2505.21116
+- Evaluating AGENTS.md: https://arxiv.org/abs/2602.11988
+- Less Context, Better Agents: https://www.alphaxiv.org/abs/2606.10209
+- 2026 Singapore Consensus on AI Safety: https://arxiv.org/pdf/2608.14611
+- EvilGenie: https://arxiv.org/abs/2511.21654
+- SpecBench: https://arxiv.org/abs/2605.21384
+- Self-Preference Bias in LLM-as-a-Judge: https://arxiv.org/abs/2410.21819
+- Ask or Assume?: https://arxiv.org/abs/2603.26233
+- Structured Uncertainty guided Clarification: https://aclanthology.org/2026.findings-acl.2028/
+- Uncertainty Quantification for LLM Agents: https://arxiv.org/abs/2609.07395
+- METR Frontier Risk Report (Feb–Mar 2026): https://metr.org/blog/2026-05-19-frontier-risk-report/

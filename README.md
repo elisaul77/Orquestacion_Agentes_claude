@@ -3,7 +3,7 @@
 > **Patrón Conductor + Subagentes para Claude Code** — Orquestación local de tareas complejas con Inteligencia Artificial integrada.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill%20v6.0-blueviolet.svg)](https://claude.ai/code)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill%20v9.0-blueviolet.svg)](https://claude.ai/code)
 [![Conductor Pattern](https://img.shields.io/badge/Pattern-Conductor%20%2B%20Subagentes-orange.svg)](#arquitectura)
 [![Graphify](https://img.shields.io/badge/Graphify-Knowledge%20Graph-teal.svg)](https://github.com/safishamsi/graphify)
 [![GitHub Sponsors](https://img.shields.io/badge/GitHub-Sponsors-pink?style=for-the-badge&logo=githubsponsors)](https://github.com/sponsors/elisaul77)
@@ -22,6 +22,18 @@ Sistema de orquestación multi-agente para **Claude Code**, implementando el pat
 - 🏗️ **AgentArchitect**: Diseña y genera nuevos equipos de agentes en tiempo real
 - ⏸️ **Pausas estratégicas**: El Conductor presenta el plan al usuario antes de ejecutar cada fase
 - 📋 **Trazabilidad completa**: Planes escritos en `plans/*.md` y estado visible en TodoWrite
+
+### Novedades v9.0 — basadas en investigación 2025-2026
+
+- 📏 **Esfuerzo a escala**: niveles S/M/L. Lo pequeño no se orquesta (multiagente cuesta ~15× tokens).
+- 💡 **Ronda divergente (creatividad)**: 2-3 forks independientes con lentes distintas y opciones con probabilidad (*Verbalized Sampling*), sin verse entre sí para evitar el colapso de diversidad.
+- 🛡️ **Gobierno de actuaciones**: niveles Auto / Avisar / Aprobar. Borrar, migrar, secretos, push, publicar o desplegar siempre pasan por el usuario. Máximo 2 vueltas de revisión antes de escalar.
+- 🧪 **Integridad de tests**: el implementador nunca debilita tests; el revisor revisa su diff y corre una comprobación propia.
+- 🗣️ **Comunicación**: resultado primero, malas noticias claras, confianza calibrada, preguntar solo lo que cambia el plan (cada pregunta con su valor por defecto).
+- 🪙 **Ahorro de tokens**: la skill pasa de 667 a ~170 líneas; plantillas en `assets/` (divulgación progresiva); planes por archivo, no pegados.
+- 🎛️ **Tú controlas los modelos**: el `model:` de cada `.agent.md` manda; el Conductor no lo sobrescribe (por defecto: implement = haiku, planning/review = sonnet).
+
+Fuentes y razonamiento: [`skills/subagent-pool/assets/research.md`](skills/subagent-pool/assets/research.md) · cambios: [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
@@ -76,10 +88,14 @@ cp agents/*.agent.md ~/.claude/agents/
 
 ```bash
 # Skills
+BASE=https://raw.githubusercontent.com/elisaul77/Orquestacion_Agentes_claude/master
 for skill in subagent-pool arquitec-dev-ia graphify; do
   mkdir -p ~/.claude/skills/${skill}
-  curl -sSL "https://raw.githubusercontent.com/elisaul77/Orquestacion_Agentes_claude/master/skills/${skill}/SKILL.md" \
-    -o ~/.claude/skills/${skill}/SKILL.md
+  curl -sSL "$BASE/skills/${skill}/SKILL.md" -o ~/.claude/skills/${skill}/SKILL.md
+done
+mkdir -p ~/.claude/skills/subagent-pool/assets
+for f in prompts research interview-protocol agent-definitions; do
+  curl -sSL "$BASE/skills/subagent-pool/assets/${f}.md" -o ~/.claude/skills/subagent-pool/assets/${f}.md
 done
 
 # Agentes
@@ -108,20 +124,22 @@ Activa el Conductor con cualquiera de estas frases en Claude Code:
 
 ---
 
-## 🔄 Flujo de trabajo v6.0
+## 🔄 Flujo de trabajo v9.0
 
 ```
-1. 🎭 Conductor se identifica y hace mini-entrevista (Q1, Q2, Q3)
-2. 📋 Delega a planning-agent → workspace scan + graphify + draft del plan
-3. ⏸️  PAUSA — presenta plan al usuario para aprobación
-4. 📝 Escribe plan aprobado en plans/{tarea}-plan.md
-5. Por cada fase:
-   ├── 💻 implement-agent ejecuta
-   ├── 🔍 review-agent valida → APPROVED / NEEDS_REVISION / FAILED
-   ├── 🔁 Si NEEDS_REVISION → re-delega a implement-agent
-   ├── ✅ Conductor actualiza TodoWrite
-   └── ⏸️  PAUSA — resumen + sugerencia de commit msg
-6. 📄 Conductor escribe plans/{tarea}-complete.md
+0. 🔐 Lee .claude/project-context.md (o sugiere arquitec-dev-ia) · ofrece reanudar si hay state.md
+1. 📏 Decide el nivel: S (directo) · M · L
+2. ❓ Pregunta solo lo que cambia el plan; el resto lo asume y lo declara
+3. 💡 (L con decisión de diseño) Ronda divergente → el usuario elige el enfoque
+4. 📋 planning-agent → plan en plans/{tarea}-draft.md
+5. ⏸️  PAUSA — aprobación del plan
+6. Por cada fase:
+   ├── 💻 implement-agent ejecuta (Aprobar-tier → BLOCKED y pregunta)
+   ├── 🔍 review-agent: contrato primero + comprobación independiente
+   ├── 🔁 NEEDS_REVISION → máx. 2 vueltas, luego consulta
+   ├── 💾 checkpoint plans/{tarea}-state.md
+   └── ⏸️  pausa solo si toca god node, acción a aprobar, FAILED o lo pediste
+7. 📄 Informe final: qué cambió · cómo se verificó · qué falta · commit
 ```
 
 ---
@@ -274,6 +292,8 @@ Ver todas las opciones de donación en **[FUNDING.md](FUNDING.md)**
 
 ## 📋 Roadmap
 
+- [x] Skill v9.0 basada en investigación (creatividad, gobierno, ahorro de tokens)
+- [ ] Evals reproducibles de la skill con Haiku / Sonnet / Opus
 - [ ] Skill v7.0 con soporte multi-proyecto
 - [ ] Agente especializado en testing (TDD-agent)
 - [ ] Agente de documentación automática (docs-agent)

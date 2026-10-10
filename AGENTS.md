@@ -57,7 +57,7 @@ flowchart LR
 | Subagent | File | `subagent_type` | Model | Signature |
 |----------|------|-----------------|-------|-----------|
 | planning-agent | `agents/planning-agent.agent.md` | `planning-agent` | sonnet | `🤖 [planning-agent] Investigating...` — uses graphify for knowledge graph |
-| implement-agent | `agents/implement-agent.agent.md` | `implement-agent` | sonnet | `🤖 [implement-agent] Running Phase {N}...` |
+| implement-agent | `agents/implement-agent.agent.md` | `implement-agent` | haiku | `🤖 [implement-agent] Running Phase {N}...` |
 | review-agent | `agents/review-agent.agent.md` | `review-agent` | sonnet | `🤖 [review-agent] Reviewing Phase {N}...` |
 | AgentArchitect | `agents/AgentArchitect.agent.md` | `AgentArchitect` | opus | `🏗️ [AgentArchitect] Designing team...` |
 
@@ -67,7 +67,7 @@ flowchart LR
 
 | Skill | Trigger | Version |
 |-------|---------|---------|
-| `subagent-pool` | "delegate", "orchestrate", "conductor", "complex task" | 8.0 |
+| `subagent-pool` | "delegate", "orchestrate", "conductor", "complex task" | 9.0 |
 | `arquitec-dev-ia` | "create AGENTS.md", "document architecture", "structure for AI", "output style", "add rules", "prepare for orchestration" | 5.0 |
 | `graphify` | `/graphify` | — |
 
@@ -85,28 +85,24 @@ flowchart LR
 
 ---
 
-## Workflow v8.0 (with Graphify + Project Context Validation)
+## Workflow v9.0
 
-1. Conductor shows **identity block** `🎭 CONDUCTOR ACTIVATED — v8.0`
-2. Conductor reads `.claude/project-context.md` → **HALT if missing** (suggest `arquitec-dev-ia` first)
-3. Conductor runs **mini-interview** (Q1 project, Q2 sub-domains, Q3 pauses)
-4. Conductor decides architecture (flat vs sub-coordinators)
-5. Conductor creates TodoWrite with initial phases
-6. Conductor delegates to `planning-agent` with pre-context (stack, god nodes, communities, graphify status from project-context.md)
-7. `planning-agent` validates/extends the context with workspace scan + graphify → plan draft
-8. Conductor presents plan to user → ⏸️ **PAUSE**
-9. User approves → Conductor writes to `plans/{task}-plan.md`
-10. Per each phase:
-    - `implement-agent` executes (receives conventions + god node warnings from project-context.md + planning-agent) → reports
-   - `review-agent` verifies (criteria + conventions + security + god node impact) → APPROVED / NEEDS_REVISION / FAILED
-   - If NEEDS_REVISION: re-delegates to `implement-agent`
-   - Conductor updates TodoWrite ✓
-   - Conductor presents summary + commit msg → ⏸️ **PAUSE**
-10. Conductor writes `plans/{task}-complete.md`
+1. Conductor reads `.claude/project-context.md` (HALT and suggest `arquitec-dev-ia` if missing); offers to resume an unfinished `plans/*-state.md`
+2. Picks a tier: **S** do it directly · **M** plan + phases · **L** full flow
+3. Asks only questions that change the plan (max 3, each with a default); states other assumptions
+4. Tier L with a real design choice → **divergent round**: 2-3 independent forks with distinct lenses, user picks
+5. `planning-agent` writes the plan to `plans/{task}-draft.md` → ⏸️ **PAUSE** for approval
+6. Per phase: `implement-agent` → `review-agent` (contract-first + independent check)
+   - NEEDS_REVISION → max 2 loops, then consult the user
+   - Approve-tier actions (delete, migrate, secrets, push/publish/deploy) → BLOCKED until the user approves
+   - checkpoint `plans/{task}-state.md`; pause only on god nodes, approve-tier actions, FAILED or user request
+7. Final report: changed · verified · not done/risks · commit message
+
+Models: each agent's `model:` frontmatter decides; the Conductor never overrides it unless the user asks.
 
 ---
 
-## Always-visible TODO
+## Plan status (shown at pauses and at the end)
 
 ```markdown
 ## Plan: {name}
