@@ -39,6 +39,24 @@ Research done 2026-10-09. Several items are preprints; findings are summarized f
 | *Creative Generation via Multi-Agent Debate* (arXiv 2609.00683): debate suppresses diversity through identity drift and majority pull; fixed distinct perspectives counter it. | Each fork gets a fixed, distinct lens. |
 | *Creativity in LLM-based Multi-Agent Systems: A Survey* (EMNLP 2025, arXiv 2505.21116): persona design and divergent→convergent phases are the main levers. | Divergent round is a separate step before planning converges. |
 
+### Own experiment (2026-10-09/10): spelling and tone vs. creativity
+
+290 independent generations (Haiku, Sonnet, Opus), 2–3 blind LLM judges (inter-judge r = 0.82–0.94), 5 samples per cell.
+Data and HTML reports: `Documentos/IA/experimentos/ortografia-creatividad/` in the author's machine.
+
+| Prompt variant | Haiku | Sonnet | Opus |
+|---|---|---|---|
+| Neutral | 3.67 | 3.57 | 4.77 |
+| Misspelled (extreme) | ≈ −0.4 | −0.97 | −1.23 |
+| Praise | +0.67 | +0.03 | +0.10 |
+| Insult | +0.30 | −0.60 | −0.83 |
+| Critical ("mediocre and predictable") | +1.23 | +1.60 | +2.43 |
+| "Avoid the predictable and the first idea" | — | **+2.00** (p=.005) | **+2.80** (p<.001) |
+
+Takeaways → rules: the effect comes from the *instruction* to avoid the obvious, not from emotion; noise (typos) only
+"unsticks" a model that is fully collapsed (Haiku on code) and hurts otherwise; stronger models benefit more.
+Rule in v9: divergent prompts include the literal instruction; known attractors are named and excluded.
+
 ## 4. Governance, verification and termination
 
 | Finding | Rule in v9 |

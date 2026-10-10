@@ -76,6 +76,11 @@ When a phase has a genuine design choice:
 
 Skip this round for tasks with an obvious approach — it costs tokens and adds nothing.
 
+**Ask for the non-obvious explicitly, without emotion.** Every creative prompt (forks or a single agent) includes:
+*"Avoid the predictable and the first idea that comes to mind."* In our own tests this beat neutral prompts by +2.0 (Sonnet)
+and +2.8 (Opus) on a 10-point blind originality scale. Praise did nothing; insults and messy spelling made output worse.
+If a known attractor shows up (same idea every run), name it and rule it out ("not Collatz", "not an hourglass").
+
 ## 6. Delegation
 
 Templates with return contracts: `assets/prompts.md`. The essentials:

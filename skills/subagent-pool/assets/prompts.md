@@ -120,6 +120,7 @@ Agent(description="Ideas: {lens}", prompt="""
 Design question: {the decision to make, with constraints}
 Your lens: {simplest thing that works | most robust long-term | unconventional / reuse what exists}
 Work independently — you will not see other proposals.
+Avoid the predictable and the first idea that comes to mind.
 Return 2-3 genuinely different options. For each: one-paragraph sketch · probability it's the right call (0-1)
 · biggest risk · cost (S/M/L). At least one option must be low-probability but plausible.
 """)

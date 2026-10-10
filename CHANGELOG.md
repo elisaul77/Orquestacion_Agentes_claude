@@ -16,6 +16,8 @@ Every change below is backed by a source in `skills/subagent-pool/assets/researc
 - **Model control:** the `model:` frontmatter in each agent decides. The Conductor never passes `model` unless the user asks.
 - **Files over relays:** planning-agent writes the plan to `plans/` and returns a summary plus its path.
 
+- **Explicit non-obvious instruction** in every creative prompt, backed by our own 290-sample experiment (see research.md).
+
 ### implement-agent 2.3 → 3.0 (default model: haiku)
 - Shorter, more concrete rules suited to a small model. Governance tiers built in.
 - **Test integrity:** never weaken, skip or delete tests to make them pass.
