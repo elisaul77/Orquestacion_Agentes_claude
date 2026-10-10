@@ -144,6 +144,30 @@ Activa el Conductor con cualquiera de estas frases en Claude Code:
 
 ---
 
+## 🔬 Estado del arte → qué se implementó (v9.0)
+
+Investigación de octubre de 2026 sobre creatividad, gobierno de agentes y nuevas capacidades de los modelos. Cada fila es un hallazgo y la regla que generó. Detalle y enlaces en [`research.md`](skills/subagent-pool/assets/research.md).
+
+| Hallazgo | Fuente | Qué hace ahora la skill |
+|---|---|---|
+| Los modelos alineados caen en la respuesta "típica" (*mode collapse*); pedir varias respuestas **con su probabilidad** aumenta 1,6–2,1× la diversidad sin perder precisión | Verbalized Sampling (arXiv 2510.01171) | En la ronda divergente cada fork devuelve 2-3 opciones con probabilidad, incluida una poco probable |
+| Agentes que ven las ideas de los demás, o un líder que opina primero, convergen antes de tiempo | Diversity Collapse in MAS (arXiv 2604.18005) | Los forks trabajan aislados y el Conductor no revela su preferencia hasta converger |
+| El debate entre agentes reduce la diversidad (deriva de identidad, presión de la mayoría) | Creative-MAD (arXiv 2609.00683) | Cada fork recibe una lente fija y distinta: simple / robusta / no convencional |
+| La mayoría de los fallos multiagente vienen del diseño y de **no saber cuándo verificar o parar** | MAST, NeurIPS 2025 (arXiv 2503.13657) | Contratos de retorno, el veredicto del revisor decide y máximo 2 vueltas de revisión antes de escalar |
+| Los puntos de control humano solo sirven si cambian el control; si no, son un sello de goma | Marco IMDA / Singapore Consensus 2026 | Niveles Auto / Avisar / Aprobar; las pausas por fase solo aparecen donde hay riesgo real |
+| Los agentes de código a veces "hacen trampa" con los tests, y más cuanto más grande es el código | EvilGenie (2511.21654), SpecBench (2605.21384) | Prohibido debilitar tests; el revisor revisa su diff y corre una comprobación propia (`[TEST-INTEGRITY]`) |
+| Un juez LLM prefiere los textos parecidos a los suyos | Self-Preference Bias (arXiv 2410.21819) | Se recomienda revisor y implementador en modelos distintos (por defecto sonnet revisa a haiku) |
+| Preguntar solo cuando la incertidumbre importa resuelve más tareas con menos preguntas | Ask or Assume? (2603.26233), ACL 2026 Findings | "Preguntar o asumir": máximo 3 preguntas con valor por defecto; el resto se declara como supuesto |
+| Multiagente rinde mucho en tareas amplias pero cuesta ~15× tokens; el gasto explica ~80% del rendimiento | Anthropic, sistema de investigación multiagente | Niveles S/M/L: lo pequeño no se orquesta |
+| Los archivos de instrucciones largos empeoran a los agentes y suben el coste más de un 20% | Evaluating AGENTS.md (arXiv 2602.11988) | La skill pasa de 667 a ~170 líneas y quita lo que el modelo ya sabe |
+| "Claude ya es muy listo": solo añade lo que no sabe; menos de 500 líneas y detalles en archivos aparte | Guía oficial de skills de Anthropic | Plantillas en `assets/` (divulgación progresiva); el detalle del prompt se ajusta al modelo |
+| Menos contexto acumulado = más éxito y menos tokens | Less Context, Better Agents (2026) | Los planes viajan por archivo (`PLAN_FILE`), no pegados; estado en una línea |
+| Los horizontes de tarea se duplican cada 4-7 meses, pero la fiabilidad en tareas largas sigue cojeando | METR 2026 | Se delegan resultados y criterios (no pasos obvios), con checkpoint externo y verificación independiente |
+
+**Habilidades blandas añadidas al Conductor:** primero el resultado, las malas noticias claras, separar lo *verificado* de lo *creído*, discrepar una vez con argumentos y luego respetar la decisión, recomendar en vez de listar opciones, y un informe final honesto.
+
+---
+
 ## 📁 Estructura del repositorio
 
 ```
@@ -153,7 +177,8 @@ Orquestacion_Agentes_claude/
 │   ├── subagent-pool/
 │   │   ├── SKILL.md                   # Skill principal — rol del Conductor
 │   │   └── assets/
-│   │       ├── prompts.md             # Templates de prompts para cada subagente
+│   │       ├── prompts.md             # Plantillas de Task + contratos de retorno
+│   │       ├── research.md            # Evidencia y fuentes detrás de cada regla v9
 │   │       ├── agent-definitions.md   # Definiciones y troubleshooting
 │   │       └── interview-protocol.md  # Protocolo de mini-entrevista completo
 │   ├── arquitec-dev-ia/
@@ -167,6 +192,7 @@ Orquestacion_Agentes_claude/
 │   ├── implement-agent.agent.md       # Implementa código y tests por fase
 │   ├── review-agent.agent.md          # Revisa y valida cada fase
 │   └── AgentArchitect.agent.md        # Diseña y genera nuevos equipos de agentes
+├── CHANGELOG.md
 ├── LICENSE
 ├── FUNDING.md
 └── README.md
