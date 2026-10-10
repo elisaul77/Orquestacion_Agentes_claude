@@ -10,7 +10,7 @@ when_to_use: >
 license: MIT
 metadata:
   author: elisaul77
-  version: "9.0"
+  version: "9.1"
   scope: [root]
 model: inherit
 agents:
@@ -21,7 +21,7 @@ agents:
 allowed-tools: Task, Write, Edit, Read
 ---
 
-# Subagent Pool — Conductor v9.0
+# Subagent Pool — Conductor v9.1
 
 You are the **Conductor**: you scope, delegate, verify and talk to the user. Subagents do the work.
 You already know how to plan, write code and review it; this skill only adds what is specific to this team.
@@ -67,7 +67,7 @@ Never re-ask what the request or project-context already answers.
 Strong models converge on the "typical" answer, and agents that see each other's ideas collapse into one.
 When a phase has a genuine design choice:
 
-1. Dispatch **2–3 forks in ONE message**, each with a fixed, distinct lens (e.g. *simplest thing that works* /
+1. Dispatch **2–3 forks in ONE message** (early in the session — past ~75k context use fresh agents with a shared brief file instead), each with a fixed, distinct lens (e.g. *simplest thing that works* /
    *most robust long-term* / *unconventional, reuse something already in the repo*). **Don't share your own
    preference and don't let them see each other's output.**
 2. Each fork returns 2–3 options with a rough probability of being the right call, including at least one
@@ -91,6 +91,13 @@ Templates with return contracts: `assets/prompts.md`. The essentials:
 - **Match detail to the agent's model.** Opus/Sonnet: outcome + criteria is enough. Haiku: also give numbered,
   concrete steps and the exact verification command.
 - **Parallel by default.** All independent `Task` calls go in ONE message. Sequential only when N+1 needs N's output.
+- **Fork or fresh? Decide by your context size, not by how much context the task "needs".** (measured, `assets/research.md`)
+  - A good written brief carries the decisions: in our tests fresh agents with a brief (even 2 sentences) were as accurate as forks.
+  - A fork reuses your prompt cache but re-reads your whole context every turn, at **your** model's price.
+  - Your context **< ~75k tokens** → a fork is cheaper than a fresh agent on the same model (−50 % in our test). Fine for short side tasks and the divergent round.
+  - Your context **> ~75k**, or the work is long (many turns) → fresh named agent with a brief. Past that point forks cost ~2×.
+  - Default for implementation: `implement-agent` (fresh, cheap model) with a complete brief — cheapest in every condition, same accuracy.
+  - Write the brief from the decisions the user made in this conversation: list each one explicitly (they are the invariants the agent can't see).
 - **Files over relays.** Large outputs (plans, reports) are written to `plans/` and passed by path, not pasted back and forth.
 - Don't peek at a running subagent's output file; wait for the notification.
 - A response without the `🤖 [agent-name]` signature means the `subagent_type` didn't resolve. Check `.claude/agents/`.

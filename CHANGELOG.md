@@ -1,5 +1,12 @@
 # Changelog
 
+## v9.1 — 2026-10-10 · Fork vs fresh, measured
+
+- **Fork-or-fresh rule:** decide by the Conductor's context size. Below ~75k tokens forks are ~50 % cheaper; above, ~2× more expensive. Inherited context did not improve accuracy when the brief lists the user's decisions.
+- Divergent round runs early in the session, or with fresh agents and a shared brief file past ~75k.
+- Briefs must list the decisions the user made in the conversation explicitly.
+- Evidence: 68 delegations, hidden tests, permutation stats (see research.md).
+
 ## v9.0 — 2026-10-09 · Research-driven rewrite
 
 Every change below is backed by a source in `skills/subagent-pool/assets/research.md`.
