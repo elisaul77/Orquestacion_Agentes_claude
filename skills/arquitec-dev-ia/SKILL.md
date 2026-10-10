@@ -1,174 +1,408 @@
 ---
 name: arquitect-dev-ia
 description: >
-  Documentación de contexto IA para proyectos: AGENTS.md, CLAUDE.md, copilot-instructions.md,
-  skills y diagramas Mermaid. NO crea agentes ejecutables (.agent.md) — para eso usar AgentArchitect.
-  Trigger: Cuando se necesite crear o refactorizar documentación de contexto para que agentes IA
-  entiendan el proyecto, sus convenciones y su arquitectura.
+  AI context documentation for projects: AGENTS.md, CLAUDE.md, rules/, output-styles/,
+  skills and Mermaid diagrams. Runs graphify first to map real dependencies, then writes
+  .claude/project-context.md as a documentation seal. Does NOT create executable agents.
+when_to_use: >
+  Use when context documentation needs to be created or refactored so AI agents understand
+  the project. Trigger phrases: "create AGENTS.md", "document the project for AI",
+  "set up CLAUDE.md", "create a skill", "structure project for AI agents", "output style",
+  "add rules", "@include", "document project", "prepare project for orchestration".
 license: MIT
 metadata:
   author: eliflowi
-  version: "2.0"
+  version: "5.0"
   scope: [root]
-  auto_invoke: "Crear AGENTS.md, CLAUDE.md, copilot-instructions.md, documentar arquitectura, estructurar proyecto para IA"
 allowed-tools: Read, Edit, Write, Glob, Grep, Bash, WebFetch, WebSearch, Task
 ---
 
-# Arquitecto de Documentación de Contexto IA
+# AI Context Documentation Architect v5.0
 
-> Skill para crear y mantener **documentación de contexto** orientada a agentes IA:
-> `AGENTS.md`, `CLAUDE.md`, `copilot-instructions.md`, skills y diagramas Mermaid.
+> Skill for creating and maintaining **context documentation** oriented towards AI agents:
+> `AGENTS.md`, `CLAUDE.md`, `.claude/rules/*.md`, `CLAUDE.local.md`, `copilot-instructions.md`, skills and Mermaid diagrams.
 >
-> ⚠️ **Límite de responsabilidad**: Esta skill NO crea agentes ejecutables (`.agent.md`).
-> Para diseñar y generar equipos de agentes Claude Code → usar **AgentArchitect**.
+> ⚠️ **Scope limit**: This skill does NOT create executable agents (`.agent.md`).
+> To design and generate Claude Code agent teams → use **AgentArchitect**.
 
 ---
 
-## Cuándo Usar
+## When to Use
 
-| ✅ Esta skill | ❌ Usar AgentArchitect en su lugar |
+| ✅ This skill | ❌ Use AgentArchitect instead |
 |---|---|
-| Crear/actualizar `AGENTS.md` (root o componente) | Crear agentes `.agent.md` en `.claude/agents/` |
-| Crear/actualizar `CLAUDE.md` | Diseñar equipos Conductor + especialistas |
-| Crear/actualizar `copilot-instructions.md` | Definir herramientas y modelos de agentes |
-| Crear nuevas skills (SKILL.md) | Establecer jerarquía de orquestación |
-| Documentar arquitectura con diagramas Mermaid | |
-| Estructurar mono-repo para trabajo con IA | |
-| Definir convenciones y cultura del proyecto | |
-| Reducir contexto innecesario para evitar alucinaciones | |
+| Create/update `AGENTS.md` (root or component) | Create `.agent.md` agents in `.claude/agents/` |
+| Create/update `CLAUDE.md` | Design Conductor + specialists teams |
+| Create/update `copilot-instructions.md` | Define agent tools and models |
+| Create new skills (SKILL.md) | Establish orchestration hierarchy |
+| Document architecture with Mermaid diagrams | |
+| Structure mono-repo for AI work | |
+| Define project conventions and culture | |
+| Reduce unnecessary context to avoid hallucinations | |
 
 ---
 
+## 🧠 How Claude Code Actually Loads Context (Source-Verified)
 
-## Filosofía Central
+> Extracted directly from `src/utils/claudemd.ts`. Understanding this is the foundation of good context architecture.
+
+### 4-Tier Memory Hierarchy
+
+Files load in this order — **later = higher priority** (the model pays more attention to last-loaded):
+
+```
+1. Managed    /etc/claude-code/CLAUDE.md        ← org-wide, admin-controlled
+2. User       ~/.claude/CLAUDE.md               ← personal, all projects
+3. Project    CLAUDE.md / .claude/CLAUDE.md     ← checked into repo
+              .claude/rules/*.md                ← modular rules (see below)
+4. Local      CLAUDE.local.md                   ← private, gitignored
+```
+
+**Directory traversal**: Claude scans from **CWD upward to root**. A file at `project/frontend/CLAUDE.md` is loaded AFTER `project/CLAUDE.md` — so the closer to CWD, the higher the priority.
+
+### Hard Limits (from source)
+| Constraint | Value | Source |
+|---|---|---|
+| Max characters per memory file | **40,000** | `MAX_MEMORY_CHARACTER_COUNT = 40000` |
+| Binary files in @include | Skipped silently | `Skip non-text files` |
+| Circular @include refs | Prevented | cycle detection in loader |
+| HTML comments | **Stripped before injection** | `stripHtmlComments()` |
+| Memory cache | Reset on `/clear` or `/compact` | `memoize(getMemoryFiles)` |
+
+---
+
+## 📁 `.claude/rules/` — Modular Context Architecture
+
+**This is the most powerful pattern** — all `.md` files in `.claude/rules/` are automatically loaded as project memory. Two types:
+
+### Unconditional Rules (no frontmatter `paths:`)
+Always loaded. Use for project-wide conventions, architecture, style guides.
+
+```
+.claude/rules/
+  conventions.md       ← naming, language, commit format
+  architecture.md      ← component map, dependencies
+  security.md          ← OWASP checklist, forbidden patterns
+  testing.md           ← test patterns, coverage requirements
+  docker.md            ← docker conventions specific to this project
+```
+
+### Conditional Rules (frontmatter `paths:`)
+Only injected when Claude is working on files that match the glob pattern.
+
+```markdown
+---
+paths:
+  - src/**/*.ts
+  - "*.test.ts"
+---
+
+# TypeScript Rules
+- Always use strict mode
+- No `any` — use `unknown` with type guards
+- Tests: use vitest, never jest
+```
+
+```markdown
+---
+paths:
+  - backend/**/*.py
+---
+
+# Python Backend Rules
+- Use FastAPI patterns
+- Always validate with Pydantic models
+- Never expose internal stack traces
+```
+
+**Why this matters**: Claude only receives the relevant rules for the files it's working on. Reduces noise, reduces hallucination.
+
+---
+
+## 🔗 `@include` — Composición Modular
+
+CLAUDE.md files can include other files. Non-existent paths are silently ignored.
+
+```markdown
+# CLAUDE.md
+
+## Architecture
+@./docs/architecture.md
+
+## API Conventions
+@./docs/api-conventions.md
+
+## Shared Rules (from parent project)
+@../shared-rules/security.md
+```
+
+**Supported syntaxes:**
+```
+@path                 → relative (same as @./path)
+@./relative/path      → relative to current file
+@~/home/path          → from home directory
+@/absolute/path       → absolute path
+```
+
+**Rules:**
+- Only works in leaf text nodes — NOT inside code blocks
+- Circular references are detected and stopped
+- Binary files (images, PDFs) are skipped silently
+
+**Pattern: thin CLAUDE.md + rich docs/**
+```
+project/
+  CLAUDE.md            ← thin: @includes only, ~20 lines
+  docs/
+    architecture.md    ← full architecture, diagrams
+    conventions.md     ← coding standards
+    onboarding.md      ← how to work in this repo
+  .claude/rules/
+    typescript.md      ← conditional: paths: src/**/*.ts
+    security.md        ← unconditional: always apply
+```
+
+---
+
+## 🔒 `CLAUDE.local.md` — Private Context (gitignored)
+
+Personal instructions that override project context WITHOUT being committed to the repo.
+
+```markdown
+# CLAUDE.local.md
+<!-- This file is gitignored. Personal notes only. -->
+
+## My Working Style
+- I prefer TypeScript strict mode — always suggest it
+- For this project: focus on the auth module (currently refactoring)
+- Skip boilerplate suggestions, I know the stack
+
+## Current Focus (2026-05)
+Working on OAuth migration. Files in scope: src/auth/**
+```
+
+**Use cases:**
+- Personal preferences that differ from team defaults
+- Current sprint context (what you're working on)
+- Temporary overrides ("ignore linting rules for now")
+- Notes that would be noise for teammates
+
+**Priority**: Higher than `CLAUDE.md` — personal always wins.
+
+---
+
+## 🎨 `.claude/output-styles/` — Custom Response Styles
+
+> Source-verified in `src/outputStyles/loadOutputStylesDir.ts` and `src/constants/outputStyles.ts`.
+
+Create `.md` files in `.claude/output-styles/` to define how Claude responds. The filename becomes the style name.
+
+```
+.claude/output-styles/
+  concise.md         ← activated with /config set outputStyle concise
+  formal.md
+  step-by-step.md
+```
+
+### Frontmatter + body
+
+```markdown
+---
+name: concise          # display name (defaults to filename)
+description: Terse, no preamble, code-only answers when applicable
+keep-coding-instructions: true   # preserve existing coding guidelines (default: false)
+---
+
+You are a terse assistant. Never explain the obvious.
+Prefer code over prose. Skip boilerplate in explanations.
+```
+
+**Load priority** (lowest → highest): built-in → plugin → user (`~/.claude/output-styles/`) → project → managed
+
+**Built-in styles** available to override: `default`, `Explanatory`, `Learning`
+
+**Activate**: `claude config set outputStyle concise` or ask Claude to switch.
+
+> **Architecture use case**: Define a project-specific style (e.g., `review-mode.md` that forces
+> step-by-step security analysis) to be used during code reviews without polluting CLAUDE.md.
+
+---
+
+## 💬 HTML Comments as Meta-Notes
+
+HTML comments in CLAUDE.md are **stripped before injection** — the AI never sees them, but humans reading the file do.
+
+```markdown
+# CLAUDE.md
+
+<!-- MAINTAINER NOTE: Update this diagram when adding services -->
+## Architecture
+[Mermaid diagram here]
+
+<!-- TODO: add rules for the new payments module when it ships -->
+## Conventions
+...
+```
+
+Use them for: maintenance reminders, TODOs in the doc, human-only explanations of why a rule exists.
+
+---
+
+## Core Philosophy
 
 ```mermaid
 flowchart TD
-    USER["👤 Usuario"] -->|petición| AGENT["🤖 Agente\nOrquestador"]
-    AGENT -->|"1. consulta"| AGENTS_ROOT["📄 AGENTS.md Root"]
-    AGENTS_ROOT -->|"2. dirige a"| AGENTS_COMP["📄 AGENTS.md\nComponente"]
-    AGENTS_COMP -->|"3. invoca"| SKILL["⚡ Skill\nEspecífica"]
-    SKILL -->|"4. contexto preciso"| AGENT
-    AGENT -->|"5. trabaja"| CODEBASE["💻 Codebase"]
-    CODEBASE -->|"6. resultado"| USER
+    USER["👤 User"] -->|request| AGENT["🤖 Orchestrator\nAgent"]
+    AGENT -->|"1. consults"| AGENTS_ROOT["📄 AGENTS.md Root"]
+    AGENTS_ROOT -->|"2. directs to"| AGENTS_COMP["📄 AGENTS.md\nComponent"]
+    AGENTS_COMP -->|"3. invokes"| SKILL["⚡ Specific\nSkill"]
+    SKILL -->|"4. precise context"| AGENT
+    AGENT -->|"5. works"| CODEBASE["💻 Codebase"]
+    CODEBASE -->|"6. result"| USER
 
     style AGENTS_ROOT fill:#4caf50,color:#fff
     style SKILL fill:#2196f3,color:#fff
     style AGENT fill:#ff9800,color:#fff
 ```
 
-**Principio clave**: Menos contexto = menos alucinación. El agente solo debe recibir
-lo que necesita, cuando lo necesita.
+**Key principle**: Less context = less hallucination. The agent should only receive
+what it needs, when it needs it.
 
 ---
 
-## Arquitectura de Documentación IA
+## AI Documentation Architecture
 
-### Jerarquía de Archivos
+### File Hierarchy
 
 ```mermaid
 flowchart TB
-    subgraph ROOT["📁 Raíz del Proyecto"]
-        AGENTS_ROOT["AGENTS.md\n(índice general)"]
-        CLAUDE_MD["CLAUDE.md\n(contexto para Claude Code)"]
-        COPILOT["copilot-instructions.md\n(para GitHub Copilot)"]
+    subgraph ROOT["📁 Project Root"]
+        CLAUDE_MD["CLAUDE.md\n(thin: @includes only)"]
+        CLAUDE_LOCAL["CLAUDE.local.md\n(private, gitignored)"]
+        AGENTS_ROOT["AGENTS.md\n(general index)"]
+        COPILOT["copilot-instructions.md\n(for GitHub Copilot)"]
     end
 
-    subgraph COMPS["📁 Componentes / Sub-proyectos"]
-        AGENTS_A["componenteA/AGENTS.md"]
-        AGENTS_B["componenteB/AGENTS.md"]
-        COPILOT_A["componenteA/.github/copilot-instructions.md"]
+    subgraph DOTCLAUDE["📁 .claude/"]
+        CLAUDE_DOT["CLAUDE.md\n(alternative location)"]
+        subgraph RULES["📁 rules/  ← KEY PATTERN"]
+            R1["conventions.md\n(unconditional)"]
+            R2["typescript.md\npaths: src/**/*.ts"]
+            R3["security.md\n(unconditional)"]
+            R4["testing.md\npaths: **/*.test.*"]
+        end
+        subgraph SKILLS_DIR["📁 skills/"]
+            SK1["skill-a/SKILL.md"]
+            SK2["skill-b/SKILL.md"]
+        end
+        subgraph AGENTS_DIR["📁 agents/"]
+            AG1["my-agent.agent.md"]
+        end
+        subgraph STYLES["📁 output-styles/  ← NEW"]
+            OS1["concise.md"]
+            OS2["review-mode.md"]
+        end
     end
 
-    subgraph SKILLS["📁 .claude/skills/"]
-        SK1["skill-a/SKILL.md"]
-        SK2["skill-b/SKILL.md"]
-        SK3["skill-c/SKILL.md\n+ assets/\n+ references/"]
+    subgraph DOCS["📁 docs/"]
+        D1["architecture.md\n(@included by CLAUDE.md)"]
+        D2["conventions.md\n(@included by CLAUDE.md)"]
     end
 
-    AGENTS_ROOT -->|"referencia a"| COMPS
-    AGENTS_ROOT -->|"lista disponibles"| SKILLS
-    AGENTS_A -->|"invoca"| SK1
-    AGENTS_A -->|"invoca"| SK2
-    AGENTS_B -->|"invoca"| SK3
+    subgraph COMPS["📁 Components / Sub-projects"]
+        AGENTS_A["componentA/AGENTS.md"]
+        AGENTS_B["componentB/AGENTS.md"]
+        CLAUDE_COMP["componentA/CLAUDE.md\n(higher priority than root)"]
+    end
 
-    style ROOT fill:#e8f5e9
-    style SKILLS fill:#e3f2fd
-    style COMPS fill:#fff3e0
+    CLAUDE_MD -->|"@include"| D1
+    CLAUDE_MD -->|"@include"| D2
+    AGENTS_ROOT -->|"references"| COMPS
+    AGENTS_ROOT -->|"lists available"| SKILLS_DIR
+
+    style RULES fill:#e8f5e9,stroke:#4caf50
+    style CLAUDE_LOCAL fill:#fff3e0,stroke:#ff9800
+    style DOCS fill:#e3f2fd
 ```
 
-### Regla de Tamaño
+### Size Rule (source-verified limits)
 
-| Archivo | Líneas Recomendadas | Máximo |
-|---------|-------------------|--------|
-| `AGENTS.md` root | ~150 | 250 |
-| `AGENTS.md` componente | ~150 | 300 |
-| `copilot-instructions.md` | ~100 | 250 |
-| `SKILL.md` | ~100 | 300 |
+| File | Recommended | Hard limit |
+|------|-------------|------------|
+| `CLAUDE.md` / `.claude/CLAUDE.md` | < 8,000 chars | **40,000 chars** (loader truncates above) |
+| `.claude/rules/*.md` each file | < 4,000 chars | **40,000 chars** |
+| `AGENTS.md` root | ~150 lines | Split if > 250 |
+| `AGENTS.md` component | ~150 lines | Split if > 300 |
+| `copilot-instructions.md` | ~100 lines | Split if > 250 |
+| `SKILL.md` | ~100 lines | Split if > 300 |
 
-> **Si supera el máximo → dividir en archivos por componente o extraer a skills.**
+> **Strategy when growing too large**:
+> 1. Move static content to `@include`-referenced files in `docs/`
+> 2. Extract topic-specific rules to `.claude/rules/<topic>.md`
+> 3. Add `paths:` frontmatter to rules that only apply to specific file types
+> 4. Move personal overrides to `CLAUDE.local.md`
 
 ---
 
-## Patrón: AGENTS.md Root
+## Pattern: AGENTS.md Root
 
-El AGENTS.md root es el **punto de entrada** para cualquier agente. Debe contener:
+The AGENTS.md root is the **entry point** for any agent. It must contain:
 
 ```mermaid
 flowchart LR
-    subgraph AGENTS_STRUCTURE["Estructura AGENTS.md Root"]
+    subgraph AGENTS_STRUCTURE["AGENTS.md Root Structure"]
         direction TB
-        A["1. Visión general del proyecto\n(diagrama Mermaid obligatorio)"]
-        B["2. Mapa de componentes\n(tabla con ubicación y stack)"]
-        C["3. Skills disponibles\n(tabla con nombre, descripción, link)"]
-        D["4. Auto-invoke\n(tabla acción → skill)"]
-        E["5. Convenciones globales\n(idioma, commits, Docker)"]
+        A["1. Project overview\n(mandatory Mermaid diagram)"]
+        B["2. Component map\n(table with location and stack)"]
+        C["3. Available skills\n(table with name, description, link)"]
+        D["4. Auto-invoke\n(table action → skill)"]
+        E["5. Global conventions\n(language, commits, Docker)"]
     end
 
     A --> B --> C --> D --> E
 ```
 
-### Template Mínimo
+### Minimal Template
 
 ```markdown
-# Proyecto — AGENTS.md
+# Project — AGENTS.md
 
-## Visión General
-<!-- Diagrama Mermaid de arquitectura -->
+## Overview
+<!-- Mermaid architecture diagram -->
 
-## Componentes
-| Componente | Ubicación | Stack | AGENTS.md |
+## Components
+| Component | Location | Stack | AGENTS.md |
 |---|---|---|---|
 
-## Skills Disponibles
-| Skill | Descripción | URL |
+## Available Skills
+| Skill | Description | URL |
 |---|---|---|
 
 ## Auto-invoke Skills
-| Acción | Skill |
+| Action | Skill |
 |---|---|
 
-## Convenciones
-- Idioma: español
+## Conventions
+- Language: English
 - Commits: conventional-commits
-- Todo en Docker
+- Everything in Docker
 ```
 
 ---
 
-## Patrón: Skills
+## Pattern: Skills
 
-### Estructura de Carpeta
+### Folder Structure
 
 ```mermaid
 flowchart TB
-    subgraph SKILL_DIR["skills/{nombre-skill}/"]
-        SKILL_MD["SKILL.md\n(obligatorio)"]
-        ASSETS["assets/\n(opcional)"]
-        REFS["references/\n(opcional)"]
+    subgraph SKILL_DIR["skills/{skill-name}/"]
+        SKILL_MD["SKILL.md\n(required)"]
+        ASSETS["assets/\n(optional)"]
+        REFS["references/\n(optional)"]
 
-        ASSETS --> TMPL["template.py\nschema.json\nejemplos"]
-        REFS --> DOCS["docs.md\nlinks a docs locales"]
+        ASSETS --> TMPL["template.py\nschema.json\nexamples"]
+        REFS --> DOCS["docs.md\nlinks to local docs"]
     end
 
     style SKILL_MD fill:#4caf50,color:#fff
@@ -176,37 +410,92 @@ flowchart TB
     style REFS fill:#e3f2fd
 ```
 
-### Frontmatter Obligatorio
+### Complete Frontmatter Reference
+
+> Source-verified in `src/skills/loadSkillsDir.ts`. All fields at **root level** of the YAML block.
 
 ```yaml
 ---
-name: nombre-skill            # lowercase, guiones
-description: >
-  Qué hace esta skill.
-  Trigger: Cuándo invocarla.
-license: MIT
-metadata:
-  author: eliflowi
-  version: "1.0"
-  scope: [root|ui|api|infra]  # dónde aplica
-  auto_invoke: "Acción que trigerea esta skill"
+name: skill-name            # display name (defaults to filename)
+description: >              # shown in skill listing, MAX 250 chars — be concise
+  What this skill does.
+when_to_use: >              # ← THE real auto-invoke field (not metadata.auto_invoke)
+  Use when... Include trigger phrases: "deploy", "PR review", etc.
+  Start with "Use when" — Claude uses this for auto-matching.
 allowed-tools: Read, Edit, Write, Glob, Grep, Bash
+
+# ---- Execution mode ----
+context: fork               # "fork" = isolated subagent (no parent context)
+                            # omit = runs inline (shares conversation context)
+agent: planning-agent       # delegate to this agent type instead of default
+
+# ---- Model & effort ----
+model: claude-sonnet-4-6    # specific model; "inherit" = use parent's model
+effort: high                # low | medium | high | max (thinking budget)
+
+# ---- Arguments ----
+argument-hint: "<pr-number> [branch]"   # shown in UI when user types /skill
+arguments: [pr, branch]                 # named args → $pr, $branch in body
+
+# ---- Misc ----
+version: "2.0"
+disable-model-invocation: true  # run without LLM (shell commands only)
+paths:                           # conditional: only loaded for matching files
+  - src/**/*.ts
+  - "**/*.test.ts"
 ---
 ```
 
-### Decisión: assets/ vs references/
+> **Critical distinction**: `when_to_use:` (root frontmatter) is what Claude Code
+> reads for auto-matching via the Discover Skills system. The `metadata.auto_invoke`
+> convention we used in older skills is a human-readable note only — the runtime ignores it.
+
+### Argument Substitution in Skill Body
+
+When the skill has `arguments: [foo, bar]` in frontmatter, the body can use:
+
+```markdown
+Deploy $foo to $bar environment.
+
+# Equivalently, positional:
+Deploy $ARGUMENTS[0] to $ARGUMENTS[1] environment.
+Deploy $0 to $1 environment.
+
+# Or the full string:
+Arguments received: $ARGUMENTS
+```
+
+### Token Budget Rules
+- Skill listing = **1% of context window** ≈ 8,000 chars (from `SKILL_BUDGET_CONTEXT_PERCENT = 0.01`)
+- Per-description hard cap = **250 chars** (from `MAX_LISTING_DESC_CHARS = 250`)
+- Bundled skills always get full descriptions; user/project skills may be truncated
+- `when_to_use` counts toward the budget — keep it focused
+
+### 💡 Auto-Generate Skills with `/skillify`
+
+Claude Code has a bundled `/skillify` skill that captures any session as a reusable SKILL.md:
+
+1. Complete a workflow you want to automate
+2. Type `/skillify` — Claude analyzes the session messages and tools used
+3. It interviews you via `AskUserQuestion` to confirm name, steps, args
+4. Asks where to save: `.claude/skills/` (project) or `~/.claude/skills/` (personal)
+5. Writes the complete SKILL.md including `when_to_use`, steps, and tool list
+
+> Use `skillify` when you repeat a process more than twice in a project.
+
+### Decision: assets/ vs references/
 
 ```mermaid
 flowchart TD
-    NEED{"¿Qué necesitas\nagregar?"}
-    NEED -->|"Templates de código"| ASSETS["assets/"]
-    NEED -->|"Schemas JSON"| ASSETS
-    NEED -->|"Configs de ejemplo"| ASSETS
-    NEED -->|"Links a docs locales"| REFS["references/"]
-    NEED -->|"Guías existentes"| REFS
+    NEED{"What do you\nneed to add?"}
+    NEED -->|"Code templates"| ASSETS["assets/"]
+    NEED -->|"JSON schemas"| ASSETS
+    NEED -->|"Example configs"| ASSETS
+    NEED -->|"Links to local docs"| REFS["references/"]
+    NEED -->|"Existing guides"| REFS
 
-    ASSETS --> RULE_A["Archivos que el agente\ncopia/adapta"]
-    REFS --> RULE_R["Punteros a archivos\nque ya existen en el repo"]
+    ASSETS --> RULE_A["Files the agent\ncopies/adapts"]
+    REFS --> RULE_R["Pointers to files\nalready in the repo"]
 
     style ASSETS fill:#ff9800,color:#fff
     style REFS fill:#2196f3,color:#fff
@@ -214,263 +503,277 @@ flowchart TD
 
 ---
 
-## Patrón: Diagramas Mermaid
+## Pattern: Mermaid Diagrams
 
-**Regla crítica**: Siempre preferir diagramas Mermaid sobre texto narrativo para:
+**Critical rule**: Always prefer Mermaid diagrams over narrative text for:
 
 ```mermaid
 flowchart LR
-    subgraph USAR_MERMAID["✅ Usar Mermaid Para"]
-        A["Arquitectura de servicios"]
-        B["Flujos de red / Docker"]
-        C["Árboles de decisión"]
-        D["Secuencias de operación"]
-        E["Jerarquía de carpetas clave"]
-        F["Dependencias entre componentes"]
+    subgraph USE_MERMAID["✅ Use Mermaid For"]
+        A["Service architecture"]
+        B["Network / Docker flows"]
+        C["Decision trees"]
+        D["Operation sequences"]
+        E["Key folder hierarchy"]
+        F["Dependencies between components"]
     end
 
-    subgraph NO_MERMAID["❌ No Usar Mermaid Para"]
-        G["Listas simples"]
-        H["Configs literales"]
-        I["Comandos bash"]
+    subgraph NO_MERMAID["❌ Don't Use Mermaid For"]
+        G["Simple lists"]
+        H["Literal configs"]
+        I["Bash commands"]
     end
 ```
 
-### Tipos de Diagrama por Situación
+### Diagram Types by Situation
 
-| Situación | Tipo Mermaid | Ejemplo |
+| Situation | Mermaid Type | Example |
 |-----------|-------------|---------|
-| Arquitectura de servicios | `flowchart TB` | Contenedores, puertos, redes |
-| Flujo de request | `sequenceDiagram` | HTTP request → response |
-| Decisiones | `flowchart TD` con nodos `{}` | Árbol de troubleshooting |
-| Topología de red | `flowchart LR` con subgraphs | Docker networks |
-| Timeline de deploy | `sequenceDiagram` | Pasos de despliegue |
-| Relaciones de datos | `erDiagram` | Modelos/tablas DB |
-| Estados | `stateDiagram-v2` | Ciclo de vida de un recurso |
-
-### Ejemplo: Arquitectura de Servicios
-
-```mermaid
-flowchart TB
-    subgraph INTERNET["Internet"]
-        CLIENT["Cliente"]
-    end
-
-    subgraph SERVER["Servidor"]
-        subgraph PROXY["Reverse Proxy"]
-            NGINX[":80/:443"]
-        end
-        subgraph APP["Aplicación"]
-            API[":5000 API"]
-            WORKER["Celery Worker"]
-        end
-        subgraph DATA["Datos"]
-            DB["PostgreSQL"]
-            CACHE["Redis"]
-        end
-    end
-
-    CLIENT -->|HTTPS| NGINX
-    NGINX -->|proxy_pass| API
-    API --> DB
-    API --> CACHE
-    API --> WORKER
-
-    style PROXY fill:#e3f2fd
-    style APP fill:#e8f5e9
-    style DATA fill:#fff3e0
-```
-
-### Ejemplo: Flujo de Decisión
-
-```mermaid
-flowchart TD
-    START["¿Necesitas documentar\nalgo para agentes?"]
-    START -->|"Arquitectura global"| ROOT_AGENTS["Editar AGENTS.md root"]
-    START -->|"Componente específico"| COMP_AGENTS["Editar AGENTS.md componente"]
-    START -->|"Patrón reutilizable"| NEW_SKILL["Crear nueva Skill"]
-    START -->|"Instrucciones Copilot"| COPILOT["Editar copilot-instructions.md"]
-
-    NEW_SKILL --> SIZE{"¿Skill > 300 líneas?"}
-    SIZE -->|Sí| SPLIT["Dividir en skill + assets/"]
-    SIZE -->|No| KEEP["Mantener en SKILL.md"]
-
-    style START fill:#ff9800,color:#fff
-    style NEW_SKILL fill:#2196f3,color:#fff
-```
+| Service architecture | `flowchart TB` | Containers, ports, networks |
+| Request flow | `sequenceDiagram` | HTTP request → response |
+| Decisions | `flowchart TD` with `{}` nodes | Troubleshooting tree |
+| Network topology | `flowchart LR` with subgraphs | Docker networks |
+| Deploy timeline | `sequenceDiagram` | Deployment steps |
+| Data relationships | `erDiagram` | DB models/tables |
+| States | `stateDiagram-v2` | Resource lifecycle |
 
 ---
 
-## Relación con AgentArchitect y subagent-pool
+## Relationship with AgentArchitect and subagent-pool
 
-Esta skill produce **documentación de contexto** que los agentes ejecutables *leen*.
-El ciclo completo es:
+This skill produces **context documentation** that executable agents *read*.
+The complete cycle is:
 
 ```mermaid
 flowchart LR
-    A["arquitect-dev-ia\n📄 Crea documentación\nAGENTS.md, CLAUDE.md\ndiagramas, skills"]
-    B["AgentArchitect\n🏗️ Diseña y genera\n.agent.md ejecutables"]
-    C["subagent-pool\n⚙️ Orquesta la\nejecución del trabajo"]
+    A["arquitect-dev-ia\n📄 Creates documentation\nAGENTS.md, CLAUDE.md\ndiagrams, skills"]
+    B["AgentArchitect\n🏗️ Designs and generates\nexecutable .agent.md"]
+    C["subagent-pool\n⚙️ Orchestrates\nwork execution"]
 
-    A -->|"contexto que los agentes leen"| B
-    B -->|"agentes listos para usar"| C
+    A -->|"context that agents read"| B
+    B -->|"agents ready to use"| C
 
     style A fill:#4caf50,color:#fff
     style B fill:#9c27b0,color:#fff
     style C fill:#ff9800,color:#fff
 ```
 
-- **Esta skill** → primero, para que el proyecto sea legible para cualquier agente IA
-- **AgentArchitect** → cuando necesites crear un equipo de agentes ejecutables
-- **subagent-pool** → cuando el equipo ya existe y hay trabajo que orquestar
+- **This skill** → first, so the project is readable by any AI agent
+- **AgentArchitect** → when you need to create a team of executable agents
+- **subagent-pool** → when the team already exists and there is work to orchestrate
 
 ---
 
-## Flujo Completo: Crear Documentación IA para un Proyecto
+## 🗺️ Step 0: Graphify Integration (MANDATORY for existing projects)
+
+Before writing a single documentation file, **map the project with graphify**.
+Documentation without knowing real dependencies = Mermaid diagrams that lie.
+
+### Decision tree
+
+```
+Is this a new/empty project?
+  YES → skip graphify, document based on structure
+  NO  → run graphify FIRST, then document
+
+Does graphify-out/graph.json already exist?
+  YES → run: graphify . --update --no-viz
+  NO, project > 20 files → run: graphify . --no-viz
+  NO, project ≤ 20 files → manual research (faster)
+```
+
+### What graphify gives you for documentation
+
+| Graphify output | How to use it in documentation |
+|---|---|
+| **God Nodes** | Mark as `⚠️ high-risk` in AGENTS.md; create dedicated `.claude/rules/` entry |
+| **Detected communities** | Map directly to components in AGENTS.md — one community = one component section |
+| **Surprising connections** | Document as hidden dependencies in the relevant component's AGENTS.md |
+| **GRAPH_REPORT.md** | Use the architecture summary as the base for the Mermaid diagram |
+| **`graphify query "stack"`** | Confirm exact technologies before writing conventions |
+
+### Queries to run before documenting
+
+```bash
+graphify query "What are the main architectural layers of this project?"
+graphify query "What is the primary programming language and framework?"
+graphify query "Which files have the most dependencies?"
+cat graphify-out/GRAPH_REPORT.md   # god nodes + communities section
+```
+
+---
+
+## 📋 Project Context Marker — `.claude/project-context.md`
+
+This file is the **documentation seal** of the project. It is written at the end
+of every documentation session and read by `subagent-pool` before any orchestration.
+
+**If this file is missing, `subagent-pool` will refuse to start.**
+
+### When to write it
+- At the END of every `arquitect-dev-ia` session (mandatory)
+- When updating documentation (overwrite with new date)
+- When the orchestration stack version changes
+
+### Format (write to `.claude/project-context.md`)
+
+```markdown
+---
+orchestration-stack: "subagent-pool v8.0 · arquitec-dev-ia v5.0"
+documented-at: "YYYY-MM-DDTHH:MM:SSZ"
+graphify-graph: "exists"           # "exists" | "missing"
+graphify-nodes: 0                  # number from graph.json
+graphify-communities: 0            # number of communities detected
+stack: "TypeScript · Node.js · Docker"
+language: "English"
+---
+
+# Project Context — [Project Name]
+
+## Architecture Summary
+[2-3 sentences: what the project does, its main components, key technology decisions]
+
+## God Nodes (High-Risk Files)
+<!-- from graphify GRAPH_REPORT.md — empty if graphify not run -->
+- `path/to/file.ts` — N connections — changes impact: [module list]
+
+## Code Communities
+| Community | Description | Key Files |
+|---|---|---|
+| Auth | ... | src/auth/* |
+
+## Components Documented
+| Component | AGENTS.md | CLAUDE.md | Skills |
+|---|---|---|---|
+| Root | ✅ | ✅ | commit, pr-review |
+
+## Stack & Conventions
+- **Language**: English / Spanish
+- **Runtime**: Node.js 20 / Python 3.12 / ...
+- **Testing**: vitest / pytest / ...
+- **Commits**: conventional commits
+- **Docker**: yes / no
+
+## Available Skills
+| Skill | when_to_use trigger |
+|---|---|
+| commit | "commit changes", "git commit" |
+```
+
+### How `subagent-pool` uses this file
+1. Reads the frontmatter → validates stack version compatibility
+2. Reads "Architecture Summary" → gives planning-agent pre-context (saves a full investigation cycle)
+3. Reads "God Nodes" → warns implement-agent about high-risk files
+4. Reads "Code Communities" → planning-agent validates its graphify findings against this baseline
+
+---
+
+## Complete Flow: Create AI Documentation for a Project
 
 ```mermaid
 flowchart TD
-    A["1. Analizar estructura\ndel proyecto"] --> B["2. Identificar componentes\ny dependencias"]
-    B --> C["3. Crear AGENTS.md root\ncon diagrama de arquitectura"]
-    C --> D{"¿Proyecto tiene\nmúltiples componentes?"}
-    D -->|Sí| E["4a. Crear AGENTS.md\npor componente"]
-    D -->|No| F["4b. Documentar todo\nen AGENTS.md root"]
-    E --> G["5. Identificar patrones\nrepetitivos"]
-    F --> G
-    G --> H{"¿Patrones reutilizables\ndetectados?"}
-    H -->|Sí| I["6a. Crear Skills\npara cada patrón"]
-    H -->|No| J["6b. Documentar en\nAGENTS.md directamente"]
-    I --> K["7. Registrar skills en\nAGENTS.md (auto-invoke)"]
+    G0["0. Run graphify\n(if existing project)"] --> G1{"graphify-out/\ngraph.json exists?"}
+    G1 -->|"Yes"| G2["graphify --update --no-viz"]
+    G1 -->|"No, > 20 files"| G3["graphify --no-viz"]
+    G1 -->|"No, ≤ 20 files"| A
+    G2 --> GR["Read GRAPH_REPORT.md\n(god nodes + communities)"]
+    G3 --> GR
+    GR --> A
+
+    A["1. Analyze structure\nusing graphify communities"] --> B["2. Map components\nfrom real dependencies"]
+    B --> C["3. Create root AGENTS.md\nwith verified Mermaid diagram"]
+    C --> D{"Multiple\ncomponents?"}
+    D -->|Yes| E["4a. AGENTS.md per component\naligned with communities"]
+    D -->|No| F["4b. All in root AGENTS.md"]
+    E --> GG["5. Mark god nodes\nas ⚠️ in AGENTS.md"]
+    F --> GG
+    GG --> H{"Reusable\npatterns?"}
+    H -->|Yes| I["6a. Create Skills"]
+    H -->|No| J["6b. Document in AGENTS.md"]
+    I --> K["7. Register skills\n(auto-invoke table)"]
     J --> K
-    K --> L["8. Crear copilot-instructions.md\n(si usa Copilot)"]
-    L --> M["9. Validar: ¿cada archivo\n< 300 líneas?"]
-    M -->|No| N["Refactorizar: extraer a skills"]
-    M -->|Sí| O["✅ Documentación lista"]
+    K --> L["8. Write .claude/rules/\n(conditional by language/type)"]
+    L --> M["9. Validate size < 40k chars"]
+    M -->|No| N["Extract to docs/ + @include"]
+    M -->|Yes| SEAL["✅ Write .claude/project-context.md\n(documentation seal)"]
     N --> M
 
-    style A fill:#e3f2fd
-    style O fill:#4caf50,color:#fff
+    style G0 fill:#9c27b0,color:#fff
+    style SEAL fill:#4caf50,color:#fff
+    style GR fill:#673ab7,color:#fff
 ```
 
 ---
 
-## Convenciones para eliflowi.com
+## Documentation Completeness Checklist
 
-Estas son las convenciones específicas de este servidor multi-proyecto:
+### Core files
+- [ ] `CLAUDE.md` — thin entry point with `@include` directives to docs/
+- [ ] `.claude/rules/` — at least one unconditional rule file (conventions)
+- [ ] `.claude/rules/<lang>.md` — conditional rules with `paths:` frontmatter for each language/type
+- [ ] `CLAUDE.local.md` added to `.gitignore`
+- [ ] `AGENTS.md` root with Mermaid architecture diagram
+- [ ] `AGENTS.md` per component (if applicable)
 
-```mermaid
-flowchart LR
-    subgraph CONVENCIONES["Convenciones Globales"]
-        direction TB
-        LANG["🗣️ Idioma: Español\n(código, docs, commits)"]
-        DOCKER["🐳 Docker siempre\n(cero servicios nativos)"]
-        MERMAID["📊 Diagramas > Texto\n(Mermaid obligatorio)"]
-        ENV["🔒 .env nunca en git\n(cada proyecto su .env)"]
-        HEALTH["❤️ Health checks\n(en todos los servicios)"]
-    end
-```
+### Context quality
+- [ ] No memory file exceeds 40,000 characters
+- [ ] Static/large content moved to `docs/` and `@include`d from CLAUDE.md
+- [ ] Conditional rules have `paths:` frontmatter (not loaded for unrelated files)
+- [ ] HTML comments used for human-only meta-notes
+- [ ] Traversal tested: nested `CLAUDE.md` in subdirs for monorepo components
 
-| Convención | Regla |
-|-----------|-------|
-| Idioma | Español en todo: código, comments, docs, commits |
-| Docker | Todo se ejecuta en contenedores, sin excepción |
-| Diagramas | Mermaid obligatorio para arquitectura, flujos y decisiones |
-| `.env` | Nunca en git — cada proyecto espera su propio `.env` |
-| Health checks | Todos los servicios principales deben tenerlo |
-| IPs fijas | En `infrastructure/`, cada servicio tiene IP estática `172.22.0.x` |
-| Volúmenes externos | En `apigateway/`, crear con `docker volume create` previo |
-
----
-
-## Checklist: Documentación IA Completa
-
-```mermaid
-flowchart LR
-    subgraph CHECK["✅ Checklist"]
-        direction TB
-        C1["AGENTS.md root existe\ny tiene diagrama de arquitectura"]
-        C2["Cada componente con\nsu propio AGENTS.md"]
-        C3["Skills creadas para\npatrones repetitivos"]
-        C4["Auto-invoke table\ncompleta en AGENTS.md"]
-        C5["copilot-instructions.md\nactualizado"]
-        C6["Ningún archivo de docs > 300 líneas"]
-        C7["Diagramas Mermaid en\ntoda arquitectura"]
-    end
-```
-
-- [ ] `AGENTS.md` root con diagrama de arquitectura Mermaid
-- [ ] `AGENTS.md` por componente (si aplica)
-- [ ] Skills para patrones repetitivos (commits, PRs, testing, etc.)
-- [ ] Tabla auto-invoke en cada `AGENTS.md`
-- [ ] `copilot-instructions.md` para Copilot
-- [ ] Ningún archivo de documentación supera 300 líneas
-- [ ] Toda arquitectura documentada con diagramas Mermaid
-- [ ] Frontmatter completo en cada skill (`name`, `description`, `allowed-tools`, `metadata.scope`)
-- [ ] `assets/` con templates y ejemplos cuando la skill es compleja
-- [ ] `references/` apuntando a docs locales (no URLs web)
+### Skills & tools
+- [ ] Skills for repeatable patterns (commits, PRs, testing, etc.)
+- [ ] Auto-invoke table in each `AGENTS.md`
+- [ ] Each skill has `when_to_use:` at root frontmatter (not `metadata.auto_invoke`)
+- [ ] Descriptions ≤ 250 chars (token budget hard cap)
+- [ ] `context: fork` on self-contained skills (no parent context needed)
+- [ ] `effort: high` on skills that need deep reasoning
+- [ ] `argument-hint` + `arguments:` for parameterized skills
+- [ ] `assets/` with templates and examples when the skill is complex
+- [ ] `references/` pointing to local docs (not web URLs)
+- [ ] `copilot-instructions.md` for Copilot
+- [ ] `.claude/output-styles/` for project-specific response styles
 
 ---
 
-## Comandos Útiles
+## Useful Commands
 
 ```bash
-# Contar líneas de un archivo de agente
+# Count lines in an agent file
 wc -l AGENTS.md
 
-# Buscar todas las skills del proyecto
+# Find all project skills
 find . -name "SKILL.md" -type f
 
-# Buscar todos los AGENTS.md
+# Find all AGENTS.md
 find . -name "AGENTS.md" -type f
 
-# Buscar copilot-instructions
+# Find copilot-instructions
 find . -path "*/.github/copilot-instructions.md" -type f
 
-# Verificar que Mermaid es válido (si hay herramienta instalada)
-# npx @mermaid-js/mermaid-cli -i archivo.md -o output.svg
-
-# Ver estructura de skills
+# View skills structure
 tree .claude/skills/ 2>/dev/null || find .claude/skills -type f | head -20
 ```
 
 ---
 
-## Anti-patrones
+## Anti-patterns
 
-```mermaid
-flowchart LR
-    subgraph BAD["❌ Anti-patrones"]
-        direction TB
-        X1["AGENTS.md de 800+ líneas\n→ El agente alucina"]
-        X2["Todo en texto narrativo\n→ Ambigüedad"]
-        X3["Skills sin frontmatter\n→ No se auto-invocan"]
-        X4["Duplicar docs existentes\n→ Se desincroniza"]
-        X5["URLs web en references/\n→ Usar paths locales"]
-        X6["Un solo AGENTS.md gigante\n→ Dividir por componente"]
-    end
-
-    subgraph GOOD["✅ Buenas prácticas"]
-        direction TB
-        Y1["Max 300 líneas/archivo"]
-        Y2["Diagramas Mermaid"]
-        Y3["Frontmatter completo"]
-        Y4["Referencias locales"]
-        Y5["Paths locales"]
-        Y6["Dividir por scope"]
-    end
-
-    X1 -.->|corregir| Y1
-    X2 -.->|corregir| Y2
-    X3 -.->|corregir| Y3
-    X4 -.->|corregir| Y4
-    X5 -.->|corregir| Y5
-    X6 -.->|corregir| Y6
-```
+- ❌ `AGENTS.md` of 800+ lines → agent hallucinates
+- ❌ Everything in narrative text → ambiguity
+- ❌ Skills without `when_to_use:` at root frontmatter → Discover Skills can't match them
+- ❌ Using `metadata.auto_invoke` expecting Claude Code to honor it → it's human-only convention
+- ❌ Skill description > 250 chars → truncated in listing (most important info first)
+- ❌ Duplicate existing docs → gets out of sync
+- ❌ Web URLs in references/ → use local paths
+- ❌ One giant AGENTS.md → split by component
+- ❌ Inline skill when it needs to be self-contained → use `context: fork`
+- ❌ Putting response style instructions in CLAUDE.md → use `.claude/output-styles/` instead
 
 ---
 
 ## Resources
 
-- **Templates**: Ver [assets/](assets/) para templates de AGENTS.md y SKILL.md
-- **Referencia**: Ver [references/](references/) para la guía de arquitectura del servidor eliflowi.com
-```
+- **Templates**: See [assets/](assets/) for AGENTS.md and SKILL.md templates
+- **Reference**: See [references/](references/) for the server architecture guide

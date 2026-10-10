@@ -1,72 +1,78 @@
 ```skill
 ---
-name: {nombre-skill}
+name: {skill-name}
 description: >
-  {Qué hace esta skill en una línea}.
-  Trigger: {Cuándo debe el agente invocar esta skill}.
+  {What this skill does — max 250 chars, most important info first}
+when_to_use: >
+  Use when {situation}. Trigger phrases: "{phrase1}", "{phrase2}".
 license: MIT
 metadata:
   author: eliflowi
   version: "1.0"
   scope: [{root|ui|api|infra}]
-  auto_invoke: "{Acción que trigerea esta skill}"
+# Optional advanced fields:
+# context: fork           # isolated subagent (no parent context)
+# effort: high            # low | medium | high | max
+# model: inherit          # or a specific model id
+# argument-hint: "<arg>"  # shown in UI when user types /skill <arg>
+# arguments: [foo, bar]   # named args → $foo, $bar in body
 allowed-tools: Read, Edit, Write, Glob, Grep, Bash
 ---
 
-# {Emoji} Skill: {Nombre Descriptivo}
+# {Emoji} Skill: {Descriptive Name}
 
-> {Documentación de referencia o enlace}
+> {Reference documentation or link}
 
-## Cuándo Usar
+## When to Use
 
-- {Situación 1 donde invocar esta skill}
-- {Situación 2}
-- {Situación 3}
+- {Situation 1 where to invoke this skill}
+- {Situation 2}
+- {Situation 3}
 
-## Patrones Críticos
+## Critical Patterns
 
-<!-- Lo más importante que el agente DEBE saber -->
+<!-- The most important things the agent MUST know -->
 
 ```mermaid
 flowchart TD
-    A["Entrada"] --> B{"Decisión"}
-    B -->|Opción 1| C["Acción 1"]
-    B -->|Opción 2| D["Acción 2"]
+    A["Input"] --> B{"Decision"}
+    B -->|Option 1| C["Action 1"]
+    B -->|Option 2| D["Action 2"]
 ```
 
-### Regla 1: {Nombre de la regla}
+### Rule 1: {Rule Name}
 
-{Explicación breve}
+{Brief explanation}
 
 ```python
-# Ejemplo de código
+# Code example
 ```
 
-### Regla 2: {Nombre de la regla}
+### Rule 2: {Rule Name}
 
-{Explicación breve}
+{Brief explanation}
 
-## Estructura Esperada
+## Expected Structure
 
 ```
-carpeta/
-├── archivo1.py
-├── archivo2.py
+folder/
+├── file1.py
+├── file2.py
 └── config/
 ```
 
-## Comandos
+## Commands
 
 ```bash
-# Comando útil 1
-comando --flag
+# Useful command 1
+command --flag
 
-# Comando útil 2
-otro-comando
+# Useful command 2
+another-command
 ```
 
 ## Resources
 
-- **Templates**: Ver [assets/](assets/) para {descripción}
-- **Referencia**: Ver [references/](references/) para docs locales
+- **Templates**: See [assets/](assets/) for {description}
+- **Reference**: See [references/](references/) for local docs
 ```

@@ -1,34 +1,34 @@
-# {Proyecto} — Instrucciones para GitHub Copilot
+# {Project} — GitHub Copilot Instructions
 
-> {Descripción del proyecto en una línea}
+> {One-line description of the project}
 
-## Arquitectura
+## Architecture
 
-<!-- Diagrama Mermaid de la arquitectura del proyecto -->
+<!-- Mermaid diagram of the project architecture -->
 ```mermaid
 flowchart TB
-    subgraph PROYECTO["Proyecto"]
-        SVC1["Servicio 1"]
-        SVC2["Servicio 2"]
+    subgraph PROJECT["Project"]
+        SVC1["Service 1"]
+        SVC2["Service 2"]
     end
     SVC1 --> SVC2
 ```
 
-## Mapa de Componentes
+## Component Map
 
-| Directorio | Qué es | Stack |
+| Directory | What it is | Stack |
 |---|---|---|
-| `componente/` | Descripción | Tech stack |
+| `component/` | Description | Tech stack |
 
-## Reglas para Agentes
+## Rules for Agents
 
-1. **Leer el AGENTS.md o copilot-instructions.md interno antes de trabajar en un componente**
-2. **Idioma**: español en todo (docs, código, commits)
-3. **Docker siempre**: todo se ejecuta en contenedores
-4. **Diagramas Mermaid**: obligatorio para arquitectura y flujos
+1. **Read the AGENTS.md or internal copilot-instructions.md before working on a component**
+2. **Language**: English in everything (docs, code, commits)
+3. **Docker always**: everything runs in containers
+4. **Mermaid diagrams**: mandatory for architecture and flows
 
-## Convenciones
+## Conventions
 
-- `.env` nunca en git
-- Health checks en todos los servicios
-- Conventional commits: `<tipo>[scope]: <descripción>`
+- `.env` never in git
+- Health checks on all services
+- Conventional commits: `<type>[scope]: <description>`

@@ -1,44 +1,44 @@
-# Catálogo de Diagramas Mermaid para Documentación IA
+# Mermaid Diagram Catalog for AI Documentation
 
-Referencia rápida de tipos de diagrama y cuándo usarlos.
+Quick reference of diagram types and when to use them.
 
-## Arquitectura de Servicios — `flowchart TB`
+## Service Architecture — `flowchart TB`
 
-Usar para: composición de contenedores, microservicios, componentes principales.
+Use for: container composition, microservices, main components.
 
 ```mermaid
 flowchart TB
-    subgraph NET["Red Docker"]
-        A["Servicio A\n:8080"] --> B["Servicio B\n:5432"]
+    subgraph NET["Docker Network"]
+        A["Service A\n:8080"] --> B["Service B\n:5432"]
         A --> C["Cache\n:6379"]
     end
 ```
 
-## Topología de Red — `flowchart LR`
+## Network Topology — `flowchart LR`
 
-Usar para: redes Docker, subnets, conexiones entre redes.
+Use for: Docker networks, subnets, connections between networks.
 
 ```mermaid
 flowchart LR
-    subgraph NET1["Red 1 — 172.22.0.0/24"]
+    subgraph NET1["Network 1 — 172.22.0.0/24"]
         A[".6 VPN"]
         B[".9 Proxy"]
     end
-    subgraph NET2["Red 2 — bridge"]
+    subgraph NET2["Network 2 — bridge"]
         C["API"]
         D["DB"]
     end
     B -->|":8443"| C
 ```
 
-## Flujo de Request — `sequenceDiagram`
+## Request Flow — `sequenceDiagram`
 
-Usar para: flujo HTTP, autenticación, interacción entre servicios.
+Use for: HTTP flow, authentication, interaction between services.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant C as Cliente
+    participant C as Client
     participant P as Proxy
     participant A as API
     participant D as DB
@@ -51,50 +51,50 @@ sequenceDiagram
     P-->>C: 200 OK
 ```
 
-## Árbol de Decisión — `flowchart TD`
+## Decision Tree — `flowchart TD`
 
-Usar para: troubleshooting, flujos condicionales, elecciones de diseño.
+Use for: troubleshooting, conditional flows, design choices.
 
 ```mermaid
 flowchart TD
-    Q{"¿Pregunta?"}
-    Q -->|Opción A| A["Acción A"]
-    Q -->|Opción B| B["Acción B"]
-    A --> R["Resultado"]
+    Q{"Question?"}
+    Q -->|Option A| A["Action A"]
+    Q -->|Option B| B["Action B"]
+    A --> R["Result"]
     B --> R
 ```
 
-## Relaciones de Datos — `erDiagram`
+## Data Relationships — `erDiagram`
 
-Usar para: modelos de base de datos, relaciones entre entidades.
+Use for: database models, relationships between entities.
 
 ```mermaid
 erDiagram
-    USER ||--o{ API_KEY : tiene
-    USER ||--o{ REQUEST : genera
-    API_KEY ||--o{ REQUEST : autentica
+    USER ||--o{ API_KEY : has
+    USER ||--o{ REQUEST : generates
+    API_KEY ||--o{ REQUEST : authenticates
 ```
 
-## Estados — `stateDiagram-v2`
+## States — `stateDiagram-v2`
 
-Usar para: ciclo de vida de recursos, estados de un proceso.
+Use for: resource lifecycle, process states.
 
 ```mermaid
 stateDiagram-v2
     [*] --> Pending
-    Pending --> Active: aprobar
-    Active --> Suspended: suspender
-    Suspended --> Active: reactivar
-    Active --> [*]: eliminar
+    Pending --> Active: approve
+    Active --> Suspended: suspend
+    Suspended --> Active: reactivate
+    Active --> [*]: delete
 ```
 
-## Dependencias entre Proyectos — `flowchart TD`
+## Project Dependencies — `flowchart TD`
 
-Usar para: mono-repos, relaciones build/deploy entre componentes.
+Use for: mono-repos, build/deploy relationships between components.
 
 ```mermaid
 flowchart TD
-    A["proyecto-a/\ndocker-compose.yml"] -->|"build context"| B["proyecto-b/\nDockerfile"]
-    C["proyecto-c/"] -->|"API calls :8443"| A
-    A -->|"proxy hacia"| EXT["APIs Externas"]
+    A["project-a/\ndocker-compose.yml"] -->|"build context"| B["project-b/\nDockerfile"]
+    C["project-c/"] -->|"API calls :8443"| A
+    A -->|"proxy to"| EXT["External APIs"]
 ```

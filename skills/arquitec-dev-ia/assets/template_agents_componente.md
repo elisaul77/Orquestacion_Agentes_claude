@@ -1,52 +1,52 @@
-# {Componente} — AGENTS.md
+# {Component} — AGENTS.md
 
-> {Descripción del componente en una línea}
+> {One-line description of the component}
 
-## Arquitectura Interna
+## Internal Architecture
 
 ```mermaid
 flowchart TB
-    subgraph COMPONENTE["Componente: {nombre}"]
+    subgraph COMPONENT["Component: {name}"]
         direction TB
-        SVC1["Servicio 1\n:puerto"]
-        SVC2["Servicio 2"]
-        DB["Base de datos"]
+        SVC1["Service 1\n:port"]
+        SVC2["Service 2"]
+        DB["Database"]
     end
 
     SVC1 --> SVC2
     SVC2 --> DB
 ```
 
-## Estructura de Carpetas
+## Folder Structure
 
 ```
-componente/
-├── src/              # Código fuente
-│   ├── module_a/     # Descripción
-│   └── module_b/     # Descripción
+component/
+├── src/              # Source code
+│   ├── module_a/     # Description
+│   └── module_b/     # Description
 ├── tests/            # Tests
-├── config/           # Configuración
+├── config/           # Configuration
 ├── docker-compose.yml
 └── Dockerfile
 ```
 
-## Stack Tecnológico
+## Tech Stack
 
-| Tecnología | Versión | Propósito |
+| Technology | Version | Purpose |
 |---|---|---|
-| Python | 3.11 | Lenguaje principal |
-| Flask/Django | x.x | Framework web |
-| PostgreSQL | 16 | Base de datos |
+| Python | 3.11 | Main language |
+| Flask/Django | x.x | Web framework |
+| PostgreSQL | 16 | Database |
 
-## Patrones Críticos
+## Critical Patterns
 
-<!-- Documenta aquí los patrones que el agente DEBE seguir -->
+<!-- Document here the patterns the agent MUST follow -->
 
-### Patrón: {Nombre}
+### Pattern: {Name}
 
 ```mermaid
 sequenceDiagram
-    participant C as Cliente
+    participant C as Client
     participant A as API
     participant D as DB
 
@@ -56,28 +56,28 @@ sequenceDiagram
     A-->>C: Response
 ```
 
-## Skills Disponibles
+## Available Skills
 
-| Skill | Descripción | URL |
+| Skill | Description | URL |
 |---|---|---|
-| `skill-name` | Descripción | [SKILL.md](../../skills/skill-name/SKILL.md) |
+| `skill-name` | Description | [SKILL.md](../../skills/skill-name/SKILL.md) |
 
 ## Auto-invoke
 
-| Acción | Skill |
+| Action | Skill |
 |---|---|
-| Crear endpoints | `proyecto-api` |
-| Escribir tests | `proyecto-test` |
+| Create endpoints | `project-api` |
+| Write tests | `project-test` |
 
-## Comandos
+## Commands
 
 ```bash
-# Desarrollo local
+# Local development
 docker-compose up -d --build
 
 # Logs
-docker-compose logs -f {servicio}
+docker-compose logs -f {service}
 
 # Tests
-docker-compose exec {servicio} pytest
+docker-compose exec {service} pytest
 ```

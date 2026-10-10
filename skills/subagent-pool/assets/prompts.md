@@ -1,355 +1,152 @@
-# Templates de Prompts — Conductor Pattern v5.0
+# Task Templates — Conductor v9.0
 
-> **Quién usa este archivo:** El **Conductor**, al construir el `prompt` de cada `Task(...)`.
-> Estos templates aseguran que cada subagente reciba lo mínimo necesario y retorne con la firma `🤖 [<agent>]`.
+Copy, fill, send. Every prompt ends with the agent's return contract so the handoff is parseable.
+Write prompts as directives (what + why + files + constraints), not background essays.
 
----
-
-## 🎭 Bloque de identidad del Conductor (apertura obligatoria)
-
-```
-🎭 CONDUCTOR ACTIVADO — v5.0
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📦 Equipo de subagentes disponible:
-   • planning-agent   → Workspace scan + investigación + draft de plan
-   • implement-agent  → Implementación de código y tests
-   • review-agent     → Revisión, seguridad y verificación de calidad
-   • AgentArchitect   → Diseño de nuevas orquestaciones de agentes
-
-🚫 Como Conductor, NO ejecuto: Read/Edit/Write sobre código, Grep, Bash.
-✅ Solo coordino vía Task tool. Para todo trabajo concreto delego.
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
+## Contents
+1. planning-agent
+2. implement-agent
+3. review-agent
+4. Revision after NEEDS_REVISION
+5. Divergent fork (creativity round)
+6. AgentArchitect
+7. Final report to the user
 
 ---
 
-## 0️⃣ Template — Mini-Entrevista inicial
+## 1. planning-agent
 
-El Conductor pregunta **antes** de invocar cualquier subagente:
+```
+Task(description="Plan: {brief}", subagent_type="planning-agent", prompt="""
+Investigate and draft a plan for: {one-line task}
 
-```markdown
-Antes de comenzar, necesito 3 respuestas rápidas:
+Tier: {M | L}
+Scope: {existing project | new folder} — {stack or "detect"}
+Graphify: {EXISTS at graphify-out/graph.json | NOT_EXISTS, ~N files}
+Chosen approach: {from divergent round, or "pick the simplest sound one; list 1-2 rejected alternatives"}
+Assumptions already stated to the user: {list or "none"}
+Out of scope: {what NOT to touch}
+Constraints: {hard limits}
 
-**Q1 — Punto de partida:**
-¿El proyecto es existente o carpeta nueva?
-(Si existente: planning-agent hará un workspace scan automático)
+Pre-loaded context (project-context.md):
+Architecture: {≤200 chars} | Stack: {stack} | Language: {language}
+God nodes: {list} | Communities: {list}
 
-**Q2 — Sub-dominios:**
-¿La tarea tiene áreas claramente separables (ej. frontend/backend)?
-(Determina si usamos pirámide plana o sub-coordinadores)
+Write the full plan to plans/{task}-draft.md and return only the summary below.
 
-**Q3 — Pausas:**
-¿Quieres aprobar el plan antes de implementar? ¿Y pausar tras cada fase?
-(Default: sí a ambas)
+STATUS: PLAN_READY | NEED_CLARIFICATION
+PLAN_FILE: plans/{task}-draft.md
+TLDR: {1-3 sentences}
+PHASES: {N} — one line each: title · files count · risk (god node? approve-tier action?)
+OPEN_QUESTIONS: {only those that change the plan, each with a proposed default, or "none"}
+""")
 ```
 
----
+## 2. implement-agent
 
-## 1️⃣ Template — Invocar `planning-agent`
+For Haiku, keep Steps numbered and concrete and give the exact verify command. For Opus/Sonnet, Steps may be short.
 
-```python
-Task(
-  description="Investigar: {tarea breve <60 chars>}",
-  subagent_type="planning-agent",
-  prompt="""
-## Tarea
-{descripción detallada de lo que el usuario pidió}
+```
+Task(description="Phase {N}: {title}", subagent_type="implement-agent", prompt="""
+Phase {N}: {title}   (plan: plans/{task}-plan.md)
 
-## Contexto del proyecto (lo que sé sin investigar)
-{stack, propósito, restricciones que el usuario nos dio}
+Objective: {one sentence}
+Rationale: {why — the criterion to self-correct with}
+Contracts/Invariants: {falsifiable guarantees; breaking one → report under DEVIATIONS}
+Acceptance criteria: {bullets}
+Files: {path ✓exists | path ⊕create}
+Steps: {numbered}
+Verify with: {exact command(s)}
+Conventions: lang={language}, stack={stack}
+Graph warnings: {god nodes / hidden deps — never omit if present}
+Governance: Auto = edits inside listed files + tests. Notify = anything else → DEVIATIONS.
+  Approve = delete/overwrite data, migrations, secrets, push/publish/deploy → STOP, STATUS: BLOCKED.
+Never weaken, skip or delete tests to make them pass.
 
-## Proyecto existente o nuevo
-{respuesta de Q1 — si existente, hacer workspace scan + graphify}
-
-## Estado de graphify
-{UNA de estas opciones — el Conductor la determina con `ls graphify-out/graph.json`:}
-- "graphify-out/graph.json existe → actualizar con --update y consultar"
-- "No existe, proyecto grande (> 20 archivos) → construir con --no-viz y consultar"
-- "No existe, proyecto pequeño (≤ 20 archivos) → usar investigación manual"
-- "Proyecto nuevo/vacío → saltar graphify"
-
-## Tu trabajo (planning-agent)
-1. Workspace scan (README, estructura, AGENTS.md/CLAUDE.md, convenciones)
-2. Graphify (según estado indicado arriba):
-   - Si existe: `graphify . --update --no-viz` → queries + leer GRAPH_REPORT.md
-   - Si no existe y proyecto grande: `graphify . --no-viz` → queries + leer GRAPH_REPORT.md
-   - Si proyecto pequeño/nuevo: Glob/Grep/Read manual
-3. Identificar patrones, god nodes, comunidades, dependencias ocultas
-4. Definir 3-10 fases usando comunidades graphify como fronteras naturales
-5. Retornar draft del plan
-
-## Output esperado
-- Workspace scan (idioma, stack, patrones, instrucciones)
-- Graphify: god nodes en el scope, comunidades involucradas, conexiones sorpresivas
-- Archivos relevantes con nivel de riesgo (alto si son god nodes)
-- Plan estructurado: cada fase con objective, files, god_nodes_risk, tests, steps
-- Advertencias del grafo para el implement-agent
-- Open questions si hay ambigüedad
-
-## Identidad
-Inicia tu respuesta con: '🤖 [planning-agent] Investigando...'
-"""
-)
+STATUS: DONE | BLOCKED | PARTIAL
+FILES_CHANGED: path:lines — what
+COMMANDS_RUN: command → exit code
+TESTS: {N/M passing, or "none run" + why}
+DEVIATIONS: {or "none"}
+CONFIDENCE: {verified | partially verified | unverified} — one line why
+NEXT: {remaining, or "complete"}
+""")
 ```
 
-**Anuncio que el Conductor da al usuario antes de invocar:**
+## 3. review-agent
+
 ```
-📋 Delegando workspace scan + graphify + investigación a planning-agent...
-```
+Task(description="Review Phase {N}: {title}", subagent_type="review-agent", prompt="""
+Review Phase {N}: {title}
 
----
+Objective: {one sentence}
+Rationale: {judge intent, not only literal steps}
+Contracts/Invariants: {declared ones — derive others, try to break each BEFORE reading the code}
+Acceptance criteria: {bullets}
+Files changed (implementer report): {list}
+Tests reported: {implementer TESTS line}
+Deviations reported: {list or "none"}
+Conventions: lang={language}, stack={stack}
+Security: {apply OWASP | N/A — no external input}
 
-## 2️⃣ Template — Invocar `implement-agent`
-
-```python
-Task(
-  description="Fase {N}: {título corto <60 chars>}",
-  subagent_type="implement-agent",
-  prompt="""
-## Fase {N}: {título completo}
-
-## Objetivo
-{1-3 oraciones de qué se logra}
-
-## Convenciones del proyecto (del workspace scan)
-- Idioma: {detectado por planning-agent}
-- Stack: {detectado}
-- Patrones de código: {detectados}
-
-## Advertencias del grafo (graphify)
-{Copiar directamente del output de planning-agent — si no hay, poner "Ninguna"}
-- ⚠️ {archivo} es god node ({N} conexiones) — cambios aquí impactan {módulos}
-- ⚠️ {ModA} y {ModB} comparten {dato/interfaz} — coordinar cambios
-
-## Archivos a modificar/crear
-- {path1} {🔴 god node si aplica}
-- {path2}
-
-## Tests a escribir (si aplica)
-- {nombre_test_1}
-
-## Pasos
-1. {paso 1}
-2. {paso 2}
-
-## Criterios de aceptación
-- {criterio 1}
-- {criterio 2}
-
-## Restricciones
-- SOLO modifica los archivos listados arriba
-- Respeta convenciones detectadas
-- Tener especial cuidado con archivos marcados como god nodes
-- NO escribas planes o documentos de tracking
-- Reporta al final con el formato estándar
-
-## Identidad
-Inicia tu respuesta con: '🤖 [implement-agent] Ejecutando Fase {N}...'
-"""
-)
+STATUS: APPROVED | NEEDS_REVISION | FAILED
+FINDINGS: file:line — issue  ([INVARIANT] / [CRITICAL] / [MAJOR] / [TEST-INTEGRITY] tags)
+INDEPENDENT_CHECK: {what you ran yourself beyond the implementer's tests → result}
+REQUIRED_CHANGES: {specific + actionable, or "none"}
+DEVIATION_VERDICT: {per deviation, or "none reported"}
+""")
 ```
 
-**Anuncio del Conductor:**
+## 4. Revision after NEEDS_REVISION
+
 ```
-💻 Delegando Fase {N} a implement-agent...
-```
-
----
-
-## 3️⃣ Template — Invocar `review-agent`
-
-```python
-Task(
-  description="Review Fase {N}",
-  subagent_type="review-agent",
-  prompt="""
-## Revisar Fase {N}: {título}
-
-## Objetivo de la fase
-{copia exacta del objective del plan}
-
-## Criterios de aceptación
-- {criterio 1}
-- {criterio 2}
-
-## Convenciones del proyecto
-- Idioma: {detectado}
-- Stack: {detectado}
-- Patrones: {detectados}
-
-## Archivos modificados (según implement-agent)
-- {path1} (creado / modificado)
-- {path2}
-
-## Notas del implement-agent
-{si dejó notas para el reviewer}
-
-## Advertencias del grafo (graphify)
-{Copiar del plan — god nodes y conexiones sorpresivas que impactan esta fase}
-- ⚠️ {archivo} es god node — verificar que no se rompieron sus {N} dependencias
-
-## Tu trabajo (review-agent)
-1. Leer archivos modificados
-2. Verificar cada criterio de aceptación
-3. Verificar que se respetan las convenciones del proyecto
-4. Si hay god nodes en la lista: verificar que sus dependencias no se rompieron
-5. Buscar bugs, edge cases, security issues (OWASP Top 10 si aplica)
-6. Retornar status: APPROVED / NEEDS_REVISION / FAILED
-
-## Identidad
-Inicia tu respuesta con: '🤖 [review-agent] Revisando Fase {N}...'
-"""
-)
+Task(description="Phase {N} fix #{k}", subagent_type="implement-agent", prompt="""
+Phase {N} — revision {k} of max 2   (plan: plans/{task}-plan.md)
+Fix ONLY these review findings:
+{REQUIRED_CHANGES verbatim}
+Files: {same list}  |  Verify with: {command}
+Same governance and return contract as the original phase.
+""")
 ```
 
-**Anuncio del Conductor:**
+On a 3rd failure, stop and consult the user instead of looping.
+
+## 5. Divergent fork (creativity round)
+
+Send 2-3 of these in ONE message, each with a different lens. Omit `subagent_type` (fork) and `model`.
+
 ```
-🔍 Delegando review a review-agent...
-```
-
----
-
-## 4️⃣ Template — Re-delegar tras `NEEDS_REVISION`
-
-```python
-Task(
-  description="Fase {N}: corregir {breve}",
-  subagent_type="implement-agent",
-  prompt="""
-## Fase {N} — Corrección tras review
-
-## Issues a corregir (del review-agent)
-1. **[CRITICAL/MAJOR]** {issue 1} ({archivo}:{línea})
-2. **[MAJOR]** {issue 2} ({archivo}:{línea})
-
-## Convenciones del proyecto
-- {mismas que se pasaron originalmente}
-
-## Archivos
-- {paths a tocar}
-
-## Restricciones
-- SOLO corrige los issues listados
-- NO refactorices fuera del scope de los issues
-- Reporta con el formato estándar
-
-## Identidad
-Inicia tu respuesta con: '🤖 [implement-agent] Ejecutando Fase {N} (revisión)...'
-"""
-)
+Agent(description="Ideas: {lens}", prompt="""
+Design question: {the decision to make, with constraints}
+Your lens: {simplest thing that works | most robust long-term | unconventional / reuse what exists}
+Work independently — you will not see other proposals.
+Avoid the predictable and the first idea that comes to mind.
+Return 2-3 genuinely different options. For each: one-paragraph sketch · probability it's the right call (0-1)
+· biggest risk · cost (S/M/L). At least one option must be low-probability but plausible.
+""")
 ```
 
----
+The Conductor then picks the 2-3 strongest *distinct* options, recommends one, and lets the user choose.
 
-## 5️⃣ Template — Invocar `AgentArchitect`
+## 6. AgentArchitect
 
-```python
-Task(
-  description="Diseñar equipo de agentes para {dominio}",
-  subagent_type="AgentArchitect",
-  prompt="""
-## Problema
-{descripción del problema que el usuario quiere resolver}
-
-## Lo que ya sé del contexto
-{cualquier información que el usuario haya dado: stack, entregable, restricciones}
-
-## Proyecto existente o nuevo
-{respuesta de Q1 si ya se preguntó}
-
-## Tu trabajo
-1. Si proyecto existente: scan de .claude/agents/ para ver agentes ya registrados
-2. Entrevistar al usuario (protocolo AOD §2)
-3. Diseñar la pirámide de agentes
-4. Presentar para aprobación — PAUSA
-5. Generar archivos en .claude/agents/
-
-## Identidad
-Inicia tu respuesta con: '🏗️ [AgentArchitect] Diseñando equipo...'
-"""
-)
+```
+Task(description="Design team for {domain}", subagent_type="AgentArchitect", prompt="""
+Problem: {description}
+Known context: {what the user said}
+Interview the user, design the agent pyramid, generate files in .claude/agents/.
+""")
 ```
 
-**Anuncio del Conductor:**
+## 7. Final report to the user (user's language)
+
 ```
-🏗️ Delegando diseño de equipo a AgentArchitect...
+**{Outcome in one sentence.}**
+
+- Changed: {files / features, grouped}
+- Verified: {tests + reviewer independent checks}
+- Not done / risks: {honest list, or "nothing pending"}
+- Needs your decision: {list, or omit}
+
+Commit: `{type(scope): message}`
 ```
-
----
-
-## 6️⃣ Template — Pausa post-fase (Conductor → Usuario)
-
-```markdown
-## ✅ Fase {N} completada
-
-### Status del review
-**APPROVED** ✅
-
-### Archivos modificados
-- {lista}
-
-### Resumen
-{1-2 oraciones}
-
-### Mensaje de commit sugerido
-```
-{tipo}: {descripción corta} (max 50 chars)
-
-- bullet 1
-- bullet 2
-```
-
-### TODO actualizado
-- [x] Fase 0: Workspace scan + investigación ✅
-- [x] Fase 1: {título} ✅
-- [x] Fase 2: {título} ✅
-- [🔄] Fase 3: {título} ← SIGUIENTE
-- [ ] Fase 4: {título}
-
-⏸️ **Esperando tu confirmación para continuar con Fase 3.**
-```
-
----
-
-## 7️⃣ Template — Plan Complete (Conductor escribe al cerrar)
-
-Archivo: `plans/{tarea}-complete.md`
-
-```markdown
-## Plan Complete: {Título}
-
-**Summary:** {2-4 oraciones de qué se construyó y valor entregado}
-
-### Phases Completed: {N}/{N}
-1. ✅ Fase 0: Workspace scan + investigación
-2. ✅ Fase 1: {título}
-...
-
-### Archivos creados/modificados
-- {lista completa}
-
-### Tests
-- Total escritos: {count}
-- Status final: ✅ todos passing
-
-### Convenciones del proyecto respetadas
-- Idioma: {idioma}
-- Stack: {stack}
-- Patrones: {patrones}
-
-### Recomendaciones siguientes
-- {sugerencia opcional 1}
-```
-
----
-
-## 📋 Checklist mental del Conductor (antes de cada respuesta)
-
-- [ ] ¿Mostré el bloque `🎭 CONDUCTOR ACTIVADO` en la primera respuesta?
-- [ ] ¿Hice la mini-entrevista (Q1, Q2, Q3)?
-- [ ] ¿Estoy a punto de usar Read/Grep/Edit/Bash sobre código? → DELEGA
-- [ ] ¿Pasé las convenciones del workspace scan al implement-agent y review-agent?
-- [ ] ¿Estoy mostrando el TODO actualizado en esta respuesta?
-- [ ] ¿Anuncié al usuario qué subagente voy a invocar?
-- [ ] ¿La firma `🤖 [<agent>]` apareció en la respuesta del subagente? Si no, reportar y verificar `subagent_type`
-- [ ] ¿Estoy en un punto de pausa obligatoria? → No avances sin confirmación

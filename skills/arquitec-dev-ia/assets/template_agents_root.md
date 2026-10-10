@@ -1,23 +1,23 @@
-# {Nombre del Proyecto} — AGENTS.md
+# {Project Name} — AGENTS.md
 
-> {Descripción breve de una línea del proyecto}
+> {One-line brief description of the project}
 
-## Visión General
+## Overview
 
-<!-- Diagrama de arquitectura obligatorio — Mermaid flowchart TB -->
+<!-- Mandatory architecture diagram — Mermaid flowchart TB -->
 ```mermaid
 flowchart TB
     subgraph INTERNET["Internet"]
-        CLIENT["Cliente"]
+        CLIENT["Client"]
     end
 
-    subgraph SERVER["Servidor / Infraestructura"]
-        subgraph COMP_A["Componente A"]
-            SVC_A1["Servicio A1\n:puerto"]
-            SVC_A2["Servicio A2"]
+    subgraph SERVER["Server / Infrastructure"]
+        subgraph COMP_A["Component A"]
+            SVC_A1["Service A1\n:port"]
+            SVC_A2["Service A2"]
         end
-        subgraph COMP_B["Componente B"]
-            SVC_B1["Servicio B1\n:puerto"]
+        subgraph COMP_B["Component B"]
+            SVC_B1["Service B1\n:port"]
         end
     end
 
@@ -26,51 +26,51 @@ flowchart TB
     SVC_A1 --> SVC_B1
 ```
 
-## Componentes
+## Components
 
-| Componente | Ubicación | Stack | AGENTS.md |
+| Component | Location | Stack | AGENTS.md |
 |---|---|---|---|
-| `componente-a/` | Descripción | Tech stack | [AGENTS.md](componente-a/AGENTS.md) |
-| `componente-b/` | Descripción | Tech stack | [AGENTS.md](componente-b/AGENTS.md) |
+| `component-a/` | Description | Tech stack | [AGENTS.md](component-a/AGENTS.md) |
+| `component-b/` | Description | Tech stack | [AGENTS.md](component-b/AGENTS.md) |
 
-## Skills Disponibles
+## Available Skills
 
-### Genéricas
-| Skill | Descripción | URL |
+### Generic
+| Skill | Description | URL |
 |---|---|---|
-| `nombre-skill` | Qué hace | [SKILL.md](skills/nombre-skill/SKILL.md) |
+| `skill-name` | What it does | [SKILL.md](skills/skill-name/SKILL.md) |
 
-### Específicas del Proyecto
-| Skill | Descripción | URL |
+### Project-Specific
+| Skill | Description | URL |
 |---|---|---|
-| `proyecto-feature` | Qué hace | [SKILL.md](skills/proyecto-feature/SKILL.md) |
+| `project-feature` | What it does | [SKILL.md](skills/project-feature/SKILL.md) |
 
 ## Auto-invoke Skills
 
-Cuando realices estas acciones, SIEMPRE invoca la skill correspondiente PRIMERO:
+When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 
-| Acción | Skill |
+| Action | Skill |
 |---|---|
-| Crear/modificar arquitectura de agentes | `arquitect-dev-ia` |
-| Crear nueva skill | `skill-creator` |
-| Hacer un commit | `proyecto-commit` |
+| Create/modify agent architecture | `arquitect-dev-ia` |
+| Create new skill | `skill-creator` |
+| Make a commit | `project-commit` |
 
-## Convenciones
+## Conventions
 
-- **Idioma**: Español (código, docs, commits)
-- **Diagramas**: Mermaid obligatorio para arquitectura y flujos
-- **Docker**: Todo en contenedores
-- **`.env`**: Nunca en git
+- **Language**: English (code, docs, commits)
+- **Diagrams**: Mermaid mandatory for architecture and flows
+- **Docker**: Everything in containers
+- **`.env`**: Never in git
 
-## Workflow de Operaciones
+## Operations Workflow
 
 ```mermaid
 flowchart TD
-    A["Leer AGENTS.md del componente"] --> B{"¿Tiene dependencias\nde otros componentes?"}
-    B -->|Sí| C["Verificar redes/volúmenes\ncompartidos"]
-    B -->|No| D["Trabajar aislado"]
-    C --> E["Implementar cambio"]
+    A["Read component AGENTS.md"] --> B{"Has dependencies\non other components?"}
+    B -->|Yes| C["Check shared\nnetworks/volumes"]
+    B -->|No| D["Work isolated"]
+    C --> E["Implement change"]
     D --> E
     E --> F["docker-compose up -d --build"]
-    F --> G["Verificar health checks"]
+    F --> G["Verify health checks"]
 ```
