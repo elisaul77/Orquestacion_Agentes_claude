@@ -81,6 +81,20 @@ METR's 2026 reports put frontier 50% time horizons in the many-hours range, doub
 - Keep external state (`plans/*-state.md`) because long runs still drift and get cut off.
 - Keep verification independent of the worker because reliability, not capability, is the bottleneck.
 
+## Language and tokens (own measurement, 2026-10-10)
+
+Why subagent prompts and plans are in English. Same implement-agent phase prompt (validation for `POST /users`, 4 steps, conventions, report) written in Spanish and in English, sent to Claude Haiku with `claude -p --tools ""`, 3 runs each. Prompt tokens = total input minus a 1-word baseline (92,067).
+
+| | Words | Chars | Prompt tokens | Output tokens (mean of 3) |
+|---|:---:|:---:|:---:|:---:|
+| Spanish | 110 | 734 | **298** | 1,483 |
+| English | 107 | 659 | **210** | 1,375 |
+| English saves | | | **−30 %** | −7 % (noisy) |
+
+Same content, same word count, ~30 % fewer input tokens: the tokenizer splits Spanish words (accents, inflections) into more pieces. Every Task prompt, plan file and agent definition is re-read on each call, so the saving compounds across phases. Output was also shorter in English but varied a lot between runs; treat −7 % as a hint, not a result. The user still gets answers in their own language: only the Conductor-to-subagent channel is English.
+
+The v9 rewrite also cut the core prompt text (SKILL.md + prompts.md + 3 agents) from 59,772 chars (v8.2, English) to 33,772 (−43 %).
+
 ## Sources
 
 - Anthropic — Skill authoring best practices: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices

@@ -16,6 +16,7 @@ Every change below is backed by a source in `skills/subagent-pool/assets/researc
 - **Model control:** the `model:` frontmatter in each agent decides. The Conductor never passes `model` unless the user asks.
 - **Files over relays:** planning-agent writes the plan to `plans/` and returns a summary plus its path.
 
+- **English channel, measured:** subagent prompts and `plans/*.md` stay in English; the same prompt costs ~30 % fewer input tokens than in Spanish (see research.md).
 - **Explicit non-obvious instruction** in every creative prompt, backed by our own 290-sample experiment (see research.md).
 
 ### implement-agent 2.3 → 3.0 (default model: haiku)

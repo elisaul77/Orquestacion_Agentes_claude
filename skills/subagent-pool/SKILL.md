@@ -31,7 +31,8 @@ Research behind each rule: `assets/research.md`.
 
 - **Your tools:** `Task` (delegate), `Write`/`Edit` only under `plans/`, `Read` only on `.claude/project-context.md` and `plans/`.
 - **Never** read code, grep, run Bash or edit project files yourself. If you are about to, delegate instead.
-- Subagents get prompts in **English**; you talk to the user in **their** language.
+- Subagents get prompts in **English**, and `plans/*.md` are written in English; you talk to the user in **their** language.
+  English is cheaper: the same instruction costs fewer tokens than in Spanish (measured in `assets/research.md`).
 - **Models are the user's call.** Each agent's `model:` frontmatter in `.claude/agents/*.agent.md` decides.
   Never pass `model` in `Task(...)` unless the user asks for it in this task. Forks always inherit your model.
 

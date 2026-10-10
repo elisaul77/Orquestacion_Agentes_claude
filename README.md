@@ -1,55 +1,58 @@
 # Orquestacion Agentes Claude
 
-> **Patrón Conductor + Subagentes para Claude Code** — Orquestación local de tareas complejas con Inteligencia Artificial integrada.
+> **Conductor + Subagents pattern for Claude Code** — local orchestration of complex tasks with built-in AI.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill%20v9.0-blueviolet.svg)](https://claude.ai/code)
-[![Conductor Pattern](https://img.shields.io/badge/Pattern-Conductor%20%2B%20Subagentes-orange.svg)](#arquitectura)
+[![Conductor Pattern](https://img.shields.io/badge/Pattern-Conductor%20%2B%20Subagents-orange.svg)](#️-architecture)
 [![Graphify](https://img.shields.io/badge/Graphify-Knowledge%20Graph-teal.svg)](https://github.com/safishamsi/graphify)
 [![GitHub Sponsors](https://img.shields.io/badge/GitHub-Sponsors-pink?style=for-the-badge&logo=githubsponsors)](https://github.com/sponsors/elisaul77)
 [![PayPal](https://img.shields.io/badge/PayPal-Donate-blue?style=for-the-badge&logo=paypal)](https://paypal.me/eflorezp)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support-yellow?style=for-the-badge&logo=buymeacoffee)](https://buymeacoffee.com/elisaul77)
 
-Sistema de orquestación multi-agente para **Claude Code**, implementando el patrón **Conductor + Subagentes**. El Conductor planifica y coordina; los subagentes ejecutan. Nunca al revés.
+🌐 **English** · [Español](README.es.md)
+
+Multi-agent orchestration for **Claude Code** using the **Conductor + Subagents** pattern. The Conductor plans and coordinates; the subagents execute. Never the other way around.
 
 ---
 
-## ✨ Características principales
+## ✨ Key features
 
-- 🎭 **Patrón Conductor**: Un agente central que planifica, coordina y nunca toca código
-- 🤖 **Graphify integrado**: `planning-agent` construye un grafo de conocimiento del proyecto antes de planificar
-- 🔍 **Review automático**: `review-agent` valida cada fase (APPROVED / NEEDS\_REVISION / FAILED) con criterios de seguridad OWASP
-- 🏗️ **AgentArchitect**: Diseña y genera nuevos equipos de agentes en tiempo real
-- ⏸️ **Pausas estratégicas**: El Conductor presenta el plan al usuario antes de ejecutar cada fase
-- 📋 **Trazabilidad completa**: Planes escritos en `plans/*.md` y estado visible en TodoWrite
+- 🎭 **Conductor pattern**: a central agent that plans, coordinates and never touches code
+- 🤖 **Graphify built in**: `planning-agent` builds a knowledge graph of the project before planning
+- 🔍 **Automatic review**: `review-agent` validates every phase (APPROVED / NEEDS\_REVISION / FAILED) with OWASP security criteria
+- 🏗️ **AgentArchitect**: designs and generates new agent teams on the fly
+- ⏸️ **Strategic pauses**: the Conductor shows you the plan before executing
+- 📋 **Full traceability**: plans written to `plans/*.md`, progress visible in TodoWrite
 
-### Novedades v9.0 — basadas en investigación 2025-2026
+### New in v9.0 — backed by 2025-2026 research
 
-- 📏 **Esfuerzo a escala**: niveles S/M/L. Lo pequeño no se orquesta (multiagente cuesta ~15× tokens).
-- 💡 **Ronda divergente (creatividad)**: 2-3 forks independientes con lentes distintas y opciones con probabilidad (*Verbalized Sampling*), sin verse entre sí para evitar el colapso de diversidad.
-- 🛡️ **Gobierno de actuaciones**: niveles Auto / Avisar / Aprobar. Borrar, migrar, secretos, push, publicar o desplegar siempre pasan por el usuario. Máximo 2 vueltas de revisión antes de escalar.
-- 🧪 **Integridad de tests**: el implementador nunca debilita tests; el revisor revisa su diff y corre una comprobación propia.
-- 🗣️ **Comunicación**: resultado primero, malas noticias claras, confianza calibrada, preguntar solo lo que cambia el plan (cada pregunta con su valor por defecto).
-- 🪙 **Ahorro de tokens**: la skill pasa de 667 a ~170 líneas; plantillas en `assets/` (divulgación progresiva); planes por archivo, no pegados.
-- 🎛️ **Tú controlas los modelos**: el `model:` de cada `.agent.md` manda; el Conductor no lo sobrescribe (por defecto: implement = haiku, planning/review = sonnet).
+- 📏 **Effort scales with the task**: S/M/L tiers. Small work is not orchestrated (multi-agent costs ~15× tokens).
+- 💡 **Divergent round (creativity)**: 2-3 isolated forks with distinct lenses return options with probabilities (*Verbalized Sampling*), never seeing each other, to avoid diversity collapse.
+- 🛡️ **Action governance**: Auto / Notify / Approve tiers. Deleting, migrating, secrets, push, publishing or deploying always go through you. At most 2 review loops before escalating.
+- 🧪 **Test integrity**: the implementer never weakens tests; the reviewer checks its diff and runs an independent check.
+- 🗣️ **Communication**: outcome first, bad news stated plainly, calibrated confidence, ask only what changes the plan (each question with a default).
+- 🪙 **Token savings**: the skill went from 667 to ~170 lines; templates in `assets/` (progressive disclosure); plans passed by file, not pasted.
+- 🌐 **English internal channel**: subagent prompts and `plans/*.md` are in English (the same prompt costs **~30 % fewer tokens** than in Spanish, measured); the Conductor talks to you in your language.
+- 🎛️ **You control the models**: each `.agent.md` `model:` decides; the Conductor never overrides it (defaults: implement = haiku, planning/review = sonnet).
 
-Fuentes y razonamiento: [`skills/subagent-pool/assets/research.md`](skills/subagent-pool/assets/research.md) · cambios: [CHANGELOG.md](CHANGELOG.md)
+Sources and reasoning: [`skills/subagent-pool/assets/research.md`](skills/subagent-pool/assets/research.md) · changes: [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
-## 🏗️ Arquitectura
+## 🏗️ Architecture
 
 ```mermaid
 flowchart LR
-    USER["👤 Usuario"] -->|"petición"| CONDUCTOR["🎭 Conductor\nNUNCA toca código"]
-    CONDUCTOR -->|"investiga + workspace scan"| PA["📋 planning-agent"]
-    CONDUCTOR -->|"implementa"| IA["💻 implement-agent"]
-    CONDUCTOR -->|"revisa + seguridad"| RA["🔍 review-agent"]
-    CONDUCTOR -->|"diseña equipo nuevo"| AA["🏗️ AgentArchitect"]
-    PA -.->|"grafo + draft del plan"| CONDUCTOR
-    IA -.->|"reporte"| CONDUCTOR
+    USER["👤 User"] -->|"request"| CONDUCTOR["🎭 Conductor\nNEVER touches code"]
+    CONDUCTOR -->|"research + workspace scan"| PA["📋 planning-agent"]
+    CONDUCTOR -->|"implement"| IA["💻 implement-agent"]
+    CONDUCTOR -->|"review + security"| RA["🔍 review-agent"]
+    CONDUCTOR -->|"design new team"| AA["🏗️ AgentArchitect"]
+    PA -.->|"graph + plan draft"| CONDUCTOR
+    IA -.->|"report"| CONDUCTOR
     RA -.->|"APPROVED/NEEDS_REVISION/FAILED"| CONDUCTOR
-    AA -.->|"archivos .agent.md generados"| CONDUCTOR
+    AA -.->|"generated .agent.md files"| CONDUCTOR
     CONDUCTOR --> USER
 
     style CONDUCTOR fill:#ff9800,color:#fff
@@ -59,32 +62,32 @@ flowchart LR
     style AA fill:#9c27b0,color:#fff
 ```
 
-**Principio:** El Conductor COORDINA. Los subagentes EJECUTAN. La firma `🤖 [<agent>] ...` confirma qué subagente respondió.
+**Principle:** the Conductor COORDINATES. Subagents EXECUTE. The `🤖 [<agent>] ...` signature confirms which subagent answered.
 
 ---
 
-## 🚀 Instalación rápida
+## 🚀 Quick install
 
-### Requisitos previos
-- [Claude Code](https://claude.ai/code) instalado y configurado
-- Carpeta `~/.claude/` disponible
+### Prerequisites
+- [Claude Code](https://claude.ai/code) installed and configured
+- A `~/.claude/` folder
 
-### Opción A — Clonar e instalar manualmente
+### Option A — Clone and copy
 
 ```bash
 git clone https://github.com/elisaul77/Orquestacion_Agentes_claude.git
 cd Orquestacion_Agentes_claude
 
-# Copiar skills
+# Skills
 cp -r skills/subagent-pool ~/.claude/skills/
 cp -r skills/arquitec-dev-ia ~/.claude/skills/
 cp -r skills/graphify ~/.claude/skills/
 
-# Copiar agentes
+# Agents
 cp agents/*.agent.md ~/.claude/agents/
 ```
 
-### Opción B — Instalar directamente con curl
+### Option B — Install with curl
 
 ```bash
 # Skills
@@ -98,248 +101,212 @@ for f in prompts research interview-protocol agent-definitions; do
   curl -sSL "$BASE/skills/subagent-pool/assets/${f}.md" -o ~/.claude/skills/subagent-pool/assets/${f}.md
 done
 
-# Agentes
+# Agents
 for agent in planning-agent implement-agent review-agent AgentArchitect; do
-  curl -sSL "https://raw.githubusercontent.com/elisaul77/Orquestacion_Agentes_claude/master/agents/${agent}.agent.md" \
-    -o ~/.claude/agents/${agent}.agent.md
+  curl -sSL "$BASE/agents/${agent}.agent.md" -o ~/.claude/agents/${agent}.agent.md
 done
 ```
 
-> **Nota:** El skill `graphify` requiere instalar la herramienta por separado.
-> Ver la sección [Graphify — Grafo de Conocimiento](#-graphify--grafo-de-conocimiento) más abajo.
+> **Note:** the `graphify` skill needs the tool installed separately — see [Graphify](#-graphify--knowledge-graph) below.
 
 ---
 
-## 🎯 Uso
+## 🎯 Usage
 
-Activa el Conductor con cualquiera de estas frases en Claude Code:
+Trigger the Conductor in Claude Code with any of these:
 
-| Frase | Resultado |
+| Phrase | Result |
 |-------|-----------|
-| `usa el conductor para...` | Activa `subagent-pool` |
-| `delegar a subagentes` | Activa `subagent-pool` |
-| `orquesta la separación de...` | Activa `subagent-pool` |
-| `tarea compleja: ...` | Activa `subagent-pool` |
-| `diseña un equipo de agentes para...` | `subagent-pool` → `AgentArchitect` |
+| `use the conductor to...` | Activates `subagent-pool` |
+| `delegate to subagents` | Activates `subagent-pool` |
+| `orchestrate the split of...` | Activates `subagent-pool` |
+| `complex task: ...` | Activates `subagent-pool` |
+| `design an agent team for...` | `subagent-pool` → `AgentArchitect` |
+
+Spanish phrases work too (`usa el conductor para...`).
 
 ---
 
-## 🔄 Flujo de trabajo v9.0
+## 🔄 Workflow v9.0
 
 ```
-0. 🔐 Lee .claude/project-context.md (o sugiere arquitec-dev-ia) · ofrece reanudar si hay state.md
-1. 📏 Decide el nivel: S (directo) · M · L
-2. ❓ Pregunta solo lo que cambia el plan; el resto lo asume y lo declara
-3. 💡 (L con decisión de diseño) Ronda divergente → el usuario elige el enfoque
-4. 📋 planning-agent → plan en plans/{tarea}-draft.md
-5. ⏸️  PAUSA — aprobación del plan
-6. Por cada fase:
-   ├── 💻 implement-agent ejecuta (Aprobar-tier → BLOCKED y pregunta)
-   ├── 🔍 review-agent: contrato primero + comprobación independiente
-   ├── 🔁 NEEDS_REVISION → máx. 2 vueltas, luego consulta
-   ├── 💾 checkpoint plans/{tarea}-state.md
-   └── ⏸️  pausa solo si toca god node, acción a aprobar, FAILED o lo pediste
-7. 📄 Informe final: qué cambió · cómo se verificó · qué falta · commit
+0. 🔐 Read .claude/project-context.md (or suggest arquitec-dev-ia) · offer to resume if state.md exists
+1. 📏 Pick the tier: S (direct) · M · L
+2. ❓ Ask only what changes the plan; assume and state the rest
+3. 💡 (L with a design choice) Divergent round → the user picks the approach
+4. 📋 planning-agent → plan in plans/{task}-draft.md
+5. ⏸️  PAUSE — plan approval
+6. For each phase:
+   ├── 💻 implement-agent runs (Approve-tier → BLOCKED and asks)
+   ├── 🔍 review-agent: contract first + independent check
+   ├── 🔁 NEEDS_REVISION → max 2 loops, then ask
+   ├── 💾 checkpoint plans/{task}-state.md
+   └── ⏸️  pause only on god nodes, approve-tier actions, FAILED or if you asked
+7. 📄 Final report: what changed · how it was verified · what's left · commit
 ```
 
 ---
 
-## 🔬 Estado del arte → qué se implementó (v9.0)
+## 🔬 State of the art → what was implemented (v9.0)
 
-Investigación de octubre de 2026 sobre creatividad, gobierno de agentes y nuevas capacidades de los modelos. Cada fila es un hallazgo y la regla que generó. Detalle y enlaces en [`research.md`](skills/subagent-pool/assets/research.md).
+October 2026 research on creativity, agent governance and new model capabilities. Each row is a finding and the rule it produced. Details and links in [`research.md`](skills/subagent-pool/assets/research.md).
 
-| Hallazgo | Fuente | Qué hace ahora la skill |
+| Finding | Source | What the skill does now |
 |---|---|---|
-| Los modelos alineados caen en la respuesta "típica" (*mode collapse*); pedir varias respuestas **con su probabilidad** aumenta 1,6–2,1× la diversidad sin perder precisión | Verbalized Sampling (arXiv 2510.01171) | En la ronda divergente cada fork devuelve 2-3 opciones con probabilidad, incluida una poco probable |
-| Agentes que ven las ideas de los demás, o un líder que opina primero, convergen antes de tiempo | Diversity Collapse in MAS (arXiv 2604.18005) | Los forks trabajan aislados y el Conductor no revela su preferencia hasta converger |
-| El debate entre agentes reduce la diversidad (deriva de identidad, presión de la mayoría) | Creative-MAD (arXiv 2609.00683) | Cada fork recibe una lente fija y distinta: simple / robusta / no convencional |
-| La mayoría de los fallos multiagente vienen del diseño y de **no saber cuándo verificar o parar** | MAST, NeurIPS 2025 (arXiv 2503.13657) | Contratos de retorno, el veredicto del revisor decide y máximo 2 vueltas de revisión antes de escalar |
-| Los puntos de control humano solo sirven si cambian el control; si no, son un sello de goma | Marco IMDA / Singapore Consensus 2026 | Niveles Auto / Avisar / Aprobar; las pausas por fase solo aparecen donde hay riesgo real |
-| Los agentes de código a veces "hacen trampa" con los tests, y más cuanto más grande es el código | EvilGenie (2511.21654), SpecBench (2605.21384) | Prohibido debilitar tests; el revisor revisa su diff y corre una comprobación propia (`[TEST-INTEGRITY]`) |
-| Un juez LLM prefiere los textos parecidos a los suyos | Self-Preference Bias (arXiv 2410.21819) | Se recomienda revisor y implementador en modelos distintos (por defecto sonnet revisa a haiku) |
-| Preguntar solo cuando la incertidumbre importa resuelve más tareas con menos preguntas | Ask or Assume? (2603.26233), ACL 2026 Findings | "Preguntar o asumir": máximo 3 preguntas con valor por defecto; el resto se declara como supuesto |
-| Multiagente rinde mucho en tareas amplias pero cuesta ~15× tokens; el gasto explica ~80% del rendimiento | Anthropic, sistema de investigación multiagente | Niveles S/M/L: lo pequeño no se orquesta |
-| Los archivos de instrucciones largos empeoran a los agentes y suben el coste más de un 20% | Evaluating AGENTS.md (arXiv 2602.11988) | La skill pasa de 667 a ~170 líneas y quita lo que el modelo ya sabe |
-| "Claude ya es muy listo": solo añade lo que no sabe; menos de 500 líneas y detalles en archivos aparte | Guía oficial de skills de Anthropic | Plantillas en `assets/` (divulgación progresiva); el detalle del prompt se ajusta al modelo |
-| Menos contexto acumulado = más éxito y menos tokens | Less Context, Better Agents (2026) | Los planes viajan por archivo (`PLAN_FILE`), no pegados; estado en una línea |
-| Los horizontes de tarea se duplican cada 4-7 meses, pero la fiabilidad en tareas largas sigue cojeando | METR 2026 | Se delegan resultados y criterios (no pasos obvios), con checkpoint externo y verificación independiente |
+| Aligned models collapse to the "typical" answer (*mode collapse*); asking for several answers **with probabilities** raises diversity 1.6–2.1× without losing accuracy | Verbalized Sampling (arXiv 2510.01171) | In the divergent round each fork returns 2-3 options with probabilities, including an unlikely one |
+| Agents that see each other's ideas, or a leader who speaks first, converge too early | Diversity Collapse in MAS (arXiv 2604.18005) | Forks work isolated and the Conductor hides its preference until convergence |
+| Debate between agents reduces diversity (identity drift, majority pressure) | Creative-MAD (arXiv 2609.00683) | Each fork gets a fixed, distinct lens: simple / robust / unconventional |
+| Most multi-agent failures come from design and **not knowing when to verify or stop** | MAST, NeurIPS 2025 (arXiv 2503.13657) | Return contracts, the reviewer's verdict decides, max 2 review loops before escalating |
+| Human checkpoints only help if they change control; otherwise they are a rubber stamp | IMDA framework / Singapore Consensus 2026 | Auto / Notify / Approve tiers; per-phase pauses only where real risk exists |
+| Coding agents sometimes "cheat" on tests, more so in larger codebases | EvilGenie (2511.21654), SpecBench (2605.21384) | Weakening tests is forbidden; the reviewer checks the diff and runs its own check (`[TEST-INTEGRITY]`) |
+| An LLM judge prefers text similar to its own | Self-Preference Bias (arXiv 2410.21819) | Reviewer and implementer on different models (sonnet reviews haiku by default) |
+| Asking only when uncertainty matters solves more tasks with fewer questions | Ask or Assume? (2603.26233), ACL 2026 Findings | "Ask or assume": max 3 questions with defaults; the rest stated as assumptions |
+| Multi-agent shines on broad tasks but costs ~15× tokens; spend explains ~80% of performance | Anthropic, multi-agent research system | S/M/L tiers: small work is not orchestrated |
+| Long instruction files make agents worse and cost 20%+ more | Evaluating AGENTS.md (arXiv 2602.11988) | The skill went from 667 to ~170 lines, dropping what the model already knows |
+| "Claude is already very smart": add only what it doesn't know; under 500 lines, details in separate files | Anthropic skill authoring guide | Templates in `assets/` (progressive disclosure); prompt detail tuned to the model |
+| Less accumulated context = more success and fewer tokens | Less Context, Better Agents (2026) | Plans travel by file (`PLAN_FILE`), not pasted; one-line status |
+| Task horizons double every 4-7 months, but long-task reliability still lags | METR 2026 | Delegate outcomes and criteria (not obvious steps), with external checkpoints and independent verification |
+| The same instruction costs more tokens in Spanish than in English | Own measurement, 2026-10-10 | Subagent prompts and plans in English (−30 % input tokens); user-facing replies in the user's language |
+| A calm "avoid the predictable" instruction beats praise, insults or typos for originality | Own experiment, 290 samples ([avoid-the-predictable](https://github.com/elisaul77/avoid-the-predictable)) | Every creative prompt carries an explicit non-obvious instruction |
 
-**Habilidades blandas añadidas al Conductor:** primero el resultado, las malas noticias claras, separar lo *verificado* de lo *creído*, discrepar una vez con argumentos y luego respetar la decisión, recomendar en vez de listar opciones, y un informe final honesto.
+**Soft skills added to the Conductor:** outcome first, bad news stated plainly, separate *verified* from *believed*, disagree once with reasons then respect the decision, recommend instead of listing options, and an honest final report.
 
 ---
 
-## 📁 Estructura del repositorio
+## 📁 Repository layout
 
 ```
 Orquestacion_Agentes_claude/
-├── AGENTS.md                          # Visión general, reglas y diagrama del sistema
+├── AGENTS.md                          # Overview, rules and system diagram
 ├── skills/
 │   ├── subagent-pool/
-│   │   ├── SKILL.md                   # Skill principal — rol del Conductor
+│   │   ├── SKILL.md                   # Main skill — the Conductor role
 │   │   └── assets/
-│   │       ├── prompts.md             # Plantillas de Task + contratos de retorno
-│   │       ├── research.md            # Evidencia y fuentes detrás de cada regla v9
-│   │       ├── agent-definitions.md   # Definiciones y troubleshooting
-│   │       └── interview-protocol.md  # Protocolo de mini-entrevista completo
+│   │       ├── prompts.md             # Task templates + return contracts
+│   │       ├── research.md            # Evidence and sources behind each v9 rule
+│   │       ├── agent-definitions.md   # Definitions and troubleshooting
+│   │       └── interview-protocol.md  # Full mini-interview protocol
 │   ├── arquitec-dev-ia/
-│   │   ├── SKILL.md                   # Skill de documentación de contexto IA
-│   │   ├── assets/                    # Templates AGENTS.md, CLAUDE.md, skills
-│   │   └── references/                # Documentación de referencia
+│   │   ├── SKILL.md                   # AI context documentation skill
+│   │   ├── assets/                    # AGENTS.md, CLAUDE.md, skill templates
+│   │   └── references/                # Reference docs
 │   └── graphify/
-│       └── SKILL.md                   # Skill de grafo de conocimiento (ver sección abajo)
+│       └── SKILL.md                   # Knowledge graph skill (see below)
 ├── agents/
-│   ├── planning-agent.agent.md        # Investiga y redacta el plan (con graphify)
-│   ├── implement-agent.agent.md       # Implementa código y tests por fase
-│   ├── review-agent.agent.md          # Revisa y valida cada fase
-│   └── AgentArchitect.agent.md        # Diseña y genera nuevos equipos de agentes
+│   ├── planning-agent.agent.md        # Researches and drafts the plan (with graphify)
+│   ├── implement-agent.agent.md       # Implements code and tests per phase
+│   ├── review-agent.agent.md          # Reviews and validates each phase
+│   └── AgentArchitect.agent.md        # Designs and generates new agent teams
 ├── CHANGELOG.md
 ├── LICENSE
 ├── FUNDING.md
-└── README.md
+├── README.md                          # English
+└── README.es.md                       # Español
 ```
 
 ---
 
-## 🧠 Graphify — Grafo de Conocimiento
+## 🧠 Graphify — Knowledge Graph
 
-Este stack incluye el skill **[graphify](https://github.com/safishamsi/graphify)**, una herramienta de terceros que convierte cualquier repositorio de código, documentos, PDFs, imágenes y videos en un **grafo de conocimiento consultable**.
+This stack includes the **[graphify](https://github.com/safishamsi/graphify)** skill, a third-party tool that turns any code repo, docs, PDFs, images and videos into a **queryable knowledge graph**.
 
-El `planning-agent` lo usa automáticamente para investigar el codebase antes de planificar — reemplaza el Glob/Grep manual en proyectos medianos y grandes, revelando dependencias y conexiones ocultas que no serían evidentes leyendo archivos uno por uno.
+`planning-agent` uses it automatically to explore the codebase before planning — it replaces manual Glob/Grep in medium and large projects and reveals hidden dependencies.
 
-> Proyecto original: **[github.com/safishamsi/graphify](https://github.com/safishamsi/graphify)**
+> Original project: **[github.com/safishamsi/graphify](https://github.com/safishamsi/graphify)**
 
-### Instalación de Graphify
+### Installing Graphify
 
-Graphify se instala por separado como herramienta global. Requiere Python 3.10+ y `uv` (recomendado).
-
-```bash
-# Instalar con uv (recomendado)
-uv tool install graphifyy
-
-# Registrar el skill en Claude Code
-graphify install
-```
-
-> El nombre del paquete en PyPI es `graphifyy` (doble y), pero el comando CLI es `graphify`.
-
-**Alternativa con pipx:**
-```bash
-pipx install graphifyy
-graphify install
-```
-
-**Verificar instalación:**
-```bash
-graphify --version
-```
-
-### Uso básico
+Installed separately as a global tool. Requires Python 3.10+ and `uv` (recommended).
 
 ```bash
-# En Claude Code — analizar el proyecto actual
-/graphify .
-
-# Analizar un path específico
-/graphify ./src
-
-# Analizar un repositorio remoto directamente
-/graphify https://github.com/owner/repo
-
-# Consulta semántica sobre el grafo generado
-/graphify query "¿dónde se maneja la autenticación?"
-
-# Camino más corto entre dos conceptos
-/graphify path "AuthModule" "Database"
-
-# Actualización incremental (solo archivos nuevos/modificados)
-/graphify . --update
-
-# Exportar como servidor MCP para acceso programático
-/graphify . --mcp
+uv tool install graphifyy   # PyPI package is graphifyy (double y); the CLI is graphify
+graphify install            # register the skill in Claude Code
 ```
 
-### Outputs generados
+Alternative: `pipx install graphifyy && graphify install`. Check with `graphify --version`.
 
-Tras ejecutar `/graphify .`, se crea la carpeta `graphify-out/` con:
+### Basic usage
 
-| Archivo | Descripción |
+```bash
+/graphify .                                   # current project
+/graphify ./src                               # a specific path
+/graphify https://github.com/owner/repo       # a remote repo
+/graphify query "where is auth handled?"      # semantic query
+/graphify path "AuthModule" "Database"        # shortest path between concepts
+/graphify . --update                          # incremental update
+/graphify . --mcp                             # expose as an MCP server
+```
+
+### Outputs
+
+`/graphify .` creates `graphify-out/` with:
+
+| File | Description |
 |---------|-------------|
-| `graph.html` | Grafo interactivo — abrir en navegador |
-| `GRAPH_REPORT.md` | Reporte con nodos clave, conexiones sorpresa y preguntas sugeridas |
-| `graph.json` | Datos raw del grafo para consultas programáticas |
+| `graph.html` | Interactive graph — open in a browser |
+| `GRAPH_REPORT.md` | Key nodes, surprising links and suggested questions |
+| `graph.json` | Raw graph data for programmatic queries |
 
-### Integración con el planning-agent
+### Integration with planning-agent
 
-El `planning-agent` de este stack detecta automáticamente si existe `graphify-out/` en el proyecto. Si está disponible, lo usa para:
-
-1. Identificar los **god nodes** (componentes más conectados)
-2. Descubrir dependencias entre módulos sin leer todos los archivos
-3. Generar un plan de implementación informado por la estructura real del código
-
-Si `graphify-out/` no existe, el agente hace workspace scan manual con Glob/Grep.
+If `graphify-out/` exists, `planning-agent` uses it to find **god nodes** (most connected components), discover module dependencies without reading every file, and ground the plan in the real structure. Otherwise it scans the workspace with Glob/Grep.
 
 ---
 
-## 🤝 Contribuir
+## 🤝 Contributing
 
-¡Las contribuciones son bienvenidas! Para contribuir:
+Contributions are welcome:
 
-1. Haz un fork del repositorio
-2. Crea una rama para tu feature (`git checkout -b feat/mi-mejora`)
-3. Realiza tus cambios siguiendo las convenciones del proyecto
-4. Crea un Pull Request describiendo los cambios
+1. Fork the repo
+2. Create a branch (`git checkout -b feat/my-improvement`)
+3. Follow the project conventions
+4. Open a Pull Request describing the changes
 
-### Ideas para contribuir
+### Ideas
 
-- 🤖 Nuevos agentes especializados (frontend, DevOps, ML, etc.)
-- 📚 Mejoras a la documentación y ejemplos de uso
-- 🧪 Casos de prueba y escenarios de orquestación
-- 🌐 Traducciones (English, Português)
+- 🤖 New specialist agents (frontend, DevOps, ML, etc.)
+- 📚 Docs and usage examples
+- 🧪 Test cases and orchestration scenarios
+- 🌐 Translations (Português)
 
 ---
 
-## 💖 Apoya el Proyecto
+## 💖 Support the project
 
-Si este sistema de orquestación te resulta útil, considera apoyar su desarrollo:
+If this orchestration system helps you, consider supporting it:
 
-- ⭐ **Dale una estrella** al repositorio
-- 💰 **[Haz una donación](FUNDING.md)** para apoyar el desarrollo continuo
-- 🐛 **Reporta bugs** y sugiere mejoras
-- 📝 **Contribuye** con nuevos agentes o documentación
-- 📢 **Comparte** el proyecto con otros usuarios de Claude Code
+- ⭐ **Star** the repo
+- 💰 **[Donate](FUNDING.md)** to support ongoing development
+- 🐛 **Report bugs** and suggest improvements
+- 📢 **Share** it with other Claude Code users
 
 [![GitHub Sponsors](https://img.shields.io/badge/❤️%20Sponsor-GitHub-pink)](https://github.com/sponsors/elisaul77)
 [![PayPal](https://img.shields.io/badge/💰%20Donate-PayPal-blue)](https://paypal.me/eflorezp)
 [![Buy Me A Coffee](https://img.shields.io/badge/☕%20Coffee-BuyMeACoffee-yellow)](https://buymeacoffee.com/elisaul77)
 
-Ver todas las opciones de donación en **[FUNDING.md](FUNDING.md)**
-
 ---
 
 ## 📋 Roadmap
 
-- [x] Skill v9.0 basada en investigación (creatividad, gobierno, ahorro de tokens)
-- [ ] Evals reproducibles de la skill con Haiku / Sonnet / Opus
-- [ ] Skill v7.0 con soporte multi-proyecto
-- [ ] Agente especializado en testing (TDD-agent)
-- [ ] Agente de documentación automática (docs-agent)
-- [ ] Integración con herramientas MCP externas
-- [ ] Dashboard de estado de orquestación
+- [x] Research-driven skill v9.0 (creativity, governance, token savings)
+- [x] English internal channel with measured token savings
+- [ ] Reproducible skill evals with Haiku / Sonnet / Opus
+- [ ] Multi-project support
+- [ ] Testing specialist agent (TDD-agent)
+- [ ] Automatic documentation agent (docs-agent)
+- [ ] External MCP tool integration
+- [ ] Orchestration status dashboard
 
 ---
 
-## 📄 Licencia
+## 📄 License
 
-Este proyecto está licenciado bajo la **Licencia MIT** — ver [LICENSE](LICENSE) para más detalles.
+**MIT License** — see [LICENSE](LICENSE).
 
 Copyright (c) 2026 Elisaul Florez ([@elisaul77](https://github.com/elisaul77))
 
 ---
 
-## 🐛 Reportar problemas
+## 🐛 Issues
 
-Usa el [sistema de issues](https://github.com/elisaul77/Orquestacion_Agentes_claude/issues) de GitHub para reportar bugs o sugerir mejoras.
-
----
-
-**¡Gracias por usar el sistema de orquestación de agentes Claude!** 🎭🤖
+Use [GitHub issues](https://github.com/elisaul77/Orquestacion_Agentes_claude/issues) to report bugs or suggest improvements.
