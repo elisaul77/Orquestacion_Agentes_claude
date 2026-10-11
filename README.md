@@ -3,7 +3,7 @@
 > **Conductor + Subagents pattern for Claude Code** — local orchestration of complex tasks with built-in AI.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill%20v9.0-blueviolet.svg)](https://claude.ai/code)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill%20v9.1-blueviolet.svg)](https://claude.ai/code)
 [![Conductor Pattern](https://img.shields.io/badge/Pattern-Conductor%20%2B%20Subagents-orange.svg)](#️-architecture)
 [![Graphify](https://img.shields.io/badge/Graphify-Knowledge%20Graph-teal.svg)](https://github.com/safishamsi/graphify)
 [![GitHub Sponsors](https://img.shields.io/badge/GitHub-Sponsors-pink?style=for-the-badge&logo=githubsponsors)](https://github.com/sponsors/elisaul77)
@@ -33,6 +33,7 @@ Multi-agent orchestration for **Claude Code** using the **Conductor + Subagents*
 - 🧪 **Test integrity**: the implementer never weakens tests; the reviewer checks its diff and runs an independent check.
 - 🗣️ **Communication**: outcome first, bad news stated plainly, calibrated confidence, ask only what changes the plan (each question with a default).
 - 🪙 **Token savings**: the skill went from 667 to ~170 lines; templates in `assets/` (progressive disclosure); plans passed by file, not pasted.
+- 🔀 **Fork or fresh subagent (v9.1, measured)**: forks are ~50 % cheaper only while the Conductor's context is under ~75k tokens and ~2× pricier above it; accuracy was the same. The Conductor picks by context size ([experiment](https://github.com/elisaul77/avoid-the-predictable#-experimento-2-fork-o-subagente-fresco)).
 - 🌐 **English internal channel**: subagent prompts and `plans/*.md` are in English (the same prompt costs **~30 % fewer tokens** than in Spanish, measured); the Conductor talks to you in your language.
 - 🎛️ **You control the models**: each `.agent.md` `model:` decides; the Conductor never overrides it (defaults: implement = haiku, planning/review = sonnet).
 

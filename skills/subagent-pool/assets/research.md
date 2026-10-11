@@ -95,6 +95,27 @@ Same content, same word count, ~30 % fewer input tokens: the tokenizer splits Sp
 
 The v9 rewrite also cut the core prompt text (SKILL.md + prompts.md + 3 agents) from 59,772 chars (v8.2, English) to 33,772 (−43 %).
 
+## Fork vs fresh subagent (own measurement, 2026-10-10)
+
+Hypothesis: subagents that inherit the parent conversation (fork) are more accurate and cheaper than fresh subagents. 68 real delegations in Claude Code 2.1.296, Sonnet parent, identical parent conversation branched with `--resume --fork-session` (bug investigation + 6 user decisions). Accuracy = hidden tests, one per decision. Cost from subagent transcripts at list price. Permutation tests.
+
+| Parent context | Condition | n | Accuracy | Subagent cost | Cache write |
+|---|---|:-:|:-:|:-:|:-:|
+| short (~38k) | fork | 8 | 100 % | **$0.074** | 2.9k |
+| short | fresh Sonnet + brief | 8 | 100 % | $0.150 | 28.1k |
+| short | fresh Sonnet, brief ≤2 sentences | 6 | 100 % | $0.135 | 26.2k |
+| short | fresh Haiku + brief | 6 | 100 % | **$0.062** | 32.4k |
+| long (~165k) | fork | 6 | 100 % | $0.323 | 4.3k |
+| long | fresh Sonnet + brief | 6 | 100 % | $0.163 | 28.7k |
+| long | fresh Haiku + brief | 6 | 100 % | **$0.066** | 35.0k |
+
+- **Accuracy: not confirmed.** A capable parent writes the decisions into the brief; inherited context added nothing (ceiling effect, one task).
+- **Cost depends on parent context.** Forks skip the ~28k cold-start cache write but re-read the parent context each turn. Break-even ≈ **75k tokens** (4–6 turn tasks, same model); above it forks cost ~2×.
+- Forks always run the parent's model; a fresh Haiku agent with a brief was cheapest in every condition.
+- In 299 real subagents from our sessions, forks started at a median 177k context — above break-even.
+
+Data and report: [avoid-the-predictable · experiment 2](https://github.com/elisaul77/avoid-the-predictable#-experimento-2-fork-o-subagente-fresco).
+
 ## Sources
 
 - Anthropic — Skill authoring best practices: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
