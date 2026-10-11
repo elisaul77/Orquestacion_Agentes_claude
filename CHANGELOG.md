@@ -1,5 +1,10 @@
 # Changelog
 
+## v9.3 — 2026-10-11 · Conductor model, measured
+
+- Sonnet as Conductor matched Opus (19/19 hidden criteria) at −39 % cost; the skill suggests `/model sonnet` for tier S/M.
+- `/advisor` is discouraged with this skill: +150 % cost vs Sonnet alone, same accuracy, erratic delegation.
+
 ## v9.2 — 2026-10-11 · Built-in commands, used where they pay off
 
 Based on the official command reference (119 commands) and an isolated test of what Haiku/Sonnet/Opus know about them
