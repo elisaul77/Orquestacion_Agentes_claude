@@ -114,7 +114,7 @@ Hypothesis: subagents that inherit the parent conversation (fork) are more accur
 - Forks always run the parent's model; a fresh Haiku agent with a brief was cheapest in every condition.
 - In 299 real subagents from our sessions, forks started at a median 177k context — above break-even.
 
-Data and report: `experimentos/fork-vs-fresh` (informe.html).
+Data and report: [avoid-the-predictable · experiment 2](https://github.com/elisaul77/avoid-the-predictable#-experimento-2-fork-o-subagente-fresco).
 
 ## Sources
 

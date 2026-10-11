@@ -3,7 +3,7 @@
 > **Patrón Conductor + Subagentes para Claude Code** — Orquestación local de tareas complejas con Inteligencia Artificial integrada.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill%20v9.0-blueviolet.svg)](https://claude.ai/code)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill%20v9.1-blueviolet.svg)](https://claude.ai/code)
 [![Conductor Pattern](https://img.shields.io/badge/Pattern-Conductor%20%2B%20Subagentes-orange.svg)](#arquitectura)
 [![Graphify](https://img.shields.io/badge/Graphify-Knowledge%20Graph-teal.svg)](https://github.com/safishamsi/graphify)
 [![GitHub Sponsors](https://img.shields.io/badge/GitHub-Sponsors-pink?style=for-the-badge&logo=githubsponsors)](https://github.com/sponsors/elisaul77)
@@ -33,6 +33,7 @@ Sistema de orquestación multi-agente para **Claude Code**, implementando el pat
 - 🧪 **Integridad de tests**: el implementador nunca debilita tests; el revisor revisa su diff y corre una comprobación propia.
 - 🗣️ **Comunicación**: resultado primero, malas noticias claras, confianza calibrada, preguntar solo lo que cambia el plan (cada pregunta con su valor por defecto).
 - 🪙 **Ahorro de tokens**: la skill pasa de 667 a ~170 líneas; plantillas en `assets/` (divulgación progresiva); planes por archivo, no pegados.
+- 🔀 **¿Fork o subagente fresco? (v9.1, medido)**: el fork sale ~50 % más barato solo mientras el contexto del Conductor está por debajo de ~75k tokens, y ~2× más caro por encima; la asertividad fue la misma. El Conductor elige según el tamaño del contexto ([experimento](https://github.com/elisaul77/avoid-the-predictable#-experimento-2-fork-o-subagente-fresco)).
 - 🌐 **Canal interno en inglés**: los prompts a subagentes y los `plans/*.md` van en inglés (el mismo prompt cuesta **~30 % menos tokens** que en español, medido); contigo el Conductor habla en tu idioma.
 - 🎛️ **Tú controlas los modelos**: el `model:` de cada `.agent.md` manda; el Conductor no lo sobrescribe (por defecto: implement = haiku, planning/review = sonnet).
 
