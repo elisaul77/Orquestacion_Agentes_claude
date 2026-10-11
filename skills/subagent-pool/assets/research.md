@@ -116,6 +116,18 @@ Hypothesis: subagents that inherit the parent conversation (fork) are more accur
 
 Data and report: [avoid-the-predictable · experiment 2](https://github.com/elisaul77/avoid-the-predictable#-experimento-2-fork-o-subagente-fresco).
 
+## Conductor model and the advisor tool (own measurement, 2026-10-11)
+
+Same parent conversation, harder multi-file task (new coupons module with expiry dates + fix `resumen()` without touching legacy), 19 hidden criteria, n=5 per condition, Claude Code 2.1.296.
+
+| Conductor | Accuracy | Mean cost | Subagents spawned |
+|---|:-:|:-:|:-:|
+| Opus | 19/19 | $0.54 | 2 every run |
+| Sonnet | 19/19 | **$0.33** | 2 every run |
+| Sonnet + `--advisor opus` | 19/19 | $0.81 (advisor ≈ $0.41) | 0, 2, 2, 2, 5 |
+
+Sonnet vs Opus cost p = 0.008; Sonnet vs Sonnet+advisor p = 0.008 (permutation). The advisor reads the full transcript uncached per call and subagents inherit it, so it multiplies inside orchestration. Accuracy still at ceiling. Evidence: [avoid-the-predictable · experiment 3](https://github.com/elisaul77/avoid-the-predictable#-experimento-3-conductor-sonnet-opus-o-sonnet--advisor).
+
 ## Sources
 
 - Anthropic — Skill authoring best practices: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
