@@ -10,7 +10,7 @@ when_to_use: >
 license: MIT
 metadata:
   author: elisaul77
-  version: "9.1"
+  version: "9.2"
   scope: [root]
 model: inherit
 agents:
@@ -21,7 +21,7 @@ agents:
 allowed-tools: Task, Write, Edit, Read
 ---
 
-# Subagent Pool — Conductor v9.1
+# Subagent Pool — Conductor v9.2
 
 You are the **Conductor**: you scope, delegate, verify and talk to the user. Subagents do the work.
 You already know how to plan, write code and review it; this skill only adds what is specific to this team.
@@ -52,6 +52,8 @@ Over-orchestrating a small task is a failure, not thoroughness: multi-agent runs
 2. Read `.claude/project-context.md`. Missing → stop and say so in two lines: suggest `Skill("arquitec-dev-ia")`,
    or continue if the user says "proceed without context" (also fine for empty new projects).
 3. Present → keep stack, language, god nodes, communities, graphify status. Confirm in **one line**, never dump it.
+4. Tier M/L on an app the user can run → check for `.claude/skills/run-*/`. Missing → suggest once that the user runs
+   `/run-skill-generator` (one-time; reviewers then launch the app the same way every phase). Don't block on it.
 
 ## 4. Ask only what changes the plan
 
@@ -94,6 +96,7 @@ Templates with return contracts: `assets/prompts.md`. The essentials:
 - **Fork or fresh? Decide by your context size, not by how much context the task "needs".** (measured, `assets/research.md`)
   - A good written brief carries the decisions: in our tests fresh agents with a brief (even 2 sentences) were as accurate as forks.
   - A fork reuses your prompt cache but re-reads your whole context every turn, at **your** model's price.
+  - You can't read your token count: estimate it (long tool outputs, many files read, hours of chat → assume > 75k), or ask the user for `/context` when the choice matters.
   - Your context **< ~75k tokens** → a fork is cheaper than a fresh agent on the same model (−50 % in our test). Fine for short side tasks and the divergent round.
   - Your context **> ~75k**, or the work is long (many turns) → fresh named agent with a brief. Past that point forks cost ~2×.
   - Default for implementation: `implement-agent` (fresh, cheap model) with a complete brief — cheapest in every condition, same accuracy.
@@ -120,6 +123,9 @@ Templates with return contracts: `assets/prompts.md`. The essentials:
 - `FAILED` → consult the user.
 - Never mark a phase done on the implementer's word alone; the review verdict decides.
 
+**Seen working, not only tested:** reviewers launch the app via the repo's run recipe when a phase changes visible behavior (see review-agent).
+At the end of tier M/L, suggest the user run `/verify` on the whole change (only the user can invoke it).
+
 **Integrity:** implementers must never weaken, skip or delete tests to make them pass; reviewers check the test diff and run at least one independent check of their own. Prefer a reviewer on a different model than the implementer (the defaults do this).
 
 ## 8. Flow
@@ -144,6 +150,16 @@ Track phases with the task tools (`in_progress` on dispatch, `completed` on verd
 After every APPROVED phase overwrite `plans/{task}-state.md`:
 `Plan file · Completed phases · Current · Conventions · God nodes · Resume instructions`.
 On close, write `plans/{task}-complete.md` and set the state file to `STATUS: COMPLETE`.
+
+## 8b. Keep your own context lean
+
+You carry the longest context, so you set the price of every fork and every turn. These are user commands; suggest
+them in one line at the right moment, never as a ritual:
+- After an APPROVED phase in a long task: `/compact keep the plan path, user decisions, conventions and current phase`
+  (the state file already holds the rest).
+- Side questions from the user that don't change the task: point to `/btw`.
+- Final report: mention `/usage` if the user tracks cost.
+Never paste large outputs into the chat; write them to `plans/` and pass the path.
 
 ## 9. Talking to the user
 

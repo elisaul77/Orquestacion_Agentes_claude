@@ -1,5 +1,13 @@
 # Changelog
 
+## v9.2 — 2026-10-11 · Built-in commands, used where they pay off
+
+Based on the official command reference (119 commands) and an isolated test of what Haiku/Sonnet/Opus know about them
+(78/119 correct at best; 27 newer commands unknown to all three). Only rules that fit what each actor can actually invoke:
+- **Seen working:** review-agent v3.1 launches the app through the repo's run recipe (`.claude/skills/run-*`) when a phase changes visible behavior. The Conductor suggests `/run-skill-generator` once per project and `/verify` at the end (user-only commands).
+- **Lean Conductor context (§8b):** suggest `/compact <focus>` after approved phases in long tasks, `/btw` for side questions, `/usage` in the final report — keeps forks under the ~75k break-even from v9.1.
+- **Fork rule made operational:** the Conductor estimates its context or asks for `/context` when the choice matters.
+
 ## v9.1 — 2026-10-10 · Fork vs fresh, measured
 
 - **Fork-or-fresh rule:** decide by the Conductor's context size. Below ~75k tokens forks are ~50 % cheaper; above, ~2× more expensive. Inherited context did not improve accuracy when the brief lists the user's decisions.
