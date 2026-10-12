@@ -15,7 +15,8 @@ the template (`assets/skills-probadas-template/`) and the validator
 
 ## Lookup order
 
-1. **skills-probadas.** Read `vetadas.json` first: a match ends the lookup as vetoed.
+1. **skills-probadas.** Read `vetadas.json` first: a match by `id`, or an approved
+   entry whose `source_url` is vetoed under any id or commit, ends the lookup as vetoed.
    Then read `index.json`: a match is approved. If the private repo is not cloned or
    not accessible, skip this step silently.
 2. **Official external sources** (vendor repos only). The allowlist and the
@@ -23,7 +24,7 @@ the template (`assets/skills-probadas-template/`) and the validator
    repo, never content, and never counts as trust.
 
 Outcomes of `lookup(name)`: `vetoed` | `approved` | `unknown`. Vetoed beats approved
-if both exist for the same id.
+if the same id is both approved and vetoed, or if the approved source_url is vetoed.
 
 ## index.json (approved)
 
@@ -36,7 +37,7 @@ if both exist for the same id.
 | `source_url` | `https://` URL of the official source |
 | `commit` | full 40-char lowercase SHA the copy is pinned to |
 | `date` | review date, ISO `YYYY-MM-DD` |
-| `reviewer` | Codex model slug (from the F1 registry) or `claude-fable-5-1` |
+| `reviewer` | exactly `claude-fable-5-1`, or a Codex slug matching `^gpt-\d+(\.\d+)*-(astra\|sol\|terra\|luna)$` (e.g. `gpt-6-astra`) |
 | `verdict` | `APPROVED` |
 | `report` | `reports/<id>.md` |
 | `path` | `skills/<id>/` |
@@ -48,6 +49,9 @@ if both exist for the same id.
 `DOUBTFUL`), `reason` (one line).
 
 Matching is by `source_url`, whatever commit was reviewed.
+
+Cross-file rule: a `source_url` may not appear in both `index.json` and `vetadas.json`.
+The validator fails on such a pair.
 
 ## Re-review rule
 

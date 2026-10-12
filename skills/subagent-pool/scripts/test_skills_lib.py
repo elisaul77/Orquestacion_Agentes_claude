@@ -108,6 +108,17 @@ class EntryValidationTests(unittest.TestCase):
             errors = sl.check_entry(with_field(good_index(), "reviewer", value), "index")
             self.assertTrue(any("reviewer" in e for e in errors), repr(value))
 
+    def test_reviewer_must_be_claude_fable_or_codex_slug(self):
+        for bad in ("anybody", "gpt-6", "gpt-6-luna-extra", "claude-fable-5-2", "GPT-6-astra", "gpt-6-astra\n"):
+            errors = sl.check_entry(with_field(good_index(), "reviewer", bad), "index")
+            self.assertTrue(any("reviewer" in e for e in errors), repr(bad))
+            errors = sl.check_entry(with_field(good_veto(), "reviewer", bad), "veto")
+            self.assertTrue(any("reviewer" in e for e in errors), repr(bad))
+
+    def test_reviewer_accepts_claude_fable_and_codex_slugs(self):
+        for good in ("gpt-6-astra", "gpt-5.5-sol", "gpt-6-terra", "gpt-6-luna", "claude-fable-5-1"):
+            self.assertEqual(sl.check_entry(with_field(good_index(), "reviewer", good), "index"), [], good)
+
     def test_missing_required_fields_rejected(self):
         for key in ("id", "source_url", "commit", "date", "reviewer", "verdict", "name", "report", "path"):
             errors = sl.check_entry(without_field(good_index(), key), "index")
@@ -196,6 +207,14 @@ class DirectoryValidationTests(unittest.TestCase):
         errors = sl.validate_dir(self.dir)
         self.assertTrue(any("index.json" in e and "invalid JSON" in e for e in errors))
 
+    def test_source_both_approved_and_vetoed_rejected(self):
+        write_library(self.dir, {"version": 1, "skills": [good_index()]},
+                      {"version": 1, "vetadas": [with_field(good_veto(), "source_url", URL)]})
+        errors = sl.validate_dir(self.dir)
+        self.assertTrue(any("vetadas.json" in e and URL in e for e in errors))
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(sl.main(["skills_lib.py", "validate", self.dir]), 1)
+
     def test_cli_validate_exit_codes(self):
         write_library(self.dir, {"version": 1, "skills": []}, {"version": 1, "vetadas": []})
         with contextlib.redirect_stdout(io.StringIO()):
@@ -230,6 +249,13 @@ class LookupTests(unittest.TestCase):
         vetadas = {"version": 1, "vetadas": [good_veto("dual")]}
         result = sl.lookup("dual", index, vetadas)
         self.assertEqual(result["outcome"], "vetoed")
+
+    def test_vetoed_by_source_url_beats_approved_id(self):
+        index = {"version": 1, "skills": [good_index("foo")]}
+        vetadas = {"version": 1, "vetadas": [with_field(good_veto("bar"), "source_url", URL)]}
+        result = sl.lookup("foo", index, vetadas)
+        self.assertEqual(result["outcome"], "vetoed")
+        self.assertEqual(result["entry"]["id"], "bar")
 
     def test_is_vetada_matches_url_regardless_of_commit(self):
         self.assertTrue(sl.is_vetada(BAD_URL, self.vetadas))

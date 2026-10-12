@@ -23,6 +23,8 @@ VETO_VERDICTS = ("REJECTED", "DOUBTFUL")
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")  # full lowercase SHA-1, as printed by git
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")  # slug: safe as a directory name
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+CLAUDE_REVIEWER = "claude-fable-5-1"
+CODEX_REVIEWER_RE = re.compile(r"^gpt-\d+(\.\d+)*-(astra|sol|terra|luna)$")  # Codex slug
 
 COMMON_FIELDS = ("id", "source_url", "commit", "date", "reviewer", "verdict")
 INDEX_FIELDS = COMMON_FIELDS + ("name", "report", "path")
@@ -80,6 +82,12 @@ def check_entry(entry, kind):
             datetime.strptime(date, "%Y-%m-%d")
         except ValueError:
             errors.append("date must be ISO YYYY-MM-DD")
+
+    reviewer = entry.get("reviewer")
+    if _nonempty_str(reviewer):
+        if reviewer != CLAUDE_REVIEWER and not CODEX_REVIEWER_RE.fullmatch(reviewer):
+            errors.append("reviewer must be %s or a Codex slug gpt-<N>-<astra|sol|terra|luna>"
+                          % CLAUDE_REVIEWER)
 
     verdict = entry.get("verdict")
     if _nonempty_str(verdict):
@@ -139,7 +147,30 @@ def read_library(library_dir):
         doc_errors = validate_document(data, kind)
         errors.extend("%s: %s" % (fname, e) for e in doc_errors)
         loaded[kind] = data
+    if loaded["index"] is not None and loaded["veto"] is not None:
+        errors.extend(cross_check(loaded["index"], loaded["veto"]))
     return loaded["index"], loaded["veto"], errors
+
+
+def cross_check(index, vetadas):
+    """Rules spanning both files: a source_url may not be approved and vetoed at once."""
+    vetoed_urls = set()
+    for entry in _items(vetadas, "vetadas"):
+        if isinstance(entry, dict) and _nonempty_str(entry.get("source_url")):
+            vetoed_urls.add(entry["source_url"])
+    errors = []
+    for i, entry in enumerate(_items(index, "skills")):
+        url = entry.get("source_url") if isinstance(entry, dict) else None
+        if url in vetoed_urls:
+            errors.append("%s: skills[%d]: source_url '%s' is also listed in vetadas.json"
+                          % (INDEX_FILE, i, url))
+    return errors
+
+
+def _items(document, key):
+    """Entries of a list under key; empty list when the document is malformed."""
+    items = document.get(key) if isinstance(document, dict) else None
+    return items if isinstance(items, list) else []
 
 
 def validate_dir(library_dir):
@@ -150,15 +181,26 @@ def validate_dir(library_dir):
 def lookup(name, index, vetadas):
     """Resolve a skill name. Returns {'outcome': 'vetoed'|'approved'|'unknown', 'entry': ...}.
 
-    Vetoed wins over approved when both exist. Inputs are expected to be validated.
+    Vetoed wins over approved: a vetoed id, or an approved entry whose source_url is
+    vetoed under any id or commit, both resolve to vetoed. Inputs are expected to be validated.
     """
-    for entry in vetadas.get("vetadas", []):
+    for entry in _items(vetadas, "vetadas"):
         if entry.get("id") == name:
             return {"outcome": "vetoed", "entry": entry}
-    for entry in index.get("skills", []):
+    for entry in _items(index, "skills"):
         if entry.get("id") == name:
+            veto = _vetoed_entry_for_url(entry.get("source_url"), vetadas)
+            if veto is not None:
+                return {"outcome": "vetoed", "entry": veto}
             return {"outcome": "approved", "entry": entry}
     return {"outcome": "unknown", "entry": None}
+
+
+def _vetoed_entry_for_url(source_url, vetadas):
+    for entry in _items(vetadas, "vetadas"):
+        if entry.get("source_url") == source_url:
+            return entry
+    return None
 
 
 def is_vetada(source_url, vetadas):

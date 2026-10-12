@@ -25,7 +25,7 @@ skills-probadas/
   {"id": "example-skill", "name": "example-skill",
    "source_url": "https://github.com/<owner>/<repo>/tree/<ref>/<path>",
    "commit": "<40-char lowercase SHA>", "date": "YYYY-MM-DD",
-   "reviewer": "<codex model slug or claude-fable-5-1>", "verdict": "APPROVED",
+   "reviewer": "<claude-fable-5-1 or gpt-N-astra|sol|terra|luna>", "verdict": "APPROVED",
    "report": "reports/example-skill.md", "path": "skills/example-skill/"}
 ]}
 ```
@@ -36,14 +36,16 @@ skills-probadas/
 {"version": 1, "vetadas": [
   {"id": "example-bad", "source_url": "https://github.com/<owner>/<repo>",
    "commit": "<40-char lowercase SHA>", "date": "YYYY-MM-DD",
-   "reviewer": "<codex model slug or claude-fable-5-1>", "verdict": "REJECTED",
+   "reviewer": "<claude-fable-5-1 or gpt-N-astra|sol|terra|luna>", "verdict": "REJECTED",
    "reason": "one line: what the review found"}
 ]}
 ```
 
 Field rules: `id` is a slug `[a-z0-9][a-z0-9-]*` and equals `name`; `date` is ISO
 `YYYY-MM-DD`; `verdict` is `APPROVED` in index, `REJECTED` or `DOUBTFUL` in vetadas;
-`source_url` is `https://`.
+`source_url` is `https://`; `reviewer` is exactly `claude-fable-5-1` or a Codex slug
+matching `^gpt-\d+(\.\d+)*-(astra|sol|terra|luna)$` (e.g. `gpt-6-astra`).
+A `source_url` may not appear in both `index.json` and `vetadas.json`.
 
 ## Report format (`reports/<id>.md`)
 
@@ -53,7 +55,7 @@ Field rules: `id` is a slug `[a-z0-9][a-z0-9-]*` and equals `name`; `date` is IS
 - Source: <source_url>
 - Commit: <40-char SHA>
 - Date: YYYY-MM-DD
-- Reviewer: <codex model slug or claude-fable-5-1>
+- Reviewer: <claude-fable-5-1 or gpt-N-astra|sol|terra|luna>
 - Verdict: APPROVED | REJECTED | DOUBTFUL
 
 ## Files inspected
