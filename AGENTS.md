@@ -31,7 +31,7 @@ flowchart LR
 | The Conductor (this skill) | The Subagents |
 |---------------------------|---------------|
 | ✅ Plans and coordinates | ✅ Execute concrete work |
-| ✅ Runs mini-interview (Q1, Q2, Q3) | ✅ planning-agent: workspace scan + draft |
+| ✅ Asks only what changes the plan (max 3, each with a default) | ✅ planning-agent: workspace scan + draft |
 | ✅ Writes in `plans/*.md` | ✅ implement-agent: code and tests |
 | ✅ Updates TodoWrite | ✅ review-agent: verdict + security |
 | ✅ Announces delegations | ✅ AgentArchitect: generates new agents |
@@ -60,6 +60,7 @@ flowchart LR
 | implement-agent | `agents/implement-agent.agent.md` | `implement-agent` | haiku | `🤖 [implement-agent] Running Phase {N}...` |
 | review-agent | `agents/review-agent.agent.md` | `review-agent` | sonnet | `🤖 [review-agent] Reviewing Phase {N}...` |
 | AgentArchitect | `agents/AgentArchitect.agent.md` | `AgentArchitect` | opus | `🏗️ [AgentArchitect] Designing team...` |
+| codex-agent (optional) | `agents/optional/codex-agent.agent.md` | `codex-agent` | per mode (registry) | `🤖 [codex-agent] mode=<mode> model=<model>` — only if you use Codex; see SKILL §10b |
 
 ---
 
@@ -67,7 +68,7 @@ flowchart LR
 
 | Skill | Trigger | Version |
 |-------|---------|---------|
-| `subagent-pool` | "delegate", "orchestrate", "conductor", "complex task" | 9.0 |
+| `subagent-pool` | "delegate", "orchestrate", "conductor", "complex task" | 9.5 |
 | `arquitec-dev-ia` | "create AGENTS.md", "document architecture", "structure for AI", "output style", "add rules", "prepare for orchestration" | 5.0 |
 | `graphify` | `/graphify` | — |
 
@@ -85,7 +86,7 @@ flowchart LR
 
 ---
 
-## Workflow v9.0
+## Workflow v9.5
 
 1. Conductor reads `.claude/project-context.md` (HALT and suggest `arquitec-dev-ia` if missing); offers to resume an unfinished `plans/*-state.md`
 2. Picks a tier: **S** do it directly · **M** plan + phases · **L** full flow

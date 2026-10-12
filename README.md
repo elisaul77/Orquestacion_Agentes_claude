@@ -56,12 +56,15 @@ mkdir -p ~/.claude/skills/subagent-pool/assets
 for f in prompts research interview-protocol agent-definitions; do
   curl -sSL "$BASE/skills/subagent-pool/assets/${f}.md" -o ~/.claude/skills/subagent-pool/assets/${f}.md
 done
+mkdir -p ~/.claude/agents
 for agent in planning-agent implement-agent review-agent AgentArchitect; do
   curl -sSL "$BASE/agents/${agent}.agent.md" -o ~/.claude/agents/${agent}.agent.md
 done
 ```
 
 For the full install (including the skill-review scripts) use the `git clone` option.
+
+`arquitec-dev-ia` installed this way is only its `SKILL.md` (no `assets/` or `references/`); use `git clone` for the full skill.
 
 </details>
 
@@ -179,6 +182,7 @@ External skill review is the only part that handles third-party code:
 
 ```
 Orquestacion_Agentes_claude/
+├── .github/FUNDING.yml                # GitHub Sponsors button
 ├── AGENTS.md                          # Overview, rules and system diagram
 ├── CHANGELOG.md                       # Version history
 ├── FUNDING.md                         # Ways to support the project
@@ -198,6 +202,7 @@ Orquestacion_Agentes_claude/
     │   │   ├── prompts.md · agent-definitions.md · interview-protocol.md
     │   │   ├── research.md · codex-modes.md · codex-verdict.schema.json
     │   │   ├── skills-library.md · skill-review-prompt.md · official-sources.json
+    │   │   └── skills-probadas-template/   # template for your private skills repo
     │   └── scripts/
     │       ├── codex-models.py        # Codex model registry (latest version per family)
     │       ├── skills_lib.py          # Library validator and lookup

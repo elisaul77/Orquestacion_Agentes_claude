@@ -56,12 +56,15 @@ mkdir -p ~/.claude/skills/subagent-pool/assets
 for f in prompts research interview-protocol agent-definitions; do
   curl -sSL "$BASE/skills/subagent-pool/assets/${f}.md" -o ~/.claude/skills/subagent-pool/assets/${f}.md
 done
+mkdir -p ~/.claude/agents
 for agent in planning-agent implement-agent review-agent AgentArchitect; do
   curl -sSL "$BASE/agents/${agent}.agent.md" -o ~/.claude/agents/${agent}.agent.md
 done
 ```
 
 Para la instalación completa (incluidos los scripts de revisión de skills) usa la opción con `git clone`.
+
+`arquitec-dev-ia` instalado así solo tiene su `SKILL.md` (sin `assets/` ni `references/`); usa `git clone` para la skill completa.
 
 </details>
 
@@ -179,6 +182,7 @@ La revisión de skills externas es la única parte que trata código de terceros
 
 ```
 Orquestacion_Agentes_claude/
+├── .github/FUNDING.yml                # Botón de patrocinio de GitHub
 ├── AGENTS.md                          # Vista general, reglas y diagrama del sistema
 ├── CHANGELOG.md                       # Historial de versiones
 ├── FUNDING.md                         # Formas de apoyar el proyecto
@@ -198,6 +202,7 @@ Orquestacion_Agentes_claude/
     │   │   ├── prompts.md · agent-definitions.md · interview-protocol.md
     │   │   ├── research.md · codex-modes.md · codex-verdict.schema.json
     │   │   ├── skills-library.md · skill-review-prompt.md · official-sources.json
+    │   │   └── skills-probadas-template/   # plantilla para tu repo privado de skills
     │   └── scripts/
     │       ├── codex-models.py        # Registro de modelos Codex (última versión por familia)
     │       ├── skills_lib.py          # Validador y búsqueda de la biblioteca
