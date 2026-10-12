@@ -11,6 +11,8 @@ Write prompts as directives (what + why + files + constraints), not background e
 5. Divergent fork (creativity round)
 6. AgentArchitect
 7. Final report to the user
+8. codex-agent — debug (Docker only)
+9. codex-agent — browser (screenshot check)
 
 ---
 
@@ -150,3 +152,33 @@ Interview the user, design the agent pyramid, generate files in .claude/agents/.
 
 Commit: `{type(scope): message}`
 ```
+
+---
+
+## 8. codex-agent — debug (Docker only)
+
+```
+Task(description="Debug: {bug}", subagent_type="codex-agent", prompt="""
+mode=debug
+Bug: {one-line symptom, exact error text if known}
+Docker service: {compose service name} (compose file: {path})   # required; missing → BLOCKED, no Codex call
+Repro command (run inside the container): {command}
+Logs (inside the container): {paths | "none"}
+Edits: none (report only) | {files Codex may edit}
+Never run anything on the host. Do not print secret values from .env or config files.
+""")
+```
+
+Relay: `summary` = numbered repro steps; `findings` = reproduced errors (file:line from the traceback).
+
+## 9. codex-agent — browser (screenshot check)
+
+```
+Task(description="Visual check: {page}", subagent_type="codex-agent", prompt="""
+mode=browser
+URL: {http://localhost:PORT/path | file:// copy inside the scratch dir}
+Question: {what to judge in the UI, e.g. "do all 4 form fields fit without overflow?"} | "capture only"
+""")
+```
+
+Relay: `artifacts` = PNG path; hand it to `review-agent` (Read) per SKILL.md §10b.

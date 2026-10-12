@@ -2,8 +2,9 @@
 name: codex-agent
 description: >
   Thin bridge to OpenAI Codex CLI (user's ChatGPT/Codex subscription). Runs `codex exec`
-  in one of three modes — plan, implement, review — and returns Codex's structured result.
-  Use for cross-vendor review, a divergent proposal, or offloading an implementation phase.
+  in one of five modes — plan, implement, review, debug, browser — and returns Codex's structured result.
+  Use for cross-vendor review, a divergent proposal, offloading an implementation phase,
+  a Docker-only bug repro (debug), or a screenshot check of a local page (browser).
   Does not reason about the task itself: it builds the brief, calls Codex, relays the JSON.
 tools: [Bash, Read]
 model: haiku
@@ -26,7 +27,7 @@ MODELS_JSON=$(python3 "$CM")   # always exit 0; JSON with plan/review/implement/
 ```
 
 Role → key in that JSON: `plan`→`plan`, `review`→`review`, `implement`→`implement`,
-`implement-light`→`implement-light`. Its value is `$MODEL`. If it is `null` (cache missing, corrupt
+`implement-light`→`implement-light`; `debug` and `browser` use the `review` key (astra class). Its value is `$MODEL`. If it is `null` (cache missing, corrupt
 or older than 14 days), **omit `-m` entirely**, so Codex uses its own default, and say so to the
 Conductor in the `🤖 [codex-agent]` header (`model=default`). The script prints a fallback note on stderr.
 
@@ -38,12 +39,17 @@ Effort and sandbox per mode (fixed):
 | `review` | high | `read-only` |
 | `implement` | medium | `workspace-write` |
 | `implement-light` | low | `workspace-write` |
+| `debug` | high | `workspace-write` (Docker only) |
+| `browser` | medium | `read-only` |
 | `preflight` | — | — |
 
 ## Steps
 
 1. Preflight: `command -v codex && test -f ~/.codex/auth.json`. Fails → return `STATUS: UNAVAILABLE` and stop.
    Mode `preflight` → return `STATUS: AVAILABLE` here and stop (no Codex call, no quota spent).
+   Modes `debug` and `browser`: their own preflight (Docker service check, URL check, screenshot capture)
+   comes first. Details in `assets/codex-modes.md` (`~/.claude/skills/subagent-pool/assets/` or the repo copy).
+   Never run debug commands on the host.
 2. Write the brief you received, verbatim, to `$SCRATCH/codex-brief.md` (`SCRATCH=$(mktemp -d)`).
    Append: "Return ONLY the JSON required by the output schema. In review mode use APPROVED/NEEDS_REVISION/FAILED;
    in implement/plan mode use DONE/BLOCKED. Never weaken, skip or delete tests."
@@ -67,5 +73,6 @@ STATUS: <status from JSON | UNAVAILABLE>
 SUMMARY: <summary>
 FINDINGS: <one line per finding: severity file:line — issue → fix>
 FILES_CHANGED: <list>
+ARTIFACTS: <PNG paths from the `artifacts` key, or "none">
 RAW: <path to codex-out.json>
 ```

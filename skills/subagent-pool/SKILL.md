@@ -212,6 +212,8 @@ Codex models live in the `codex-agent` file (user's call, like §1); never pass 
 | **Implement** | Phases with clear contracts and tests, or to spare Claude quota | `codex-agent mode=implement` (or `implement-light` for mechanical phases) → **`review-agent` reviews** (never Codex reviewing Codex). |
 | **Divergent round** | Tier L design choice (§5) | One proposal from `codex-agent mode=plan` alongside the Claude fork; they must not see each other. |
 | **Planning second opinion** | Tier L plan touching god nodes | `codex-agent mode=plan` critiques `plans/task-plan.md` before the user approves. |
+| **Debug** | Bug reproducible only in Docker; logs to read | `codex-agent mode=debug` (Docker only, never the host) → repro steps go to `implement-agent` for the fix. |
+| **Visual check** | UI phase with a local page (localhost / file://) | `codex-agent mode=browser` → PNG in `artifacts` → `review-agent` reads it (Read) next to Codex review. |
 
 - Codex runs sandboxed (`workspace-write` at most); Approve-tier actions (§7) still come back as `BLOCKED`.
 - Same brief and return contract as `implement-agent`/`review-agent` (`assets/prompts.md`).
@@ -220,8 +222,9 @@ Codex models live in the `codex-agent` file (user's call, like §1); never pass 
 
 ## Resources
 
-- `assets/prompts.md` — Task templates + return contracts (planning / implement / review / revision / divergent fork / final report)
+- `assets/prompts.md` — Task templates + return contracts (planning / implement / review / revision / divergent fork / final report / codex debug + browser)
 - `assets/research.md` — evidence behind v9 rules, with sources
 - `assets/interview-protocol.md` — full 8-question protocol for designing new teams
 - `assets/codex-verdict.schema.json` — JSON schema Codex must answer with (`--output-schema`)
+- `assets/codex-modes.md` — codex-agent debug (Docker recipe) and browser (Flatpak Chrome screenshot) details
 - `assets/agent-definitions.md` — role map and troubleshooting
