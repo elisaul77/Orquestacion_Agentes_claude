@@ -9,8 +9,12 @@ CLI:
   python3 skills_lib.py official <url>                exit 0 if an official vendor source, 1 if not
   python3 skills_lib.py check-verdict <verdict.json>  exit 0 and echo the verdict if valid, 1 if not
   python3 skills_lib.py candidate <candidate.json>    JSON outcome review|skip + errors + flags, exit 0
-  python3 skills_lib.py split-review <review.json> <report.md> <commit> <source_url>
+  python3 skills_lib.py split-review <review.json> <report.md> <commit> <source_url> <reviewer>
                                                       exit 0 and echo the verdict; writes the report
+  python3 skills_lib.py check-subpath <src_root> <subpath>
+                                                      exit 0 if safe, 2 with reasons on stderr
+  python3 skills_lib.py finalize <verdict.json> <report.md> <prescan.json> <auth_file|-> <out_verdict> <out_report>
+                                                      pre-scan enforcement + secret guard; exit 0
 
 Discovery helpers (F4): official sources (assets/official-sources.json), model release
 dates (table in assets/skills-library.md), freshness of candidates, verdict shape.
@@ -19,7 +23,6 @@ import json
 import os
 import re
 import sys
-import urllib.parse
 from datetime import datetime
 
 LIBRARY_VERSION = 1
@@ -46,8 +49,20 @@ SKILLS_LIBRARY_MD = os.path.join(ASSETS_DIR, "skills-library.md")
 CANDIDATE_FIELDS = ("name", "source_url", "last_update", "model")
 VERDICT_FIELDS = ("verdict", "reviewer", "commit", "source_url", "reasons")
 MAX_REASONS = 20
+REASON_MAX_CHARS = 200
+REASON_RE = re.compile(r"[ -~]{1,%d}" % REASON_MAX_CHARS)  # printable ASCII, so no newlines either
+REASON_ERROR_TAG = "reasons: "  # prefix of reason-format errors; split_review downgrades these, not others
+REVIEWER_INVALID = "reviewer-output-invalid"
+PRESCAN_TAG = "prescan-enforced"
+SECRET_TAG = "secret-leak-detected"
+REDACTED = "[REDACTED]"
+SECRET_MIN_CHARS = 16
+GENERIC_SECRET_RES = (
+    re.compile(r"sk-[A-Za-z0-9_-]{16,}"),  # OpenAI and Anthropic style keys
+    re.compile(r"eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}"),  # JWT
+)
 RELEASE_SECTION = "## Model release dates"  # heading holding the release table in skills-library.md
-GITHUB_HOST = "github.com"
+GITHUB_REPO_RE = re.compile(r"https://(?i:github\.com)/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)/?")
 
 # Extension point. Each callable receives (entry, kind) and returns a list of error
 # strings. kind is "index" or "veto" for library entries, and "candidate" for
@@ -258,26 +273,21 @@ def load_official_sources(path=OFFICIAL_SOURCES_FILE):
 
 
 def _github_repo(url):
-    """(owner, repo) in lowercase for a plain https://github.com/<owner>/<repo>[/...] URL, else None.
+    """(owner, repo) in lowercase for exactly https://github.com/<owner>/<repo> (one optional
+    trailing slash), else None.
 
-    Userinfo, explicit ports, other hosts (github.com.evil.com, evil.com/github.com/...)
-    and http:// are all rejected.
+    Anything else is rejected: extra path segments (tree/, ../), percent-encoding, query or
+    fragment, whitespace, backslash, userinfo (@), ports, other hosts and http://.
     """
     if not _nonempty_str(url):
         return None
-    try:
-        parts = urllib.parse.urlsplit(url)
-        parts.port  # raises ValueError on a malformed port
-    except ValueError:
+    match = GITHUB_REPO_RE.fullmatch(url)
+    if match is None:
         return None
-    if parts.scheme != "https" or parts.hostname != GITHUB_HOST:
+    owner, repo = match.group(1), match.group(2)
+    if owner in (".", "..") or repo in (".", ".."):
         return None
-    if parts.netloc.lower() != GITHUB_HOST:  # rejects user@host and host:port
-        return None
-    segments = [s for s in parts.path.split("/") if s]
-    if len(segments) < 2:
-        return None
-    return (segments[0].lower(), segments[1].lower())
+    return (owner.lower(), repo.lower())
 
 
 def official(url, sources=None):
@@ -434,31 +444,212 @@ def check_verdict(data):
             errors.append("reasons must be a list of 1 to %d strings" % MAX_REASONS)
         elif not all(_nonempty_str(r) for r in reasons):
             errors.append("reasons must contain non-empty strings only")
+        else:
+            for i, reason in enumerate(reasons):
+                if not REASON_RE.fullmatch(reason):
+                    errors.append("%sreason %d must be printable ASCII, at most %d characters, no newlines"
+                                  % (REASON_ERROR_TAG, i, REASON_MAX_CHARS))
     return errors
 
 
-def split_review(data, expected_commit, expected_source_url):
+def _doubtful(reviewer, commit, source_url):
+    """Fixed DOUBTFUL verdict for reviewer output that cannot be shown safely."""
+    return {"verdict": "DOUBTFUL", "reviewer": reviewer, "commit": commit,
+            "source_url": source_url, "reasons": [REVIEWER_INVALID]}
+
+
+def split_review(data, expected_commit, expected_source_url, expected_reviewer):
     """Split a reviewer's single JSON answer into (verdict, report_markdown).
 
     The answer is the verdict fields plus a 'report' string. Raises ValueError with
-    every problem found. The commit and source must match what was reviewed.
+    every problem found. The commit, source and reviewer must match what was launched.
+    Reason-format problems (length, characters, newlines) do not fail the review: the
+    verdict becomes DOUBTFUL with the fixed reason 'reviewer-output-invalid'.
     """
     if not isinstance(data, dict) or not _nonempty_str(data.get("report")):
         raise ValueError("review must be an object with a non-empty 'report' string")
     verdict = {key: value for key, value in data.items() if key != "report"}
     errors = check_verdict(verdict)
+    if verdict.get("reviewer") != expected_reviewer:
+        errors.append("reviewer does not match the launched reviewer")
     if verdict.get("commit") != expected_commit:
         errors.append("commit does not match the reviewed commit")
     if verdict.get("source_url") != expected_source_url:
         errors.append("source_url does not match the reviewed source")
+    hard = [e for e in errors if not e.startswith(REASON_ERROR_TAG)]
+    if hard:
+        raise ValueError("; ".join(hard))
     if errors:
-        raise ValueError("; ".join(errors))
+        verdict = _doubtful(expected_reviewer, expected_commit, expected_source_url)
     return verdict, data["report"]
+
+
+def prescan_findings(prescan):
+    """Rule ids that force a downgrade, from a pre-scan report. Empty = clean.
+
+    A missing or malformed pre-scan is itself a finding (fail closed).
+    """
+    if not isinstance(prescan, dict):
+        return ["prescan-unreadable"]
+    summary = prescan.get("summary")
+    if (not isinstance(summary, dict) or not isinstance(prescan.get("files"), list)
+            or not isinstance(prescan.get("binaries"), list)
+            or not isinstance(prescan.get("injection_findings"), list)
+            or not isinstance(prescan.get("shell_risks"), list)):
+        return ["prescan-unreadable"]
+    found = set()
+    for item in prescan["injection_findings"]:
+        rule = item.get("rule") if isinstance(item, dict) else None
+        found.add("injection-" + _rule_id(rule))
+    symlink_file = any(isinstance(f, dict) and f.get("symlink") is True for f in prescan["files"])
+    symlink_risk = any(isinstance(r, dict) and r.get("rule") == "symlink" for r in prescan["shell_risks"])
+    if symlink_file or symlink_risk:
+        found.add("symlink")
+    if prescan["binaries"]:
+        found.add("opaque-files")
+    if summary.get("truncated") is not False:  # True, or missing: cannot prove the scan was complete
+        found.add("truncated")
+    return sorted(found)
+
+
+def _rule_id(rule):
+    """Keep a rule id printable and short: it ends up in a verdict reason."""
+    if not isinstance(rule, str):
+        return "unknown"
+    return re.sub(r"[^a-z0-9-]", "", rule.lower())[:30] or "unknown"
+
+
+def _tagged(tag, items):
+    return (tag + ": " + ", ".join(items))[:REASON_MAX_CHARS]
+
+
+def _append_reason(verdict, reason):
+    """Append a reason, dropping the last one first when the list is already full."""
+    reasons = list(verdict.get("reasons") or [])
+    if len(reasons) >= MAX_REASONS:
+        reasons = reasons[:MAX_REASONS - 1]
+    reasons.append(reason)
+    verdict["reasons"] = reasons
+
+
+def enforce_prescan(verdict, prescan):
+    """Downgrade an APPROVED verdict to DOUBTFUL when the pre-scan flags risk. Never upgrades.
+
+    The pre-scan is authoritative: the reviewer model cannot override it. REJECTED and
+    DOUBTFUL pass through unchanged.
+    """
+    out = dict(verdict)
+    if out.get("verdict") != "APPROVED":
+        return out
+    found = prescan_findings(prescan)
+    if found:
+        out["verdict"] = "DOUBTFUL"
+        _append_reason(out, _tagged(PRESCAN_TAG, found))
+    return out
+
+
+def auth_secret_values(auth_text):
+    """Every string value of an auth file (tokens, keys). Non-JSON text counts as one secret."""
+    try:
+        data = json.loads(auth_text)
+    except ValueError:
+        return [auth_text.strip()]
+    values = []
+    stack = [data]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, dict):
+            stack.extend(node.values())
+        elif isinstance(node, list):
+            stack.extend(node)
+        elif isinstance(node, str):
+            values.append(node)
+    return values
+
+
+def _secret_present(text, values):
+    if any(v in text for v in values):
+        return True
+    return any(p.search(text) for p in GENERIC_SECRET_RES)
+
+
+def _redact(text, values):
+    for value in values:
+        text = text.replace(value, REDACTED)
+    for pattern in GENERIC_SECRET_RES:
+        text = pattern.sub(REDACTED, text)
+    return text
+
+
+def guard_output(verdict, report, secret_values):
+    """Return (verdict, report, leaked) with secrets redacted before anything is written.
+
+    secret_values are the auth file's strings plus ANTHROPIC_API_KEY. A leak redacts the
+    report, replaces secret-bearing reasons, downgrades APPROVED to DOUBTFUL and adds the
+    fixed reason 'secret-leak-detected'. REJECTED stays REJECTED.
+    """
+    values = [v for v in secret_values if isinstance(v, str) and len(v) >= SECRET_MIN_CHARS]
+    out = dict(verdict)
+    leaked = _secret_present(report, values)
+    reasons = out.get("reasons") or []
+    if isinstance(reasons, list) and any(isinstance(r, str) and _secret_present(r, values) for r in reasons):
+        leaked = True
+        out["reasons"] = [REDACTED if isinstance(r, str) and _secret_present(r, values) else r for r in reasons]
+    if not leaked:
+        return out, report, False
+    if out.get("verdict") == "APPROVED":
+        out["verdict"] = "DOUBTFUL"
+    _append_reason(out, SECRET_TAG)
+    return out, _redact(report, values), True
+
+
+def finalize(verdict, report, prescan, secret_values):
+    """Pre-scan enforcement, then the secret guard. Returns (verdict, report, leaked)."""
+    return guard_output(enforce_prescan(verdict, prescan), report, secret_values)
+
+
+def check_subpath(root, subpath):
+    """Errors for a --subpath inside an extracted tree. Empty list = safe.
+
+    Refuses ':' and ',', absolute or '..' paths, any symlink component, and any path that
+    resolves outside root.
+    """
+    errors = []
+    if ":" in subpath or "," in subpath:
+        errors.append("subpath must not contain ':' or ','")
+    parts = [p for p in subpath.split("/") if p not in ("", ".")]
+    if os.path.isabs(subpath) or ".." in parts:
+        errors.append("subpath must be relative and must not contain ..")
+    if errors:
+        return errors
+    current = os.path.abspath(root)
+    for part in parts:
+        current = os.path.join(current, part)
+        if os.path.islink(current):
+            return ["subpath component is a symlink: %s" % part]
+    real_root = os.path.realpath(root)
+    real_src = os.path.realpath(os.path.join(root, subpath))
+    if real_src != real_root and not real_src.startswith(real_root + os.sep):
+        errors.append("subpath resolves outside the source tree")
+    return errors
+
+
+def _read_secret_values(auth_path):
+    """Secret strings to guard: the auth file's values (if any) plus ANTHROPIC_API_KEY."""
+    values = []
+    if auth_path != "-" and os.path.exists(auth_path):
+        with open(auth_path, encoding="utf-8") as f:  # unreadable -> OSError -> caller fails closed
+            values.extend(auth_secret_values(f.read()))
+    key = os.environ.get("ANTHROPIC_API_KEY")
+    if key:
+        values.append(key)
+    return values
 
 
 def main(argv):
     usage = ("usage: skills_lib.py validate <dir> | lookup <dir> <name> | official <url> | "
-             "check-verdict <file> | candidate <file> | split-review <review> <report> <commit> <url>")
+             "check-verdict <file> | candidate <file> | split-review <review> <report> <commit> <url> <reviewer> | "
+             "check-subpath <root> <subpath> | finalize <verdict> <report> <prescan> <auth|-> <out_verdict> <out_report>")
     if len(argv) == 3 and argv[1] == "candidate":
         try:
             with open(argv[2], encoding="utf-8") as f:
@@ -468,17 +659,49 @@ def main(argv):
             return 1
         print(json.dumps(candidate_outcome(entry), indent=2, ensure_ascii=False))
         return 0
-    if len(argv) == 6 and argv[1] == "split-review":
+    if len(argv) == 7 and argv[1] == "split-review":
         try:
             with open(argv[2], encoding="utf-8") as f:
                 data = json.load(f)
-            verdict, report = split_review(data, argv[4], argv[5])
+            verdict, report = split_review(data, argv[4], argv[5], argv[6])
         except (OSError, ValueError) as exc:
             print("split-review: %s" % exc, file=sys.stderr)
             return 1
         with open(argv[3], "w", encoding="utf-8") as f:
             f.write(report)
         print(json.dumps(verdict, indent=2, ensure_ascii=False))
+        return 0
+    if len(argv) == 4 and argv[1] == "check-subpath":
+        errors = check_subpath(argv[2], argv[3])
+        if errors:
+            for error in errors:
+                print("check-subpath: %s" % error, file=sys.stderr)
+            return 2
+        print("OK")
+        return 0
+    if len(argv) == 8 and argv[1] == "finalize":
+        try:
+            with open(argv[2], encoding="utf-8") as f:
+                verdict = json.load(f)
+            with open(argv[3], encoding="utf-8") as f:
+                report = f.read()
+            try:
+                with open(argv[4], encoding="utf-8") as f:
+                    prescan = json.load(f)
+            except (OSError, ValueError):
+                prescan = None  # unreadable pre-scan: enforce_prescan fails closed
+            if not isinstance(verdict, dict) or verdict.get("verdict") not in VERDICTS:
+                raise ValueError("verdict is not a verdict object")
+            out_verdict, out_report, leaked = finalize(
+                verdict, report, prescan, _read_secret_values(argv[5]))
+        except (OSError, ValueError) as exc:
+            print("finalize: %s" % exc, file=sys.stderr)
+            return 1
+        with open(argv[6], "w", encoding="utf-8") as f:
+            json.dump(out_verdict, f, indent=2, ensure_ascii=False)
+        with open(argv[7], "w", encoding="utf-8") as f:
+            f.write(out_report)
+        print(json.dumps({"leak_redacted": leaked}), file=sys.stderr)
         return 0
     if len(argv) == 3 and argv[1] == "official":
         if official(argv[2]):

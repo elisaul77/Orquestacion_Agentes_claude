@@ -289,7 +289,7 @@ class ExtensionPointTests(unittest.TestCase):
         self.assertEqual(sl.check_entry(good_index(), "index"), [])
 
 
-OFFICIAL_URL = "https://github.com/anthropics/skills/tree/main/skills/pdf"
+OFFICIAL_URL = "https://github.com/anthropics/skills"  # repo root only; --subpath selects the skill
 
 
 def good_candidate(**overrides):
@@ -313,7 +313,7 @@ class OfficialSourceTests(unittest.TestCase):
         self.assertTrue(entries["https://skills.sh"]["discovery_only"])
 
     def test_vendor_repo_paths_are_official(self):
-        for url in (OFFICIAL_URL, "https://github.com/openai/skills", "https://github.com/vercel-labs/agent-skills/tree/main/x"):
+        for url in (OFFICIAL_URL, "https://github.com/openai/skills", "https://github.com/vercel-labs/agent-skills"):
             self.assertTrue(sl.official(url), url)
 
     def test_case_insensitive_github_owner_is_official(self):
@@ -491,7 +491,7 @@ class SplitReviewTests(unittest.TestCase):
         return data
 
     def test_split_returns_verdict_without_report(self):
-        verdict, report = sl.split_review(self.answer(), SHA, OFFICIAL_URL)
+        verdict, report = sl.split_review(self.answer(), SHA, OFFICIAL_URL, "gpt-6-astra")
         self.assertNotIn("report", verdict)
         self.assertEqual(verdict["verdict"], "APPROVED")
         self.assertIn("Verdict rationale", report)
@@ -500,17 +500,17 @@ class SplitReviewTests(unittest.TestCase):
         data = self.answer()
         del data["report"]
         with self.assertRaises(ValueError):
-            sl.split_review(data, SHA, OFFICIAL_URL)
+            sl.split_review(data, SHA, OFFICIAL_URL, "gpt-6-astra")
 
     def test_split_rejects_commit_or_source_mismatch(self):
         with self.assertRaises(ValueError):
-            sl.split_review(self.answer(), OTHER_SHA, OFFICIAL_URL)
+            sl.split_review(self.answer(), OTHER_SHA, OFFICIAL_URL, "gpt-6-astra")
         with self.assertRaises(ValueError):
-            sl.split_review(self.answer(), SHA, "https://github.com/openai/skills")
+            sl.split_review(self.answer(), SHA, "https://github.com/openai/skills", "gpt-6-astra")
 
     def test_split_rejects_extra_fields(self):
         with self.assertRaises(ValueError):
-            sl.split_review(self.answer(extra="x"), SHA, OFFICIAL_URL)
+            sl.split_review(self.answer(extra="x"), SHA, OFFICIAL_URL, "gpt-6-astra")
 
     def test_cli_split_review_writes_report(self):
         with tempfile.TemporaryDirectory() as d:
@@ -519,12 +519,12 @@ class SplitReviewTests(unittest.TestCase):
             with open(review, "w", encoding="utf-8") as f:
                 json.dump(self.answer(), f)
             with contextlib.redirect_stdout(io.StringIO()):
-                code = sl.main(["skills_lib.py", "split-review", review, report, SHA, OFFICIAL_URL])
+                code = sl.main(["skills_lib.py", "split-review", review, report, SHA, OFFICIAL_URL, "gpt-6-astra"])
             self.assertEqual(code, 0)
             with open(report, encoding="utf-8") as f:
                 self.assertIn("Clean.", f.read())
             with contextlib.redirect_stderr(io.StringIO()):
-                self.assertEqual(sl.main(["skills_lib.py", "split-review", review, report, OTHER_SHA, OFFICIAL_URL]), 1)
+                self.assertEqual(sl.main(["skills_lib.py", "split-review", review, report, OTHER_SHA, OFFICIAL_URL, "gpt-6-astra"]), 1)
 
     def test_cli_candidate_prints_outcome(self):
         with tempfile.TemporaryDirectory() as d:
@@ -535,6 +535,320 @@ class SplitReviewTests(unittest.TestCase):
             with contextlib.redirect_stdout(out):
                 self.assertEqual(sl.main(["skills_lib.py", "candidate", path]), 0)
             self.assertEqual(json.loads(out.getvalue())["outcome"], "skip")
+
+
+
+HERE_FIXTURES = os.path.join(HERE, "fixtures")
+BENIGN_FIXTURE = os.path.join(HERE_FIXTURES, "skill-benign")
+MALICIOUS_FIXTURE = os.path.join(HERE_FIXTURES, "skill-malicious")
+CLEAN_PRESCAN = {
+    "version": 1, "files": [{"path": "SKILL.md", "symlink": False, "executable": False, "size": 1, "text": True}],
+    "executables": [], "scripts": [], "binaries": [], "urls": [], "domains": [],
+    "shell_risks": [], "injection_findings": [],
+    "summary": {"files": 1, "executables": 0, "scripts": 0, "urls": 0, "domains": 0,
+                "shell_risks": 0, "injection_findings": 0, "truncated": False},
+}
+
+
+def approved(**overrides):
+    verdict = {"verdict": "APPROVED", "reviewer": "gpt-6-astra", "commit": SHA,
+               "source_url": OFFICIAL_URL, "reasons": ["no network calls"]}
+    verdict.update(overrides)
+    return verdict
+
+
+def clean_prescan(**overrides):
+    prescan = json.loads(json.dumps(CLEAN_PRESCAN))
+    prescan.update(overrides)
+    return prescan
+
+
+class StrictGithubUrlTests(unittest.TestCase):
+    BAD = [
+        "https://github.com/anthropics/skills/../../evil/repo",
+        "https://github.com/anthropics/skills/%2e%2e/evil/repo",
+        "https://github.com/anthropics/skills?x",
+        "https://github.com/anthropics/skills?x=1",
+        "https://github.com/anthropics/skills#frag",
+        "https://user@github.com/anthropics/skills",
+        "https://github.com:443/anthropics/skills",
+        "https://github.com/anthropics/skills/tree/main/skills/pdf",
+        "https://github.com/anthropics/skills//",
+        "https://github.com/anthropics/skills/extra/",
+        "https://github.com/anthropics/sk%69lls",
+        "https://github.com/anthropics/skills%20",
+        "https://github.com/anthropics/skills x",
+        "https://github.com/anthropics/skills\\x",
+        "https://github.com/anthropics/skills\n",
+        "https://github.com/anthropics/skillé",
+        "https://github.com/anthropics/..",
+        "https://github.com/./skills",
+        "https://github.com/anthropics/skills/..",
+    ]
+
+    def test_traversal_encoding_query_and_userinfo_rejected(self):
+        for url in self.BAD:
+            self.assertFalse(sl.official(url), repr(url))
+
+    def test_plain_official_urls_accepted(self):
+        for url in ("https://github.com/anthropics/skills", "https://github.com/anthropics/skills/",
+                    "https://github.com/openai/skills", "https://GitHub.com/Anthropics/Skills/"):
+            self.assertTrue(sl.official(url), url)
+
+    def test_cli_official_rejects_traversal(self):
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(sl.main(["skills_lib.py", "official",
+                                      "https://github.com/anthropics/skills/../../evil/repo"]), 1)
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(sl.main(["skills_lib.py", "official", "https://github.com/anthropics/skills"]), 0)
+
+    def test_verdict_source_url_uses_strict_rule(self):
+        for url in self.BAD[:4]:
+            self.assertTrue(sl.check_verdict(approved(source_url=url)), url)
+
+
+class ReasonFormatTests(unittest.TestCase):
+    def test_reason_limits_and_characters(self):
+        self.assertEqual(sl.check_verdict(approved(reasons=["a" * 200])), [])
+        self.assertTrue(sl.check_verdict(approved(reasons=["a" * 201])))
+        self.assertTrue(sl.check_verdict(approved(reasons=["line one\nline two"])))
+        self.assertTrue(sl.check_verdict(approved(reasons=["tab\there"])))
+        self.assertTrue(sl.check_verdict(approved(reasons=["ünïcode"])))
+        self.assertTrue(sl.check_verdict(approved(reasons=["ok", "bell\x07"])))
+
+    def test_bad_reason_turns_into_fixed_doubtful_verdict(self):
+        for reason in ("a" * 201, "two\nlines", "ünï"):
+            answer = {"report": "# R\n", "verdict": "APPROVED", "reviewer": "gpt-6-astra", "commit": SHA,
+                      "source_url": OFFICIAL_URL, "reasons": [reason]}
+            verdict, report = sl.split_review(answer, SHA, OFFICIAL_URL, "gpt-6-astra")
+            self.assertEqual(verdict, {"verdict": "DOUBTFUL", "reviewer": "gpt-6-astra", "commit": SHA,
+                                       "source_url": OFFICIAL_URL, "reasons": ["reviewer-output-invalid"]})
+            self.assertEqual(report, "# R\n")
+            self.assertEqual(sl.check_verdict(verdict), [])
+
+    def test_reviewer_must_match_launched_slug(self):
+        answer = {"report": "# R\n", "verdict": "APPROVED", "reviewer": "gpt-6-astra", "commit": SHA,
+                  "source_url": OFFICIAL_URL, "reasons": ["ok"]}
+        with self.assertRaises(ValueError):
+            sl.split_review(answer, SHA, OFFICIAL_URL, "gpt-6-sol")
+        with self.assertRaises(ValueError):
+            sl.split_review(answer, SHA, OFFICIAL_URL, "claude-fable-5-1")
+
+    def test_cli_split_review_rejects_wrong_reviewer(self):
+        with tempfile.TemporaryDirectory() as d:
+            review = os.path.join(d, "review.json")
+            with open(review, "w", encoding="utf-8") as f:
+                json.dump({"report": "# R\n", "verdict": "APPROVED", "reviewer": "gpt-6-astra",
+                           "commit": SHA, "source_url": OFFICIAL_URL, "reasons": ["ok"]}, f)
+            with contextlib.redirect_stderr(io.StringIO()):
+                code = sl.main(["skills_lib.py", "split-review", review, os.path.join(d, "r.md"),
+                                SHA, OFFICIAL_URL, "claude-fable-5-1"])
+            self.assertEqual(code, 1)
+
+
+class PrescanEnforcementTests(unittest.TestCase):
+    def setUp(self):
+        import skill_prescan
+        self.malicious = skill_prescan.scan(MALICIOUS_FIXTURE)
+        self.benign = skill_prescan.scan(BENIGN_FIXTURE)
+
+    def test_malicious_fixture_has_findings_benign_has_none(self):
+        self.assertTrue(self.malicious["injection_findings"] or self.malicious["shell_risks"])
+        self.assertEqual(self.benign["injection_findings"], [])
+
+    def test_malicious_prescan_downgrades_approved_to_doubtful(self):
+        out = sl.enforce_prescan(approved(), self.malicious)
+        self.assertEqual(out["verdict"], "DOUBTFUL")
+        self.assertEqual(out["reasons"][0], "no network calls")
+        self.assertTrue(out["reasons"][-1].startswith("prescan-enforced: "))
+        self.assertLessEqual(len(out["reasons"][-1]), 200)
+        self.assertEqual(sl.check_verdict(out), [])
+
+    def test_benign_prescan_keeps_approved(self):
+        self.assertEqual(sl.enforce_prescan(approved(), self.benign), approved())
+
+    def test_rejected_stays_rejected(self):
+        rejected = approved(verdict="REJECTED")
+        self.assertEqual(sl.enforce_prescan(rejected, self.malicious), rejected)
+        self.assertEqual(sl.enforce_prescan(rejected, self.benign), rejected)
+
+    def test_doubtful_is_never_upgraded(self):
+        doubtful = approved(verdict="DOUBTFUL")
+        self.assertEqual(sl.enforce_prescan(doubtful, self.benign), doubtful)
+
+    def test_symlink_truncation_binaries_and_bad_prescan_downgrade(self):
+        symlink = clean_prescan(files=[{"path": "x", "symlink": True, "size": 0, "executable": False, "text": False}])
+        truncated = clean_prescan(summary=dict(CLEAN_PRESCAN["summary"], truncated=True))
+        binaries = clean_prescan(binaries=["blob.bin"])
+        for prescan in (symlink, truncated, binaries, {"garbage": 1}, None, "text"):
+            out = sl.enforce_prescan(approved(), prescan)
+            self.assertEqual(out["verdict"], "DOUBTFUL", repr(prescan)[:60])
+            self.assertTrue(out["reasons"][-1].startswith("prescan-enforced: "))
+
+    def test_reason_list_stays_within_limit(self):
+        full = approved(reasons=["r%d" % i for i in range(sl.MAX_REASONS)])
+        out = sl.enforce_prescan(full, self.malicious)
+        self.assertLessEqual(len(out["reasons"]), sl.MAX_REASONS)
+        self.assertEqual(sl.check_verdict(out), [])
+
+    def test_input_verdict_is_not_mutated(self):
+        original = approved()
+        sl.enforce_prescan(original, self.malicious)
+        self.assertEqual(original, approved())
+
+
+class SecretGuardTests(unittest.TestCase):
+    JWT = "eyJhbGciOiJIUzI1NiJ9.payloadpayloadpayload.signaturesignature"
+    CODEX_AUTH = json.dumps({"tokens": {"access_token": "tok-abcdef0123456789xyz", "id_token": JWT},
+                             "last_refresh": "2026-10-12"})
+
+    def test_auth_file_values_are_extracted_recursively(self):
+        values = sl.auth_secret_values(self.CODEX_AUTH)
+        self.assertIn("tok-abcdef0123456789xyz", values)
+        self.assertIn(self.JWT, values)
+        self.assertEqual(sl.auth_secret_values("not json at all"), ["not json at all"])
+
+    def test_known_auth_token_in_report_is_redacted_and_doubted(self):
+        report = "# Report\nFound token tok-abcdef0123456789xyz in the body.\n"
+        out, text, leaked = sl.guard_output(approved(), report, sl.auth_secret_values(self.CODEX_AUTH))
+        self.assertTrue(leaked)
+        self.assertNotIn("tok-abcdef0123456789xyz", text)
+        self.assertIn("[REDACTED]", text)
+        self.assertEqual(out["verdict"], "DOUBTFUL")
+        self.assertEqual(out["reasons"][-1], "secret-leak-detected")
+        self.assertEqual(sl.check_verdict(out), [])
+
+    def test_anthropic_key_in_reason_is_redacted(self):
+        key = "sk-ant-api03-EXAMPLEKEYVALUE0123456789"
+        out, text, leaked = sl.guard_output(approved(reasons=["leaks %s here" % key]), "clean report", [key])
+        self.assertTrue(leaked)
+        self.assertEqual(out["reasons"][0], "[REDACTED]")
+        self.assertEqual(out["verdict"], "DOUBTFUL")
+        self.assertEqual(text, "clean report")
+
+    def test_generic_patterns_are_caught_without_known_values(self):
+        for report in ("key sk-proj-abcdefghijklmnop1234", "jwt " + self.JWT):
+            out, text, leaked = sl.guard_output(approved(), report, [])
+            self.assertTrue(leaked, report)
+            self.assertNotIn("sk-proj-abcdefghijklmnop1234", text)
+            self.assertNotIn(self.JWT, text)
+
+    def test_rejected_stays_rejected_on_leak(self):
+        out, _, leaked = sl.guard_output(approved(verdict="REJECTED"), "sk-abcdefghijklmnopqrst", [])
+        self.assertTrue(leaked)
+        self.assertEqual(out["verdict"], "REJECTED")
+
+    def test_clean_output_is_untouched(self):
+        report = "# Report\nNo secrets here, only prose and a short word tok.\n"
+        out, text, leaked = sl.guard_output(approved(), report, sl.auth_secret_values(self.CODEX_AUTH))
+        self.assertFalse(leaked)
+        self.assertEqual(out, approved())
+        self.assertEqual(text, report)
+
+    def test_short_values_are_not_treated_as_secrets(self):
+        out, _, leaked = sl.guard_output(approved(), "the word abc appears", ["abc"])
+        self.assertFalse(leaked)
+        self.assertEqual(out["verdict"], "APPROVED")
+
+    def test_finalize_cli_enforces_prescan_and_writes_outputs(self):
+        with tempfile.TemporaryDirectory() as d:
+            paths = {k: os.path.join(d, k) for k in ("verdict", "report", "prescan", "auth", "out_v", "out_r")}
+            with open(paths["verdict"], "w", encoding="utf-8") as f:
+                json.dump(approved(), f)
+            with open(paths["report"], "w", encoding="utf-8") as f:
+                f.write("# clean\n")
+            with open(paths["prescan"], "w", encoding="utf-8") as f:
+                json.dump(clean_prescan(binaries=["x.bin"]), f)
+            with open(paths["auth"], "w", encoding="utf-8") as f:
+                f.write(self.CODEX_AUTH)
+            argv = ["skills_lib.py", "finalize", paths["verdict"], paths["report"], paths["prescan"],
+                    paths["auth"], paths["out_v"], paths["out_r"]]
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(sl.main(argv), 0)
+            with open(paths["out_v"], encoding="utf-8") as f:
+                self.assertEqual(json.load(f)["verdict"], "DOUBTFUL")
+            with open(paths["out_r"], encoding="utf-8") as f:
+                self.assertEqual(f.read(), "# clean\n")
+
+    def test_finalize_cli_fails_closed_on_unreadable_auth(self):
+        with tempfile.TemporaryDirectory() as d:
+            verdict = os.path.join(d, "v.json")
+            with open(verdict, "w", encoding="utf-8") as f:
+                json.dump(approved(), f)
+            report = os.path.join(d, "r.md")
+            with open(report, "w", encoding="utf-8") as f:
+                f.write("x")
+            auth_dir = os.path.join(d, "auth-is-a-dir")
+            os.mkdir(auth_dir)
+            with contextlib.redirect_stderr(io.StringIO()):
+                code = sl.main(["skills_lib.py", "finalize", verdict, report, os.path.join(d, "missing.json"),
+                                auth_dir, os.path.join(d, "o1"), os.path.join(d, "o2")])
+            self.assertEqual(code, 1)
+            self.assertFalse(os.path.exists(os.path.join(d, "o1")))
+
+    def test_finalize_reads_anthropic_api_key_from_environment(self):
+        key = "sk-ant-api03-ENVKEYVALUE0123456789"
+        with tempfile.TemporaryDirectory() as d:
+            report = os.path.join(d, "r.md")
+            with open(report, "w", encoding="utf-8") as f:
+                f.write("contains " + key)
+            verdict = os.path.join(d, "v.json")
+            with open(verdict, "w", encoding="utf-8") as f:
+                json.dump(approved(), f)
+            out_v, out_r = os.path.join(d, "ov.json"), os.path.join(d, "or.md")
+            with mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": key}):
+                with contextlib.redirect_stderr(io.StringIO()):
+                    self.assertEqual(sl.main(["skills_lib.py", "finalize", verdict, report,
+                                              os.path.join(d, "none.json"), "-", out_v, out_r]), 0)
+            with open(out_r, encoding="utf-8") as f:
+                self.assertNotIn(key, f.read())
+
+
+class SubpathGuardTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.root = os.path.join(self.tmp, "src")
+        self.outside = os.path.join(self.tmp, "outside")
+        os.makedirs(os.path.join(self.root, "skills", "pdf"))
+        os.makedirs(self.outside)
+        with open(os.path.join(self.root, "skills", "pdf", "SKILL.md"), "w", encoding="utf-8") as f:
+            f.write("# pdf\n")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def symlink(self, target, name):
+        try:
+            os.symlink(target, os.path.join(self.root, name))
+        except (OSError, NotImplementedError):
+            self.skipTest("symlinks not supported here")
+
+    def test_plain_subpath_is_safe(self):
+        self.assertEqual(sl.check_subpath(self.root, "skills/pdf"), [])
+
+    def test_colon_and_comma_rejected(self):
+        self.assertTrue(sl.check_subpath(self.root, "skills:pdf"))
+        self.assertTrue(sl.check_subpath(self.root, "skills,pdf"))
+
+    def test_dotdot_and_absolute_rejected(self):
+        self.assertTrue(sl.check_subpath(self.root, "../outside"))
+        self.assertTrue(sl.check_subpath(self.root, "/etc"))
+
+    def test_symlink_component_refused(self):
+        self.symlink(self.outside, "link")
+        self.assertTrue(sl.check_subpath(self.root, "link"))
+        self.assertTrue(sl.check_subpath(self.root, "link/anything"))
+
+    def test_symlink_inside_subpath_refused(self):
+        self.symlink(self.outside, "skills/pdf/escape")
+        self.assertTrue(sl.check_subpath(self.root, "skills/pdf/escape"))
+
+    def test_cli_exit_codes(self):
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(sl.main(["skills_lib.py", "check-subpath", self.root, "skills/pdf"]), 0)
+        self.symlink(self.outside, "link")
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(sl.main(["skills_lib.py", "check-subpath", self.root, "link"]), 2)
 
 
 if __name__ == "__main__":

@@ -25,6 +25,9 @@ CACHE_ROOT="${SKILL_REVIEW_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/subagent-pool/
 PROMPT="$SCRIPT_DIR/../assets/skill-review-prompt.md"
 FABLE_MODEL="claude-fable-5-1"
 CODEX_HOSTS="api.openai.com chatgpt.com"
+# Documented option, NOT enabled. Add auth.openai.com only if Codex token refresh is blocked in the sandbox:
+# CODEX_HOSTS="api.openai.com chatgpt.com auth.openai.com"
+AUTH_FILE="$HOME/.codex/auth.json"
 CLAUDE_HOSTS="api.anthropic.com"
 
 DRY=0
@@ -66,7 +69,7 @@ ID=${POS[2]}
 [[ "$ID" =~ ^[a-z0-9][a-z0-9-]*$ ]] || die 2 "id must match ^[a-z0-9][a-z0-9-]*\$"
 if [ -n "$SUBPATH" ]; then
   case "$SUBPATH" in
-    /*|*..*) die 2 "--subpath must be relative and must not contain .." ;;
+    /*|*..*|*:*|*,*) die 2 "--subpath must be relative, must not contain .. and must not contain ':' or ','" ;;
   esac
 fi
 python3 -I "$SCRIPT_DIR/skills_lib.py" official "$URL" >/dev/null || die 2 "not an official source (assets/official-sources.json): $URL"
@@ -200,10 +203,10 @@ print(json.dumps({"id": sys.argv[1], "source_url": sys.argv[2], "commit": sys.ar
   local rc=0
   if [ "$DRY" = 0 ]; then
     python3 -I "$SCRIPT_DIR/skills_lib.py" split-review "$STAGE/review/review.json" "$STAGE/review/report.md" \
-      "$SHA" "$URL" > "$STAGE/review/verdict.json" 2>>"$STAGE/review/$kind.log" || rc=1
+      "$SHA" "$URL" "$reviewer" > "$STAGE/review/verdict.json" 2>>"$STAGE/review/$kind.log" || rc=1
   else
     run "$STAGE/review/verdict.json" python3 -I "$SCRIPT_DIR/skills_lib.py" split-review \
-      "$STAGE/review/review.json" "$STAGE/review/report.md" "$SHA" "$URL"
+      "$STAGE/review/review.json" "$STAGE/review/report.md" "$SHA" "$URL" "$reviewer"
   fi
   drop_reviewer_net "$proxy" "$net"
   return "$rc"
@@ -216,10 +219,20 @@ run /dev/null env GIT_TERMINAL_PROMPT=0 git -C "$STAGE/repo" fetch -q --depth 1 
 run /dev/null git -C "$STAGE/repo" cat-file -e "$SHA^{commit}"
 run "$STAGE/src.tar" git -C "$STAGE/repo" archive "$SHA"
 run /dev/null tar -xf "$STAGE/src.tar" -C "$STAGE/src" --no-same-owner
+if [ "$DRY" = 0 ] && [ -n "$SUBPATH" ]; then
+  python3 -I "$SCRIPT_DIR/skills_lib.py" check-subpath "$STAGE/src" "$SUBPATH" \
+    || die 2 "refused --subpath $SUBPATH (symlink component, escape, or forbidden characters)"
+fi
 SRC="$STAGE/src"
 [ -n "$SUBPATH" ] && SRC="$STAGE/src/$SUBPATH"
-if [ "$DRY" = 0 ] && [ ! -d "$SRC" ]; then
-  die 2 "subpath not found in $SHA: $SUBPATH"
+if [ "$DRY" = 0 ]; then
+  [ -d "$SRC" ] || die 2 "subpath not found in $SHA: $SUBPATH"
+  REAL_SRC=$(realpath -e "$SRC") || die 2 "subpath does not resolve: $SUBPATH"
+  REAL_ROOT=$(realpath -e "$STAGE/src")
+  case "$REAL_SRC/" in
+    "$REAL_ROOT/"*) ;;
+    *) die 2 "subpath resolves outside the source tree: $SUBPATH" ;;
+  esac
 fi
 run /dev/null cp "$PROMPT" "$STAGE/in/prompt.md"
 
@@ -249,8 +262,13 @@ else
   REVIEWER=$FABLE_MODEL
 fi
 
-cp "$STAGE/review/verdict.json" "$OUT/verdict.json"
-cp "$STAGE/review/report.md" "$OUT/report.md"
+# Pre-scan enforcement (one-way downgrade) and secret guard, before anything reaches OUT.
+[ -f "$AUTH_FILE" ] || AUTH_FILE="-"
+python3 -I "$SCRIPT_DIR/skills_lib.py" finalize "$STAGE/review/verdict.json" "$STAGE/review/report.md" \
+  "$STAGE/in/prescan.json" "$AUTH_FILE" "$STAGE/review/final-verdict.json" "$STAGE/review/final-report.md" \
+  || die 4 "finalize failed (pre-scan enforcement or secret guard); nothing written to $OUT"
+cp "$STAGE/review/final-verdict.json" "$OUT/verdict.json"
+cp "$STAGE/review/final-report.md" "$OUT/report.md"
 cp "$STAGE/in/prescan.json" "$OUT/prescan.json"
 rm -rf "$OUT/skill"
 VERDICT=$(python3 -I -c 'import json, sys; print(json.load(open(sys.argv[1]))["verdict"])' "$OUT/verdict.json")

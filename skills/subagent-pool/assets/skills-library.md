@@ -104,7 +104,8 @@ The main model (Conductor) never reads skill files. It handles metadata, a verdi
 4. **Ask the user** (prose, with the estimated token cost). Every time. No threshold, no remembered
    consent. Without an explicit yes, nothing is fetched into context.
 5. **Review.** `bash skills/subagent-pool/scripts/skill-review.sh --approved-by-user <repo_url> <commit> <id> [--subpath DIR]`.
-   stdout = verdict JSON only. The skill copy, pre-scan and report stay in `--out`
+   `<repo_url>` must be exactly `https://github.com/<owner>/<repo>` (one optional trailing slash); pick the skill with `--subpath`
+   (no `:`, `,`, `..`, symlink components). stdout = verdict JSON only. The skill copy, pre-scan and report stay in `--out`
    (default `~/.cache/subagent-pool/reviews/<id>-<sha8>`).
 6. **Record.**
    - `APPROVED` → copy `<out>/skill/` to `skills/<id>/` in the private repo, add an `index.json`
@@ -123,7 +124,22 @@ Review isolation (skill-review.sh):
 Both containers: `--read-only`, `--cap-drop ALL`, `--security-opt no-new-privileges`, non-root,
 memory and pid limits, no env passthrough except proxy variables (and `ANTHROPIC_API_KEY` for Fable).
 The reviewer also gets `~/.codex/auth.json` read-only as a secret. Mounting it is part of what the
-user approves.
+user approves. Optional, not enabled: `auth.openai.com` (Codex token refresh) is a commented line in
+`skill-review.sh`; add it only if refresh is blocked in the sandbox.
+
+**Accepted residual risk.** The reviewer container holds the Codex or Anthropic credential read-only,
+next to untrusted skill text. A prompt injection in the skill could try to read it and send it out.
+Mitigations, in order: (1) the egress allow-list (vendor API hosts only); (2) the secret guard in
+`finalize`, which redacts the auth file's string values, `ANTHROPIC_API_KEY` and generic `sk-…` / JWT
+patterns from report and verdict, and turns an APPROVED into DOUBTFUL with `secret-leak-detected`;
+(3) the user's explicit approval on every run. Not covered: a secret sent over an allowed host in a form
+the scan does not match. Recommendation: use a dedicated, scoped key for reviews, not the main account credential.
+
+**Enforcement (`skills_lib.py finalize`, before anything reaches `--out`).** Pre-scan injection findings,
+symlinks, opaque files, `truncated` or an unreadable pre-scan turn an APPROVED verdict into DOUBTFUL with
+`prescan-enforced: <rule ids>`. It never upgrades. Reviewer reasons that are over 200 characters,
+non-ASCII or multi-line turn the verdict into DOUBTFUL with `reviewer-output-invalid`. The answer's
+`reviewer` must equal the slug that was launched.
 
 Reviewer = latest astra from `codex-models.py` (role `review`). If there is no astra slug or the Codex
 attempt fails (no answer, invalid JSON, network refused), it falls back to `claude-fable-5-1` in the
