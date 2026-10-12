@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "verified_with": "gh repo view <owner/repo> --json name,updatedAt",
+  "verified_on": "2026-10-12",
+  "sources": [
+    {"url": "https://github.com/anthropics/skills", "vendor": "Anthropic", "discovery_only": false},
+    {"url": "https://github.com/openai/skills", "vendor": "OpenAI", "discovery_only": false},
+    {"url": "https://github.com/vercel-labs/agent-skills", "vendor": "Vercel", "discovery_only": false},
+    {"url": "https://skills.sh", "vendor": "skills.sh (aggregator, not a GitHub repo)", "discovery_only": true}
+  ]
+}

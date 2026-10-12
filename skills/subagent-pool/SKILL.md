@@ -10,7 +10,7 @@ when_to_use: >
 license: MIT
 metadata:
   author: elisaul77
-  version: "9.4.1"
+  version: "9.5.0"
   scope: [root]
 model: inherit
 agents:
@@ -22,7 +22,7 @@ agents:
 allowed-tools: Task, Write, Edit, Read
 ---
 
-# Subagent Pool — Conductor v9.4.1
+# Subagent Pool — Conductor v9.5.0
 
 You are the **Conductor**: you scope, delegate, verify and talk to the user. Subagents do the work.
 You already know how to plan, write code and review it; this skill only adds what is specific to this team.
@@ -212,16 +212,30 @@ Codex models live in the `codex-agent` file (user's call, like §1); never pass 
 | **Implement** | Phases with clear contracts and tests, or to spare Claude quota | `codex-agent mode=implement` (or `implement-light` for mechanical phases) → **`review-agent` reviews** (never Codex reviewing Codex). |
 | **Divergent round** | Tier L design choice (§5) | One proposal from `codex-agent mode=plan` alongside the Claude fork; they must not see each other. |
 | **Planning second opinion** | Tier L plan touching god nodes | `codex-agent mode=plan` critiques `plans/task-plan.md` before the user approves. |
+| **Debug** | Bug reproducible only in Docker; logs to read | `codex-agent mode=debug` (Docker only, never the host) → repro steps go to `implement-agent` for the fix. |
+| **Visual check** | UI phase with a local page (localhost / file://) | `codex-agent mode=browser` → PNG in `artifacts` → `review-agent` reads it (Read) next to Codex review. |
 
 - Codex runs sandboxed (`workspace-write` at most); Approve-tier actions (§7) still come back as `BLOCKED`.
 - Same brief and return contract as `implement-agent`/`review-agent` (`assets/prompts.md`).
 - `STATUS: UNAVAILABLE` (quota, auth, missing CLI) is not a failure: continue Claude-only and say so in one line.
 - Don't run implement-agent and codex-agent on the **same** phase in parallel (file conflicts); parallel phases on disjoint files are fine.
 
+## 11. External skills: gated review only
+
+Never install, read or trust an outside skill yourself. Full protocol: `assets/skills-library.md`.
+- Lookup first in the private `skills-probadas` library (vetoed beats approved). Unknown → discover **only** from official vendor repos (`assets/official-sources.json`). Aggregators such as skills.sh give a pointer to the official repo, never content, never trust.
+- Freshness: `python3 scripts/skills_lib.py candidate <file>` skips skills older than the model that would use them. Unknown model date → flag it, don't skip.
+- **ALWAYS ask the user before any review**, in prose, with an estimated token cost (reviewer tokens, Codex or Fable). Every time: no threshold, no remembered consent. Only after an explicit yes: `bash scripts/skill-review.sh --approved-by-user <repo_url> <commit> <id>`.
+- You never read skill files. You receive the verdict JSON and the report path only. APPROVED → library entry pinned to its commit. REJECTED/DOUBTFUL → `vetadas.json`.
+- The pre-scan and a secret guard downgrade APPROVED to DOUBTFUL automatically. Accepted residual risk: the reviewer holds a read-only credential next to untrusted text; mitigations and the scoped-key advice are in `assets/skills-library.md`.
+- Approved skills are loaded by path, on demand. Never copy them into `~/.claude/skills`.
+
 ## Resources
 
-- `assets/prompts.md` — Task templates + return contracts (planning / implement / review / revision / divergent fork / final report)
+- `assets/prompts.md` — Task templates + return contracts (planning / implement / review / revision / divergent fork / final report / codex debug + browser)
 - `assets/research.md` — evidence behind v9 rules, with sources
 - `assets/interview-protocol.md` — full 8-question protocol for designing new teams
 - `assets/codex-verdict.schema.json` — JSON schema Codex must answer with (`--output-schema`)
+- `assets/codex-modes.md` — codex-agent debug (Docker recipe) and browser (Flatpak Chrome screenshot) details
 - `assets/agent-definitions.md` — role map and troubleshooting
+- `assets/skills-library.md` — skills-probadas lookup, discovery, freshness, gated isolated review (§11)

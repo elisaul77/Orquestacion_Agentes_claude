@@ -39,6 +39,8 @@ flowchart LR
 | review-agent | `review-agent` | sonnet | Read, Glob, Grep, Bash (read-only) | ❌ | `🤖 [review-agent] Reviewing Phase {N}...` |
 | AgentArchitect | `AgentArchitect` | **opus** | Task, Read, Write, Edit, Glob, Grep, Bash | Only .agent.md | `🏗️ [AgentArchitect] Designing team...` |
 
+> Optional `codex-agent` has no fixed model: `scripts/codex-models.py` resolves the Codex slug per role from `~/.codex/models_cache.json` (latest version per family, 14-day freshness; fallback = Codex default).
+
 ---
 
 ## Delegation Rules

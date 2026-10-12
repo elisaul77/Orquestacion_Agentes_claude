@@ -20,6 +20,7 @@
         }
       }
     },
-    "files_changed": {"type": "array", "items": {"type": "string"}}
+    "files_changed": {"type": "array", "items": {"type": "string"}},
+    "artifacts": {"type": "array", "items": {"type": "string"}, "description": "Optional. Paths to produced files, e.g. browser-mode screenshots (PNG)."}
   }
 }

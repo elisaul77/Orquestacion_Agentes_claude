@@ -3,7 +3,7 @@
 > **Conductor + Subagents pattern for Claude Code** — local orchestration of complex tasks with built-in AI.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill%20v9.3-blueviolet.svg)](https://claude.ai/code)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill%20v9.5-blueviolet.svg)](https://claude.ai/code)
 [![Conductor Pattern](https://img.shields.io/badge/Pattern-Conductor%20%2B%20Subagents-orange.svg)](#️-architecture)
 [![Graphify](https://img.shields.io/badge/Graphify-Knowledge%20Graph-teal.svg)](https://github.com/safishamsi/graphify)
 [![GitHub Sponsors](https://img.shields.io/badge/GitHub-Sponsors-pink?style=for-the-badge&logo=githubsponsors)](https://github.com/sponsors/elisaul77)
@@ -124,6 +124,17 @@ With the bridge on, the Conductor always crosses vendors: Claude implements → 
 
 ---
 
+### New in v9.5 — model registry, Codex debug/browser, gated skill review
+
+- 🧭 **Codex models without hardcoded slugs:** `scripts/codex-models.py` reads `~/.codex/models_cache.json` and picks the latest astra / sol / terra / luna model.
+- 🐳 **`debug` and `browser` modes:** Codex reproduces bugs inside Docker only, or screenshots a local page with headless Chrome (Flatpak) for the reviewer.
+- 📚 **Reviewed-skills library:** external skills are reviewed once, pinned to a commit in your private library repo, and never installed into `~/.claude/skills`. Nothing from that library lives in this repo.
+- 🛡️ **Gated review:** you approve every review; official sources only; each review runs in two isolated containers (offline pre-scan, then a reviewer behind an allow-list proxy).
+
+**Known limits:** the container-2 reviewer has not yet run end to end on a real skill; `codex debug` reachability inside Docker is unverified; the model release-date table has TODOs. Details in [CHANGELOG.md](CHANGELOG.md).
+
+---
+
 ## 🎯 Usage
 
 Trigger the Conductor in Claude Code with any of these:
@@ -194,11 +205,20 @@ Orquestacion_Agentes_claude/
 ├── skills/
 │   ├── subagent-pool/
 │   │   ├── SKILL.md                   # Main skill — the Conductor role
-│   │   └── assets/
+│   │   ├── assets/
 │   │       ├── prompts.md             # Task templates + return contracts
 │   │       ├── research.md            # Evidence and sources behind each v9 rule
 │   │       ├── agent-definitions.md   # Definitions and troubleshooting
-│   │       └── interview-protocol.md  # Full mini-interview protocol
+│   │       ├── interview-protocol.md  # Full mini-interview protocol
+│   │       ├── codex-modes.md         # codex-agent debug and browser recipes
+│   │       ├── skills-library.md      # Reviewed-skills library spec and gated review
+│   │       ├── skill-review-prompt.md # Reviewer prompt
+│   │       └── official-sources.json  # Allowed official sources
+│   │   └── scripts/
+│   │       ├── codex-models.py        # Codex model registry (latest per family)
+│   │       ├── skills_lib.py          # Library validator and lookup
+│   │       ├── skill_prescan.py       # Offline static pre-scan
+│   │       └── skill-review.sh        # Two-container gated review
 │   ├── arquitec-dev-ia/
 │   │   ├── SKILL.md                   # AI context documentation skill
 │   │   ├── assets/                    # AGENTS.md, CLAUDE.md, skill templates
