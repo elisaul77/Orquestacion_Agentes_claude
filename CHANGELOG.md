@@ -1,5 +1,9 @@
 # Changelog
 
+## v9.4.1 — 2026-10-11 · Format fix
+
+- `codex-agent` row back inside the agents table (§10); broken sentence in §10b rejoined. No rule changes.
+
 ## v9.4 — 2026-10-11 · Optional second vendor: OpenAI Codex
 
 - New optional `agents/optional/codex-agent.agent.md`: a Haiku relay to `codex exec` (plan / implement / review) with a JSON verdict schema (`assets/codex-verdict.schema.json`).
