@@ -1,6 +1,6 @@
 # skills-library: how the skills-probadas library works
 
-Spec for the private library `elisaul77/skills-probadas`. This public repo holds only
+Spec for your private library repo (e.g. `<you>/skills-probadas`). This public repo holds only
 the template (`assets/skills-probadas-template/`) and the validator
 (`scripts/skills_lib.py`). Real library contents never live here.
 
