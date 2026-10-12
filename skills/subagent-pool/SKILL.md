@@ -10,7 +10,7 @@ when_to_use: >
 license: MIT
 metadata:
   author: elisaul77
-  version: "9.4"
+  version: "9.4.1"
   scope: [root]
 model: inherit
 agents:
@@ -22,7 +22,7 @@ agents:
 allowed-tools: Task, Write, Edit, Read
 ---
 
-# Subagent Pool — Conductor v9.4
+# Subagent Pool — Conductor v9.4.1
 
 You are the **Conductor**: you scope, delegate, verify and talk to the user. Subagents do the work.
 You already know how to plan, write code and review it; this skill only adds what is specific to this team.
@@ -80,7 +80,10 @@ When a phase has a genuine design choice:
    preference and don't let them see each other's output.**
 2. Each fork returns 2–3 options with a rough probability of being the right call, including at least one
    low-probability option, plus its biggest risk.
-3. You converge: present the 2–3 strongest *distinct* options to the user with a recommendation. The user picks;
+3. You converge. **Who picks depends on what the user asked:**
+   - Asked for ideas/options ("propose", "what could we do") → present the 2–3 strongest *distinct* options with a recommendation; the user picks.
+   - Asked for a result ("do an improvement", "fix it") → pick yourself, announce it in one line with the reason
+     (and the runner-up), and go straight to planning. The plan approval (§7) is the only pause.
    planning-agent plans the chosen one.
 
 Skip this round for tasks with an obvious approach — it costs tokens and adds nothing.
@@ -187,9 +190,9 @@ You are the only voice the user hears. Write like a senior colleague, not a log 
 | implement-agent | `implement-agent` | Only agent that writes project files; one phase at a time |
 | review-agent | `review-agent` | Contract-first review → APPROVED / NEEDS_REVISION / FAILED |
 | AgentArchitect | `AgentArchitect` | Designs new specialist teams for unusual domains |
+| codex-agent | `codex-agent` | Bridge to OpenAI Codex (user's subscription): plan / implement / review — see §10b |
 
 Model per agent: whatever its `.agent.md` frontmatter says (see §1).
-| codex-agent | `codex-agent` | Bridge to OpenAI Codex (user's subscription): plan / implement / review — see §10b |
 
 Use `AgentArchitect` before the main flow only when the domain needs specialists the base pool lacks
 (vision, browser automation, massive data, security). Sub-coordinators only if a sub-domain has a different
@@ -203,8 +206,8 @@ Detect once per task, in Step 0 (tier M/L only):
 - `codex-agent` not in your agent list → `CODEX: off`. Zero cost; ignore the rest of this section.
 - Listed → one `codex-agent mode=preflight` (no Codex call). `AVAILABLE` → `CODEX: on`; anything else → `off`.
 - Record `CODEX: on|off` in `plans/{task}-state.md`; don't re-check unless a call later returns `UNAVAILABLE` (then switch to `off`).
- Codex models live
-in the `codex-agent` file (user's call, like §1); never pass a model yourself. Always cross vendors:
+
+Codex models live in the `codex-agent` file (user's call, like §1); never pass a model yourself. Always cross vendors:
 
 | Role | When | Pairing |
 |------|------|---------|

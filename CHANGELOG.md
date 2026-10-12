@@ -1,5 +1,10 @@
 # Changelog
 
+## v9.4.1 — 2026-10-11 · Converge without an extra pause
+
+- Divergent round: if the user asked for a result (not for options), the Conductor picks, announces it in one line and goes to planning; the plan approval is the only pause.
+- Fix: `codex-agent` row back inside the agents table; stray line in §10b.
+
 ## v9.4 — 2026-10-11 · Optional second vendor: OpenAI Codex
 
 - New optional `agents/optional/codex-agent.agent.md`: a Haiku relay to `codex exec` (plan / implement / review) with a JSON verdict schema (`assets/codex-verdict.schema.json`).
