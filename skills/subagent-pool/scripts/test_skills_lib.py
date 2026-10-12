@@ -595,6 +595,18 @@ class StrictGithubUrlTests(unittest.TestCase):
                     "https://github.com/openai/skills", "https://GitHub.com/Anthropics/Skills/"):
             self.assertTrue(sl.official(url), url)
 
+    def test_unicode_case_folding_lookalikes_rejected(self):
+        # dotless i (U+0131), dotted capital I (U+0130), long s (U+017F) fold to ASCII under Unicode IGNORECASE
+        for url in ("https://g\u0131thub.com/vercel-labs/agent-skills",
+                    "https://GI\u0130HUB.com/openai/skills",
+                    "https://github.com/opena\u0131/skills",
+                    "https://github.com/openai/skill\u017f",
+                    "https://github.com/\u017fnthropics/skills"):
+            self.assertFalse(sl.official(url), repr(url))
+
+    def test_ascii_uppercase_github_host_still_official(self):
+        self.assertTrue(sl.official("https://GITHUB.com/openai/skills"))
+
     def test_cli_official_rejects_traversal(self):
         with contextlib.redirect_stderr(io.StringIO()):
             self.assertEqual(sl.main(["skills_lib.py", "official",

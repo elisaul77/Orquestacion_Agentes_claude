@@ -62,7 +62,8 @@ GENERIC_SECRET_RES = (
     re.compile(r"eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}"),  # JWT
 )
 RELEASE_SECTION = "## Model release dates"  # heading holding the release table in skills-library.md
-GITHUB_REPO_RE = re.compile(r"https://(?i:github\.com)/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)/?")
+# re.ASCII: Unicode case folding would let look-alikes (dotless i, long s, ...) match "github" or owners
+GITHUB_REPO_RE = re.compile(r"https://(?i:github\.com)/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)/?", re.ASCII)
 
 # Extension point. Each callable receives (entry, kind) and returns a list of error
 # strings. kind is "index" or "veto" for library entries, and "candidate" for
@@ -278,8 +279,9 @@ def _github_repo(url):
 
     Anything else is rejected: extra path segments (tree/, ../), percent-encoding, query or
     fragment, whitespace, backslash, userinfo (@), ports, other hosts and http://.
+    Matching is ASCII-only: any non-ASCII character (e.g. dotless i or long s) is rejected.
     """
-    if not _nonempty_str(url):
+    if not _nonempty_str(url) or not url.isascii():
         return None
     match = GITHUB_REPO_RE.fullmatch(url)
     if match is None:
