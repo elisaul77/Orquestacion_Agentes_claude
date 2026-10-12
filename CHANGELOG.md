@@ -1,5 +1,28 @@
 # Changelog
 
+## v9.5.0 — 2026-10-12 · Superorchestrator: model registry, Codex modes, gated skill review
+
+- **Codex model registry:** `scripts/codex-models.py` picks the latest model per family (astra, sol, terra, luna) from `~/.codex/models_cache.json`. Versions compare numerically (6.1 > 6 > 5.6) and only `list` models count. No model slug is hardcoded in `codex-agent`. A missing, corrupt or stale cache (older than 14 days) falls back to defaults: `-m` is omitted and the Conductor is told.
+- **codex-agent modes:** `debug` runs only inside Docker (`docker compose run` / `docker exec`), never on the host. `browser` takes a headless screenshot with Flatpak Chrome and hands the PNG to the reviewer through `codex exec -i`. Details in `assets/codex-modes.md`. The verdict schema gains an optional `artifacts` key, so v9.4 outputs still validate.
+- **Reviewed-skills library:** approved external skills are pinned by full commit SHA in a private library repo that never lives in this public repo. `index.json` lists approved skills, `vetadas.json` lists vetoed ones, and `scripts/skills_lib.py` validates both and runs the lookup. A skill vetoed by source URL stays vetoed under any id or commit. This repo ships only an empty template and the spec (`assets/skills-library.md`).
+- **Gated, isolated review of external skills (§11):**
+  - Discovery only from official sources: `anthropics/skills`, `openai/skills`, `vercel-labs/agent-skills`. skills.sh is discovery-only: it points to an official repo and never provides content.
+  - Freshness rule: a skill older than the model that would use it is skipped. An unknown model date is flagged, not skipped.
+  - The user approves every review in prose, with a token-cost estimate. No remembered consent.
+  - Container 1 runs the static pre-scan offline (`--network none`). Container 2 runs the reviewer behind an egress allow-list proxy that reaches only the model API.
+  - The pre-scan is enforced as a one-way downgrade: APPROVED can become DOUBTFUL, never the reverse.
+  - Hardening: strict ASCII check on the source URL, symlink guard, validation of reviewer output, secret scan.
+  - Reviewer: latest astra through Codex; Fable (`claude-fable-5-1`) only if Codex fails.
+  - Approved skills load by path on demand. Nothing is copied into `~/.claude/skills`.
+
+**Known limits**
+- The container-2 reviewer has not yet run end to end on a real skill.
+- Reachability of `codex debug` inside Docker is unverified.
+- The model release-dates table has TODO entries.
+- Residual risk: the reviewer's credential sits next to untrusted text. Use a scoped, read-only key.
+
+**Future improvement:** a decision model (OpenAI Decisions API or a luna decider) for vetting calls, deferred until measured.
+
 ## v9.4.1 — 2026-10-11 · Format fix
 
 - `codex-agent` row back inside the agents table (§10); broken sentence in §10b rejoined. No rule changes.

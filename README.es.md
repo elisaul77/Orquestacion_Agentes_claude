@@ -3,7 +3,7 @@
 > **Patrón Conductor + Subagentes para Claude Code** — Orquestación local de tareas complejas con Inteligencia Artificial integrada.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill%20v9.3-blueviolet.svg)](https://claude.ai/code)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill%20v9.5-blueviolet.svg)](https://claude.ai/code)
 [![Conductor Pattern](https://img.shields.io/badge/Pattern-Conductor%20%2B%20Subagentes-orange.svg)](#arquitectura)
 [![Graphify](https://img.shields.io/badge/Graphify-Knowledge%20Graph-teal.svg)](https://github.com/safishamsi/graphify)
 [![GitHub Sponsors](https://img.shields.io/badge/GitHub-Sponsors-pink?style=for-the-badge&logo=githubsponsors)](https://github.com/sponsors/elisaul77)
@@ -126,6 +126,17 @@ cp skills/subagent-pool/assets/codex-verdict.schema.json ~/.claude/skills/subage
 
 Con el puente activo el Conductor siempre cruza proveedores: Claude implementa → revisan Claude **y** Codex en paralelo; Codex implementa → revisa Claude; y Codex aporta una propuesta en la ronda divergente. Ajusta la tabla de modelos de `codex-agent.agent.md` a los que ofrezca tu plan.
 
+### Novedades v9.5 — registro de modelos, modos debug/browser de Codex, revisión de skills controlada
+
+- 🧭 **Modelos de Codex sin slugs fijos:** `scripts/codex-models.py` lee `~/.codex/models_cache.json` y elige el modelo más reciente de cada familia (astra, sol, terra, luna).
+- 🐳 **Modos `debug` y `browser`:** Codex reproduce errores solo dentro de Docker, o captura una página local con Chrome headless (Flatpak) para el revisor.
+- 📚 **Biblioteca de skills revisadas:** las skills externas se revisan una vez, quedan fijadas a un commit en tu repo privado de biblioteca y nunca se instalan en `~/.claude/skills`. Nada de esa biblioteca vive en este repo.
+- 🛡️ **Revisión controlada:** tú apruebas cada revisión; solo fuentes oficiales; cada revisión corre en dos contenedores aislados (pre-escaneo sin red y revisor tras un proxy de salida restringida).
+
+**Límites conocidos:** el revisor del contenedor 2 aún no se probó de extremo a extremo con una skill real; el alcance de `codex debug` dentro de Docker no está verificado; la tabla de fechas de lanzamiento de modelos tiene TODOs. Detalle en [CHANGELOG.md](CHANGELOG.md).
+
+---
+
 ## 🎯 Uso
 
 Activa el Conductor con cualquiera de estas frases en Claude Code:
@@ -192,11 +203,20 @@ Orquestacion_Agentes_claude/
 ├── skills/
 │   ├── subagent-pool/
 │   │   ├── SKILL.md                   # Skill principal — rol del Conductor
-│   │   └── assets/
+│   │   ├── assets/
 │   │       ├── prompts.md             # Plantillas de Task + contratos de retorno
 │   │       ├── research.md            # Evidencia y fuentes detrás de cada regla v9
 │   │       ├── agent-definitions.md   # Definiciones y troubleshooting
-│   │       └── interview-protocol.md  # Protocolo de mini-entrevista completo
+│   │       ├── interview-protocol.md  # Protocolo de mini-entrevista completo
+│   │       ├── codex-modes.md         # Recetas debug y browser de codex-agent
+│   │       ├── skills-library.md      # Especificación de la biblioteca y revisión controlada
+│   │       ├── skill-review-prompt.md # Prompt del revisor
+│   │       └── official-sources.json  # Fuentes oficiales permitidas
+│   │   └── scripts/
+│   │       ├── codex-models.py        # Registro de modelos Codex (último por familia)
+│   │       ├── skills_lib.py          # Validador y búsqueda de la biblioteca
+│   │       ├── skill_prescan.py       # Pre-escaneo estático sin red
+│   │       └── skill-review.sh        # Revisión controlada en dos contenedores
 │   ├── arquitec-dev-ia/
 │   │   ├── SKILL.md                   # Skill de documentación de contexto IA
 │   │   ├── assets/                    # Templates AGENTS.md, CLAUDE.md, skills
