@@ -114,6 +114,18 @@ done
 
 ---
 
+### Opcional — OpenAI Codex como segundo proveedor (v9.4)
+
+Solo si **además** tienes suscripción ChatGPT/Codex. Sin ella no cambia nada: la skill detecta que falta el puente y sigue solo con Claude, sin costo extra.
+
+```bash
+npm i -g @openai/codex && codex login          # una vez
+cp agents/optional/codex-agent.agent.md ~/.claude/agents/
+cp skills/subagent-pool/assets/codex-verdict.schema.json ~/.claude/skills/subagent-pool/assets/
+```
+
+Con el puente activo el Conductor siempre cruza proveedores: Claude implementa → revisan Claude **y** Codex en paralelo; Codex implementa → revisa Claude; y Codex aporta una propuesta en la ronda divergente. Ajusta la tabla de modelos de `codex-agent.agent.md` a los que ofrezca tu plan.
+
 ## 🎯 Uso
 
 Activa el Conductor con cualquiera de estas frases en Claude Code:

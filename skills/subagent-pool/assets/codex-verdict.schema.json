@@ -1,0 +1,25 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "summary", "findings", "files_changed"],
+  "properties": {
+    "status": {"type": "string", "enum": ["APPROVED", "NEEDS_REVISION", "FAILED", "DONE", "BLOCKED"]},
+    "summary": {"type": "string"},
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["severity", "file", "line", "issue", "fix"],
+        "properties": {
+          "severity": {"type": "string", "enum": ["critical", "major", "minor"]},
+          "file": {"type": "string"},
+          "line": {"type": "integer"},
+          "issue": {"type": "string"},
+          "fix": {"type": "string"}
+        }
+      }
+    },
+    "files_changed": {"type": "array", "items": {"type": "string"}}
+  }
+}

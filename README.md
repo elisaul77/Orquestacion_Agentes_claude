@@ -108,6 +108,18 @@ for agent in planning-agent implement-agent review-agent AgentArchitect; do
 done
 ```
 
+### Optional — OpenAI Codex as a second vendor (v9.4)
+
+Only if you **also** have a ChatGPT/Codex subscription. Without it nothing changes: the skill detects the bridge is missing and runs Claude-only at zero extra cost.
+
+```bash
+npm i -g @openai/codex && codex login          # once
+cp agents/optional/codex-agent.agent.md ~/.claude/agents/
+cp skills/subagent-pool/assets/codex-verdict.schema.json ~/.claude/skills/subagent-pool/assets/
+```
+
+With the bridge on, the Conductor always crosses vendors: Claude implements → Claude **and** Codex review in parallel; Codex implements → Claude reviews; plus a Codex proposal in the divergent round. Edit the model table inside `codex-agent.agent.md` to match the models your plan offers.
+
 > **Note:** the `graphify` skill needs the tool installed separately — see [Graphify](#-graphify--knowledge-graph) below.
 
 ---
