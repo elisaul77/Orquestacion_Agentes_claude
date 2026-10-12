@@ -82,5 +82,69 @@ python3 -B skills/subagent-pool/scripts/skills_lib.py lookup <path-to-skills-pro
 `validate` exits 0 when both JSON files pass the rules above, and 1 otherwise. It
 prints one error per line on stderr. `lookup` prints the outcome as JSON.
 
-Freshness and official-source checks plug into `EXTRA_CHECKS` in `skills_lib.py`
-(F4). They are not implemented in F3.
+Freshness and official-source checks are in `skills_lib.py` (F4), registered as an
+`EXTRA_CHECKS` hook that applies to discovery candidates.
+
+## Discovery and review workflow (F4)
+
+The main model (Conductor) never reads skill files. It handles metadata, a verdict and a report.
+
+1. **Lookup.** `python3 -B skills/subagent-pool/scripts/skills_lib.py lookup <skills-probadas> <name>`.
+   If the private repo is not cloned, skip this step silently. `vetoed` → stop and say so.
+   `approved` → load `<skills-probadas>/skills/<id>/` by path. Never copy it into `~/.claude/skills`.
+2. **Discover, official sources only.** Sources are in `assets/official-sources.json`
+   (`discovery_only: false`). List candidate names with `gh api`, e.g.
+   `gh api repos/<owner>/<repo>/contents/<dir>`. `discovery_only` sources (skills.sh) give a
+   name and a pointer to the official repo. They never give content or trust.
+3. **Freshness filter.** For each candidate, get `last_update` with
+   `gh api "repos/<owner>/<repo>/commits?path=<dir>&per_page=1" --jq '.[0].commit.committer.date[:10]'`,
+   write `{"name","source_url","last_update","model"}` to a temp file and run
+   `python3 -B skills_lib.py candidate <file>`. `skip` = not official or stale (last_update is before
+   the release of `model`). `flags` = facts to report (e.g. unknown release date; not skipped).
+4. **Ask the user** (prose, with the estimated token cost). Every time. No threshold, no remembered
+   consent. Without an explicit yes, nothing is fetched into context.
+5. **Review.** `bash skills/subagent-pool/scripts/skill-review.sh --approved-by-user <repo_url> <commit> <id> [--subpath DIR]`.
+   stdout = verdict JSON only. The skill copy, pre-scan and report stay in `--out`
+   (default `~/.cache/subagent-pool/reviews/<id>-<sha8>`).
+6. **Record.**
+   - `APPROVED` → copy `<out>/skill/` to `skills/<id>/` in the private repo, add an `index.json`
+     entry (`reviewer`, `commit`, `date`, `verdict: APPROVED`), write `reports/<id>.md` from `<out>/report.md`,
+     then `validate`.
+   - `REJECTED` / `DOUBTFUL` → add a `vetadas.json` entry with the first reason, and `validate`.
+   - Writing to the private repo is an Approve-tier change: ask the user first.
+
+Review isolation (skill-review.sh):
+
+| Container | Network | Mounts | Job |
+|---|---|---|---|
+| 1 pre-scan | `--network none` | skill `:ro`, `skill_prescan.py` `:ro` | JSON inventory and risk patterns, offline |
+| 2 reviewer | internal Docker network; only exit is a squid allow-list proxy (`api.openai.com`, `chatgpt.com` for Codex; `api.anthropic.com` for Fable) | skill `:ro`, `in/` (prescan, meta, prompt) `:ro`, `out/` rw | Verdict and report |
+
+Both containers: `--read-only`, `--cap-drop ALL`, `--security-opt no-new-privileges`, non-root,
+memory and pid limits, no env passthrough except proxy variables (and `ANTHROPIC_API_KEY` for Fable).
+The reviewer also gets `~/.codex/auth.json` read-only as a secret. Mounting it is part of what the
+user approves.
+
+Reviewer = latest astra from `codex-models.py` (role `review`). If there is no astra slug or the Codex
+attempt fails (no answer, invalid JSON, network refused), it falls back to `claude-fable-5-1` in the
+same isolation. Never the main model.
+
+Images (not built by this repo; building one needs network, so do it at the user's request):
+
+- `SKILL_REVIEW_CODEX_IMAGE` (default `skill-review-codex:local`): Node plus `@openai/codex`, non-root.
+  Starting point: `FROM node:22-slim`, install python3, `npm install -g @openai/codex`. Verify on first build.
+- `SKILL_REVIEW_CLAUDE_IMAGE` (default `skill-review-claude:local`): Node plus Claude Code CLI.
+- `SKILL_REVIEW_PROXY_IMAGE` (default `ubuntu/squid:latest`): squid; the script writes the allow-list config.
+- `SKILL_REVIEW_PRESCAN_IMAGE` (default `python:3.13-slim`, local).
+
+## Model release dates
+
+Hand-maintained. The freshness rule uses it. `TODO` = unknown: the candidate is kept and flagged,
+never skipped. Update the cell by hand when a model ships.
+
+| Model | Release date |
+|---|---|
+| `claude-opus-5-5` | TODO (verify) |
+| `claude-sonnet-5-5` | TODO (verify) |
+| `claude-haiku-5-5` | TODO (verify) |
+| `claude-fable-5-1` | TODO (verify) |

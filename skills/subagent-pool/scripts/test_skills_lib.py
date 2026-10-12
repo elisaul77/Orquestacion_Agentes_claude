@@ -6,6 +6,7 @@ import os
 import shutil
 import tempfile
 import unittest
+from unittest import mock
 
 import skills_lib as sl
 
@@ -286,6 +287,254 @@ class ExtensionPointTests(unittest.TestCase):
             sl.EXTRA_CHECKS.remove(reject_all)
         self.assertIn("hook says no", errors)
         self.assertEqual(sl.check_entry(good_index(), "index"), [])
+
+
+OFFICIAL_URL = "https://github.com/anthropics/skills/tree/main/skills/pdf"
+
+
+def good_candidate(**overrides):
+    candidate = {
+        "name": "pdf",
+        "source_url": OFFICIAL_URL,
+        "last_update": "2026-09-15",
+        "model": "claude-opus-5-5",
+    }
+    candidate.update(overrides)
+    return candidate
+
+
+class OfficialSourceTests(unittest.TestCase):
+    def test_official_sources_file_lists_vendor_repos_and_skills_sh_discovery_only(self):
+        entries = {e["url"]: e for e in sl.load_official_sources()}
+        for url in ("https://github.com/anthropics/skills", "https://github.com/openai/skills",
+                    "https://github.com/vercel-labs/agent-skills"):
+            self.assertIn(url, entries)
+            self.assertFalse(entries[url]["discovery_only"], url)
+        self.assertTrue(entries["https://skills.sh"]["discovery_only"])
+
+    def test_vendor_repo_paths_are_official(self):
+        for url in (OFFICIAL_URL, "https://github.com/openai/skills", "https://github.com/vercel-labs/agent-skills/tree/main/x"):
+            self.assertTrue(sl.official(url), url)
+
+    def test_case_insensitive_github_owner_is_official(self):
+        self.assertTrue(sl.official("https://GitHub.com/Anthropics/Skills"))
+
+    def test_skills_sh_is_discovery_only_not_official(self):
+        self.assertFalse(sl.official("https://skills.sh/anthropics/skills/pdf"))
+
+    def test_lookalike_hosts_and_owners_rejected(self):
+        bad = [
+            "https://github.com/anthropics-evil/skills",
+            "https://github.com/anthropics/skills-evil",
+            "https://github.com.evil.com/anthropics/skills",
+            "https://evil.com/github.com/anthropics/skills",
+            "https://github.com@evil.com/anthropics/skills",
+            "https://anthropics@github.com/anthropics/skills",
+            "https://github.com:8443/anthropics/skills",
+            "http://github.com/anthropics/skills",
+            "https://github.com/someone/skills",
+            "https://github.com/anthropics",
+            "https://github.com/",
+            "not a url",
+            "",
+        ]
+        for url in bad:
+            self.assertFalse(sl.official(url), repr(url))
+
+    def test_official_uses_explicit_sources(self):
+        custom = [{"url": "https://github.com/example/skills", "discovery_only": False}]
+        self.assertTrue(sl.official("https://github.com/example/skills", custom))
+        self.assertFalse(sl.official(OFFICIAL_URL, custom))
+
+
+class FreshnessTests(unittest.TestCase):
+    def test_updated_after_release_is_kept(self):
+        self.assertTrue(sl.freshness("2026-10-01", "2026-09-01"))
+        self.assertEqual(sl.freshness_status("2026-10-01", "2026-09-01"), "keep")
+
+    def test_same_day_is_kept(self):
+        self.assertEqual(sl.freshness_status("2026-09-01", "2026-09-01"), "keep")
+
+    def test_updated_before_release_is_skipped(self):
+        self.assertFalse(sl.freshness("2026-08-01", "2026-09-01"))
+        self.assertEqual(sl.freshness_status("2026-08-01", "2026-09-01"), "skip")
+
+    def test_unknown_release_is_not_skipped_but_flagged(self):
+        self.assertEqual(sl.freshness_status("2026-08-01", None), "unknown")
+        self.assertTrue(sl.freshness("2026-08-01", None))
+
+    def test_bad_dates_raise(self):
+        with self.assertRaises(ValueError):
+            sl.freshness_status("2026-13-01", "2026-09-01")
+        with self.assertRaises(ValueError):
+            sl.freshness_status("2026-09-01", "yesterday")
+
+    def test_release_table_parses_rows_and_todo(self):
+        text = (
+            "## Model release dates\n\n"
+            "| Model | Release date |\n"
+            "|---|---|\n"
+            "| `claude-opus-5-5` | 2026-07-01 (verify) |\n"
+            "| `claude-sonnet-5-5` | TODO (verify) |\n"
+            "| not a model row | 2026-01-01 |\n"
+            "## Other section\n"
+            "| `claude-haiku-5-5` | 2026-02-01 |\n"
+        )
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "lib.md")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(text)
+            releases = sl.load_model_releases(path)
+        self.assertEqual(releases, {"claude-opus-5-5": "2026-07-01", "claude-sonnet-5-5": None})
+
+    def test_real_release_table_lists_required_models(self):
+        releases = sl.load_model_releases()
+        for model in ("claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5", "claude-fable-5-1"):
+            self.assertIn(model, releases)
+            value = releases[model]
+            self.assertTrue(value is None or sl.DATE_RE.match(value), model)
+
+
+class CandidateTests(unittest.TestCase):
+    def test_valid_candidate_with_known_release_is_reviewable(self):
+        with mock.patch.dict(sl.MODEL_RELEASES, {"claude-opus-5-5": "2026-09-01"}, clear=True):
+            outcome = sl.candidate_outcome(good_candidate())
+        self.assertEqual(outcome, {"outcome": "review", "errors": [], "flags": []})
+
+    def test_stale_candidate_is_skipped(self):
+        with mock.patch.dict(sl.MODEL_RELEASES, {"claude-opus-5-5": "2026-10-01"}, clear=True):
+            outcome = sl.candidate_outcome(good_candidate(last_update="2026-09-15"))
+        self.assertEqual(outcome["outcome"], "skip")
+        self.assertTrue(any("stale" in e for e in outcome["errors"]))
+
+    def test_unknown_release_is_flagged_not_skipped(self):
+        with mock.patch.dict(sl.MODEL_RELEASES, {"claude-opus-5-5": None}, clear=True):
+            outcome = sl.candidate_outcome(good_candidate())
+        self.assertEqual(outcome["outcome"], "review")
+        self.assertTrue(any("claude-opus-5-5" in f for f in outcome["flags"]))
+
+    def test_non_official_candidate_is_skipped(self):
+        with mock.patch.dict(sl.MODEL_RELEASES, {"claude-opus-5-5": None}, clear=True):
+            outcome = sl.candidate_outcome(good_candidate(source_url="https://skills.sh/x/y/pdf"))
+        self.assertEqual(outcome["outcome"], "skip")
+        self.assertTrue(any("official" in e for e in outcome["errors"]))
+
+    def test_candidate_missing_or_bad_fields_rejected(self):
+        for key in ("name", "source_url", "last_update", "model"):
+            errors = sl.check_candidate(without_field(good_candidate(), key))
+            self.assertTrue(any(key in e for e in errors), key)
+        self.assertTrue(sl.check_candidate(good_candidate(last_update="12/09/2026")))
+        self.assertTrue(sl.check_candidate(with_field(good_candidate(), "extra", 1)))
+        self.assertTrue(sl.check_candidate("not-a-dict"))
+
+    def test_candidate_hook_is_registered_and_ignores_library_entries(self):
+        self.assertTrue(any(hook is sl.candidate_hook for hook in sl.EXTRA_CHECKS))
+        self.assertEqual(sl.check_entry(good_index(), "index"), [])
+        self.assertEqual(sl.check_entry(good_veto(), "veto"), [])
+
+
+class VerdictTests(unittest.TestCase):
+    def good_verdict(self, **overrides):
+        verdict = {
+            "verdict": "APPROVED",
+            "reviewer": "gpt-6-astra",
+            "commit": SHA,
+            "source_url": OFFICIAL_URL,
+            "reasons": ["no network calls", "no shell risks found"],
+        }
+        verdict.update(overrides)
+        return verdict
+
+    def test_valid_verdict_passes(self):
+        self.assertEqual(sl.check_verdict(self.good_verdict()), [])
+        self.assertEqual(sl.check_verdict(self.good_verdict(verdict="DOUBTFUL", reviewer="claude-fable-5-1")), [])
+
+    def test_bad_verdict_fields_rejected(self):
+        self.assertTrue(sl.check_verdict(self.good_verdict(verdict="MAYBE")))
+        self.assertTrue(sl.check_verdict(self.good_verdict(reviewer="someone")))
+        self.assertTrue(sl.check_verdict(self.good_verdict(commit="short")))
+        self.assertTrue(sl.check_verdict(self.good_verdict(source_url=BAD_URL)))
+        self.assertTrue(sl.check_verdict(self.good_verdict(reasons="just a string")))
+        self.assertTrue(sl.check_verdict(self.good_verdict(reasons=["ok", ""])))
+        self.assertTrue(sl.check_verdict(self.good_verdict(reasons=["x"] * 21)))
+        self.assertTrue(sl.check_verdict(without_field(self.good_verdict(), "reasons")))
+        self.assertTrue(sl.check_verdict(with_field(self.good_verdict(), "extra", 1)))
+
+    def test_cli_official_and_check_verdict_exit_codes(self):
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(sl.main(["skills_lib.py", "official", OFFICIAL_URL]), 0)
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(sl.main(["skills_lib.py", "official", "https://skills.sh/a/b"]), 1)
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "verdict.json")
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(self.good_verdict(), f)
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(sl.main(["skills_lib.py", "check-verdict", path]), 0)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(self.good_verdict(verdict="MAYBE"), f)
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(sl.main(["skills_lib.py", "check-verdict", path]), 1)
+
+
+class SplitReviewTests(unittest.TestCase):
+    def answer(self, **overrides):
+        data = {
+            "verdict": "APPROVED",
+            "reviewer": "gpt-6-astra",
+            "commit": SHA,
+            "source_url": OFFICIAL_URL,
+            "reasons": ["no network calls"],
+            "report": "# Report\n\n## Verdict rationale\nClean.\n",
+        }
+        data.update(overrides)
+        return data
+
+    def test_split_returns_verdict_without_report(self):
+        verdict, report = sl.split_review(self.answer(), SHA, OFFICIAL_URL)
+        self.assertNotIn("report", verdict)
+        self.assertEqual(verdict["verdict"], "APPROVED")
+        self.assertIn("Verdict rationale", report)
+
+    def test_split_rejects_missing_report(self):
+        data = self.answer()
+        del data["report"]
+        with self.assertRaises(ValueError):
+            sl.split_review(data, SHA, OFFICIAL_URL)
+
+    def test_split_rejects_commit_or_source_mismatch(self):
+        with self.assertRaises(ValueError):
+            sl.split_review(self.answer(), OTHER_SHA, OFFICIAL_URL)
+        with self.assertRaises(ValueError):
+            sl.split_review(self.answer(), SHA, "https://github.com/openai/skills")
+
+    def test_split_rejects_extra_fields(self):
+        with self.assertRaises(ValueError):
+            sl.split_review(self.answer(extra="x"), SHA, OFFICIAL_URL)
+
+    def test_cli_split_review_writes_report(self):
+        with tempfile.TemporaryDirectory() as d:
+            review = os.path.join(d, "review.json")
+            report = os.path.join(d, "report.md")
+            with open(review, "w", encoding="utf-8") as f:
+                json.dump(self.answer(), f)
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = sl.main(["skills_lib.py", "split-review", review, report, SHA, OFFICIAL_URL])
+            self.assertEqual(code, 0)
+            with open(report, encoding="utf-8") as f:
+                self.assertIn("Clean.", f.read())
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(sl.main(["skills_lib.py", "split-review", review, report, OTHER_SHA, OFFICIAL_URL]), 1)
+
+    def test_cli_candidate_prints_outcome(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "candidate.json")
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(good_candidate(source_url="https://skills.sh/a/b"), f)
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                self.assertEqual(sl.main(["skills_lib.py", "candidate", path]), 0)
+            self.assertEqual(json.loads(out.getvalue())["outcome"], "skip")
 
 
 if __name__ == "__main__":
