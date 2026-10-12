@@ -1,5 +1,11 @@
 # Changelog
 
+## v9.4 — 2026-10-11 · Optional second vendor: OpenAI Codex
+
+- New optional `agents/optional/codex-agent.agent.md`: a Haiku relay to `codex exec` (plan / implement / review) with a JSON verdict schema (`assets/codex-verdict.schema.json`).
+- §10b: always cross vendors — Codex never reviews Codex; Claude-implemented phases get a parallel Claude + Codex review.
+- Claude-only users are unaffected: the bridge is detected once per task (`CODEX: on|off` in the state file); missing CLI, login or quota falls back silently.
+
 ## v9.3 — 2026-10-11 · Conductor model, measured
 
 - Sonnet as Conductor matched Opus (19/19 hidden criteria) at −39 % cost; the skill suggests `/model sonnet` for tier S/M.

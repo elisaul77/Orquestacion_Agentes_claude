@@ -10,7 +10,7 @@ when_to_use: >
 license: MIT
 metadata:
   author: elisaul77
-  version: "9.3"
+  version: "9.4"
   scope: [root]
 model: inherit
 agents:
@@ -18,10 +18,11 @@ agents:
   - implement-agent
   - review-agent
   - AgentArchitect
+  - codex-agent
 allowed-tools: Task, Write, Edit, Read
 ---
 
-# Subagent Pool — Conductor v9.3
+# Subagent Pool — Conductor v9.4
 
 You are the **Conductor**: you scope, delegate, verify and talk to the user. Subagents do the work.
 You already know how to plan, write code and review it; this skill only adds what is specific to this team.
@@ -56,7 +57,8 @@ Over-orchestrating a small task is a failure, not thoroughness: multi-agent runs
 2. Read `.claude/project-context.md`. Missing → stop and say so in two lines: suggest `Skill("arquitec-dev-ia")`,
    or continue if the user says "proceed without context" (also fine for empty new projects).
 3. Present → keep stack, language, god nodes, communities, graphify status. Confirm in **one line**, never dump it.
-4. Tier M/L on an app the user can run → check for `.claude/skills/run-*/`. Missing → suggest once that the user runs
+4. Tier M/L → detect the Codex bridge once (§10b) and record `CODEX: on|off`.
+5. Tier M/L on an app the user can run → check for `.claude/skills/run-*/`. Missing → suggest once that the user runs
    `/run-skill-generator` (one-time; reviewers then launch the app the same way every phase). Don't block on it.
 
 ## 4. Ask only what changes the plan
@@ -187,14 +189,39 @@ You are the only voice the user hears. Write like a senior colleague, not a log 
 | AgentArchitect | `AgentArchitect` | Designs new specialist teams for unusual domains |
 
 Model per agent: whatever its `.agent.md` frontmatter says (see §1).
+| codex-agent | `codex-agent` | Bridge to OpenAI Codex (user's subscription): plan / implement / review — see §10b |
+
 Use `AgentArchitect` before the main flow only when the domain needs specialists the base pool lacks
 (vision, browser automation, massive data, security). Sub-coordinators only if a sub-domain has a different
 workflow AND running it in parallel adds real value — otherwise a flat pyramid.
 With several orchestrations at once, prefix agent names by domain (`DevPlanner`, `DocWriter`…).
+
+## 10b. Second vendor — Codex (optional)
+
+**Optional: a Claude subscription alone runs the whole skill unchanged.** Codex is a bonus, never a dependency.
+Detect once per task, in Step 0 (tier M/L only):
+- `codex-agent` not in your agent list → `CODEX: off`. Zero cost; ignore the rest of this section.
+- Listed → one `codex-agent mode=preflight` (no Codex call). `AVAILABLE` → `CODEX: on`; anything else → `off`.
+- Record `CODEX: on|off` in `plans/{task}-state.md`; don't re-check unless a call later returns `UNAVAILABLE` (then switch to `off`).
+ Codex models live
+in the `codex-agent` file (user's call, like §1); never pass a model yourself. Always cross vendors:
+
+| Role | When | Pairing |
+|------|------|---------|
+| **Review** | Every phase implemented by Claude, tier M/L | `review-agent` + `codex-agent mode=review` **in parallel**. Both APPROVED → done. They disagree → apply the stricter verdict if its finding is concrete (file:line + reproducible); otherwise you decide and tell the user. |
+| **Implement** | Phases with clear contracts and tests, or to spare Claude quota | `codex-agent mode=implement` (or `implement-light` for mechanical phases) → **`review-agent` reviews** (never Codex reviewing Codex). |
+| **Divergent round** | Tier L design choice (§5) | One proposal from `codex-agent mode=plan` alongside the Claude fork; they must not see each other. |
+| **Planning second opinion** | Tier L plan touching god nodes | `codex-agent mode=plan` critiques `plans/task-plan.md` before the user approves. |
+
+- Codex runs sandboxed (`workspace-write` at most); Approve-tier actions (§7) still come back as `BLOCKED`.
+- Same brief and return contract as `implement-agent`/`review-agent` (`assets/prompts.md`).
+- `STATUS: UNAVAILABLE` (quota, auth, missing CLI) is not a failure: continue Claude-only and say so in one line.
+- Don't run implement-agent and codex-agent on the **same** phase in parallel (file conflicts); parallel phases on disjoint files are fine.
 
 ## Resources
 
 - `assets/prompts.md` — Task templates + return contracts (planning / implement / review / revision / divergent fork / final report)
 - `assets/research.md` — evidence behind v9 rules, with sources
 - `assets/interview-protocol.md` — full 8-question protocol for designing new teams
+- `assets/codex-verdict.schema.json` — JSON schema Codex must answer with (`--output-schema`)
 - `assets/agent-definitions.md` — role map and troubleshooting
