@@ -1,97 +1,52 @@
-# Orquestacion Agentes Claude
+# 🤖 Orquestacion Agentes Claude
 
-> **Conductor + Subagents pattern for Claude Code** — local orchestration of complex tasks with built-in AI.
+🌐 **English** · [Español](README.es.md)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill%20v9.5-blueviolet.svg)](https://claude.ai/code)
-[![Conductor Pattern](https://img.shields.io/badge/Pattern-Conductor%20%2B%20Subagents-orange.svg)](#️-architecture)
-[![Graphify](https://img.shields.io/badge/Graphify-Knowledge%20Graph-teal.svg)](https://github.com/safishamsi/graphify)
+[![Version](https://img.shields.io/badge/version-v9.5.0-blueviolet.svg)](CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-131%20passing-3fb950.svg)](#-tests)
+[![Claude Code](https://img.shields.io/badge/brain-Claude%20Code-8a63f0.svg)](https://claude.com/claude-code)
+[![Codex](https://img.shields.io/badge/Codex-optional-412991.svg)](#optional-codex)
+
 [![GitHub Sponsors](https://img.shields.io/badge/GitHub-Sponsors-pink?style=for-the-badge&logo=githubsponsors)](https://github.com/sponsors/elisaul77)
 [![PayPal](https://img.shields.io/badge/PayPal-Donate-blue?style=for-the-badge&logo=paypal)](https://paypal.me/eflorezp)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support-yellow?style=for-the-badge&logo=buymeacoffee)](https://buymeacoffee.com/elisaul77)
 
-🌐 **English** · [Español](README.es.md)
+**The Conductor plans and delegates; subagents execute, and another agent reviews every phase.**
+For complex Claude Code work (3 or more files, a new module, a refactor) with a plan you approve, automatic review per phase, and clear rules about what each agent may do without asking.
 
-Multi-agent orchestration for **Claude Code** using the **Conductor + Subagents** pattern. The Conductor plans and coordinates; the subagents execute. Never the other way around.
-
----
-
-## ✨ Key features
-
-- 🎭 **Conductor pattern**: a central agent that plans, coordinates and never touches code
-- 🤖 **Graphify built in**: `planning-agent` builds a knowledge graph of the project before planning
-- 🔍 **Automatic review**: `review-agent` validates every phase (APPROVED / NEEDS\_REVISION / FAILED) with OWASP security criteria
-- 🏗️ **AgentArchitect**: designs and generates new agent teams on the fly
-- ⏸️ **Strategic pauses**: the Conductor shows you the plan before executing
-- 📋 **Full traceability**: plans written to `plans/*.md`, progress visible in TodoWrite
-
-### New in v9.0 — backed by 2025-2026 research
-
-- 📏 **Effort scales with the task**: S/M/L tiers. Small work is not orchestrated (multi-agent costs ~15× tokens).
-- 💡 **Divergent round (creativity)**: 2-3 isolated forks with distinct lenses return options with probabilities (*Verbalized Sampling*), never seeing each other, to avoid diversity collapse.
-- 🛡️ **Action governance**: Auto / Notify / Approve tiers. Deleting, migrating, secrets, push, publishing or deploying always go through you. At most 2 review loops before escalating.
-- 🧪 **Test integrity**: the implementer never weakens tests; the reviewer checks its diff and runs an independent check.
-- 🗣️ **Communication**: outcome first, bad news stated plainly, calibrated confidence, ask only what changes the plan (each question with a default).
-- 🪙 **Token savings**: the skill went from 667 to ~170 lines; templates in `assets/` (progressive disclosure); plans passed by file, not pasted.
-- 🔀 **Fork or fresh subagent (v9.1, measured)**: forks are ~50 % cheaper only while the Conductor's context is under ~75k tokens and ~2× pricier above it; accuracy was the same. The Conductor picks by context size ([experiment](https://github.com/elisaul77/avoid-the-predictable#-experimento-2-fork-o-subagente-fresco)).
-- 🌐 **English internal channel**: subagent prompts and `plans/*.md` are in English (the same prompt costs **~30 % fewer tokens** than in Spanish, measured); the Conductor talks to you in your language.
-- 🎛️ **You control the models**: each `.agent.md` `model:` decides; the Conductor never overrides it (defaults: implement = haiku, planning/review = sonnet).
-
-Sources and reasoning: [`skills/subagent-pool/assets/research.md`](skills/subagent-pool/assets/research.md) · changes: [CHANGELOG.md](CHANGELOG.md)
-
----
-
-## 🏗️ Architecture
-
-```mermaid
-flowchart LR
-    USER["👤 User"] -->|"request"| CONDUCTOR["🎭 Conductor\nNEVER touches code"]
-    CONDUCTOR -->|"research + workspace scan"| PA["📋 planning-agent"]
-    CONDUCTOR -->|"implement"| IA["💻 implement-agent"]
-    CONDUCTOR -->|"review + security"| RA["🔍 review-agent"]
-    CONDUCTOR -->|"design new team"| AA["🏗️ AgentArchitect"]
-    PA -.->|"graph + plan draft"| CONDUCTOR
-    IA -.->|"report"| CONDUCTOR
-    RA -.->|"APPROVED/NEEDS_REVISION/FAILED"| CONDUCTOR
-    AA -.->|"generated .agent.md files"| CONDUCTOR
-    CONDUCTOR --> USER
-
-    style CONDUCTOR fill:#ff9800,color:#fff
-    style PA fill:#2196f3,color:#fff
-    style IA fill:#4caf50,color:#fff
-    style RA fill:#ffc107,color:#000
-    style AA fill:#9c27b0,color:#fff
+```
+you ──> Conductor (plans, never touches code)
+         |
+         |--> planning-agent ──> plans/*.md ──> (your approval)
+         |
+         |--> implement-agent ──> review-agent ──> APPROVED | NEEDS_REVISION
+         |                             ^
+         |             codex-agent ----+  cross-vendor review (optional)
+         |
+         |--> AgentArchitect ──> new agent teams
+         |
+         '--> external skill ──> isolated review ──> private library (by path)
 ```
 
-**Principle:** the Conductor COORDINATES. Subagents EXECUTE. The `🤖 [<agent>] ...` signature confirms which subagent answered.
-
 ---
 
-## 🚀 Quick install
-
-### Prerequisites
-- [Claude Code](https://claude.ai/code) installed and configured
-- A `~/.claude/` folder
-
-### Option A — Clone and copy
+## 🚀 Getting started
 
 ```bash
 git clone https://github.com/elisaul77/Orquestacion_Agentes_claude.git
 cd Orquestacion_Agentes_claude
 
-# Skills
-cp -r skills/subagent-pool ~/.claude/skills/
-cp -r skills/arquitec-dev-ia ~/.claude/skills/
-cp -r skills/graphify ~/.claude/skills/
-
-# Agents
+cp -r skills/subagent-pool skills/arquitec-dev-ia skills/graphify ~/.claude/skills/
 cp agents/*.agent.md ~/.claude/agents/
 ```
 
-### Option B — Install with curl
+Then, in Claude Code, ask for orchestration with any of these phrases: `use the conductor to…`, `delegate to subagents`, `complex task: …`. To design a new team: `design an agent team for…`.
+
+<details>
+<summary>Without git: install with curl (core: Conductor and 4 agents)</summary>
 
 ```bash
-# Skills
 BASE=https://raw.githubusercontent.com/elisaul77/Orquestacion_Agentes_claude/master
 for skill in subagent-pool arquitec-dev-ia graphify; do
   mkdir -p ~/.claude/skills/${skill}
@@ -101,16 +56,24 @@ mkdir -p ~/.claude/skills/subagent-pool/assets
 for f in prompts research interview-protocol agent-definitions; do
   curl -sSL "$BASE/skills/subagent-pool/assets/${f}.md" -o ~/.claude/skills/subagent-pool/assets/${f}.md
 done
-
-# Agents
 for agent in planning-agent implement-agent review-agent AgentArchitect; do
   curl -sSL "$BASE/agents/${agent}.agent.md" -o ~/.claude/agents/${agent}.agent.md
 done
 ```
 
-### Optional — OpenAI Codex as a second vendor (v9.4)
+For the full install (including the skill-review scripts) use the `git clone` option.
 
-Only if you **also** have a ChatGPT/Codex subscription. Without it nothing changes: the skill detects the bridge is missing and runs Claude-only at zero extra cost.
+</details>
+
+### Requirements
+
+- [Claude Code](https://claude.com/claude-code) and a `~/.claude/` folder.
+- [graphify](#-graphify), recommended for repos with more than 20 files: `planning-agent` uses it to map the project before planning.
+- Optional: `.claude/project-context.md` in your project. If it is missing, the Conductor suggests `arquitec-dev-ia` before orchestrating.
+
+### Optional: Codex
+
+Only if you also have a ChatGPT/Codex subscription. Without it the skill works with Claude alone, at no extra cost.
 
 ```bash
 npm i -g @openai/codex && codex login          # once
@@ -118,228 +81,193 @@ cp agents/optional/codex-agent.agent.md ~/.claude/agents/
 cp skills/subagent-pool/assets/codex-verdict.schema.json ~/.claude/skills/subagent-pool/assets/
 ```
 
-With the bridge on, the Conductor always crosses vendors: Claude implements → Claude **and** Codex review in parallel; Codex implements → Claude reviews; plus a Codex proposal in the divergent round. Edit the model table inside `codex-agent.agent.md` to match the models your plan offers.
-
-> **Note:** the `graphify` skill needs the tool installed separately — see [Graphify](#-graphify--knowledge-graph) below.
+With the bridge on, the Conductor always crosses vendors: if Claude implements, Claude and Codex review in parallel; if Codex implements, Claude reviews. Models are picked automatically from your local Codex cache (see [The seven non-obvious things](#6-codex-never-reviews-codex)).
 
 ---
 
-### New in v9.5 — model registry, Codex debug/browser, gated skill review
+## 🤔 What it is and what it isn't
 
-- 🧭 **Codex models without hardcoded slugs:** `scripts/codex-models.py` reads `~/.codex/models_cache.json` and picks the latest astra / sol / terra / luna model.
-- 🐳 **`debug` and `browser` modes:** Codex reproduces bugs inside Docker only, or screenshots a local page with headless Chrome (Flatpak) for the reviewer.
-- 📚 **Reviewed-skills library:** external skills are reviewed once, pinned to a commit in your private library repo, and never installed into `~/.claude/skills`. Nothing from that library lives in this repo.
-- 🛡️ **Gated review:** you approve every review; official sources only; each review runs in two isolated containers (offline pre-scan, then a reviewer behind an allow-list proxy).
+**It is not a framework.** It is a set of Markdown files (skills and agents) that Claude Code loads. There is no server and no runtime; the only executable parts are the skill-review scripts in `skills/subagent-pool/scripts/`.
 
-**Known limits:** the container-2 reviewer has not yet run end to end on a real skill; `codex debug` reachability inside Docker is unverified; the model release-date table has TODOs. Details in [CHANGELOG.md](CHANGELOG.md).
+**It is not for fixing one file.** A small task is done directly: orchestration costs several times the tokens of a single agent. The Conductor sets the effort by size (tier S, M or L).
 
----
+**It does not decide for you.** You approve the plan. Irreversible actions (deleting, migrating, secrets, push, publishing, deploying) always go through you. After two review loops without approval, the Conductor escalates instead of continuing.
 
-## 🎯 Usage
-
-Trigger the Conductor in Claude Code with any of these:
-
-| Phrase | Result |
-|-------|-----------|
-| `use the conductor to...` | Activates `subagent-pool` |
-| `delegate to subagents` | Activates `subagent-pool` |
-| `orchestrate the split of...` | Activates `subagent-pool` |
-| `complex task: ...` | Activates `subagent-pool` |
-| `design an agent team for...` | `subagent-pool` → `AgentArchitect` |
-
-Spanish phrases work too (`usa el conductor para...`).
+**Codex is optional.** It strengthens the review but is never a dependency. And it does not replace Claude Code: the whole flow runs inside Claude Code.
 
 ---
 
-## 🔄 Workflow v9.0
+## 🧠 The seven non-obvious things
 
-```
-0. 🔐 Read .claude/project-context.md (or suggest arquitec-dev-ia) · offer to resume if state.md exists
-1. 📏 Pick the tier: S (direct) · M · L
-2. ❓ Ask only what changes the plan; assume and state the rest
-3. 💡 (L with a design choice) Divergent round → the user picks the approach
-4. 📋 planning-agent → plan in plans/{task}-draft.md
-5. ⏸️  PAUSE — plan approval
-6. For each phase:
-   ├── 💻 implement-agent runs (Approve-tier → BLOCKED and asks)
-   ├── 🔍 review-agent: contract first + independent check
-   ├── 🔁 NEEDS_REVISION → max 2 loops, then ask
-   ├── 💾 checkpoint plans/{task}-state.md
-   └── ⏸️  pause only on god nodes, approve-tier actions, FAILED or if you asked
-7. 📄 Final report: what changed · how it was verified · what's left · commit
-```
+### 1. Effort scales with the task
+
+Tier S (1–2 files, a clear fix): not orchestrated. Tier M (3–6 files in one area): planning, then implement and review per phase, with a single pause for the plan. Tier L (new module or a design choice): also a divergent round before planning. A multi-agent system spends about 15× the tokens of a chat, so orchestrating something small is a mistake, not rigor.
+
+### 2. Fork or fresh subagent: the context size decides
+
+A fork inherits the Conductor's context. Below **~75k tokens** it costs about 50 % less than a fresh subagent; above that it costs about 2× more. In our tests accuracy did not change, so the Conductor chooses based on the context it has at that moment.
+
+### 3. The Conductor can run on Sonnet
+
+On a task with 19 hidden criteria, Sonnet matched Opus with **−39 % cost**. If you are on Opus for a tier S or M task, `/model sonnet` is enough. The decision is yours.
+
+### 4. No `/advisor` with this skill
+
+The advisor re-reads the whole conversation uncached on every call, and every subagent inherits that context. Sonnet with an Opus advisor cost **+150 %** more than Sonnet alone, with the same accuracy and erratic delegation (between 0 and 5 subagents).
+
+### 5. "Avoid the predictable" raises originality
+
+Across 290 generations, explicitly telling the model to avoid the first idea and the typical answer raised originality by **+2.00 with Sonnet and +2.80 with Opus**. Praise, insults or typos did not have the same effect. That is why every creative round in the skill carries that instruction verbatim.
+
+### 6. Codex never reviews Codex
+
+An LLM judge tends to prefer its own text (self-preference bias, [arXiv 2410.21819](https://arxiv.org/abs/2410.21819)), so the reviewer is always from another vendor. And no model slugs are hardcoded: `codex-models.py` takes the latest version of each family (astra, sol, terra, luna) from `~/.codex/models_cache.json`, comparing versions numerically.
+
+### 7. The main model never reads an external skill
+
+Every third-party skill is reviewed in two isolated containers: an offline pre-scan and a reviewer whose only exit is an allow-list proxy. The pre-scan can only downgrade an APPROVED to DOUBTFUL, never the reverse. You approve each run, with its estimated cost. The Conductor receives only the verdict JSON and the report path, never the skill's code.
 
 ---
 
-## 🔬 State of the art → what was implemented (v9.0)
+## 📊 Measured, not estimated
 
-October 2026 research on creativity, agent governance and new model capabilities. Each row is a finding and the rule it produced. Details and links in [`research.md`](skills/subagent-pool/assets/research.md).
+Figures taken from [`research.md`](skills/subagent-pool/assets/research.md) and [CHANGELOG.md](CHANGELOG.md). They are measurements on test tasks, not guarantees for your project.
 
-| Finding | Source | What the skill does now |
+| Measure | Result | Detail |
 |---|---|---|
-| Aligned models collapse to the "typical" answer (*mode collapse*); asking for several answers **with probabilities** raises diversity 1.6–2.1× without losing accuracy | Verbalized Sampling (arXiv 2510.01171) | In the divergent round each fork returns 2-3 options with probabilities, including an unlikely one |
-| Agents that see each other's ideas, or a leader who speaks first, converge too early | Diversity Collapse in MAS (arXiv 2604.18005) | Forks work isolated and the Conductor hides its preference until convergence |
-| Debate between agents reduces diversity (identity drift, majority pressure) | Creative-MAD (arXiv 2609.00683) | Each fork gets a fixed, distinct lens: simple / robust / unconventional |
-| Most multi-agent failures come from design and **not knowing when to verify or stop** | MAST, NeurIPS 2025 (arXiv 2503.13657) | Return contracts, the reviewer's verdict decides, max 2 review loops before escalating |
-| Human checkpoints only help if they change control; otherwise they are a rubber stamp | IMDA framework / Singapore Consensus 2026 | Auto / Notify / Approve tiers; per-phase pauses only where real risk exists |
-| Coding agents sometimes "cheat" on tests, more so in larger codebases | EvilGenie (2511.21654), SpecBench (2605.21384) | Weakening tests is forbidden; the reviewer checks the diff and runs its own check (`[TEST-INTEGRITY]`) |
-| An LLM judge prefers text similar to its own | Self-Preference Bias (arXiv 2410.21819) | Reviewer and implementer on different models (sonnet reviews haiku by default) |
-| Asking only when uncertainty matters solves more tasks with fewer questions | Ask or Assume? (2603.26233), ACL 2026 Findings | "Ask or assume": max 3 questions with defaults; the rest stated as assumptions |
-| Multi-agent shines on broad tasks but costs ~15× tokens; spend explains ~80% of performance | Anthropic, multi-agent research system | S/M/L tiers: small work is not orchestrated |
-| Long instruction files make agents worse and cost 20%+ more | Evaluating AGENTS.md (arXiv 2602.11988) | The skill went from 667 to ~170 lines, dropping what the model already knows |
-| "Claude is already very smart": add only what it doesn't know; under 500 lines, details in separate files | Anthropic skill authoring guide | Templates in `assets/` (progressive disclosure); prompt detail tuned to the model |
-| Less accumulated context = more success and fewer tokens | Less Context, Better Agents (2026) | Plans travel by file (`PLAN_FILE`), not pasted; one-line status |
-| Task horizons double every 4-7 months, but long-task reliability still lags | METR 2026 | Delegate outcomes and criteria (not obvious steps), with external checkpoints and independent verification |
-| The same instruction costs more tokens in Spanish than in English | Own measurement, 2026-10-10 | Subagent prompts and plans in English (−30 % input tokens); user-facing replies in the user's language |
-| A calm "avoid the predictable" instruction beats praise, insults or typos for originality | Own experiment, 290 samples ([avoid-the-predictable](https://github.com/elisaul77/avoid-the-predictable)) | Every creative prompt carries an explicit non-obvious instruction |
-
-**Soft skills added to the Conductor:** outcome first, bad news stated plainly, separate *verified* from *believed*, disagree once with reasons then respect the decision, recommend instead of listing options, and an honest final report.
+| Same prompt in English vs Spanish | **−30 %** input tokens | [research](skills/subagent-pool/assets/research.md#language-and-tokens-own-measurement-2026-10-10) |
+| Fork vs fresh subagent | Fork ~50 % cheaper under ~75k context, ~2× above; same accuracy | [research](skills/subagent-pool/assets/research.md#fork-vs-fresh-subagent-own-measurement-2026-10-10) |
+| Conductor Sonnet vs Opus | 19/19 on both; **−39 %** cost (n = 5) | [research](skills/subagent-pool/assets/research.md#conductor-model-and-the-advisor-tool-own-measurement-2026-10-11) |
+| `/advisor` on top of Sonnet | **+150 %** cost, same accuracy | [research](skills/subagent-pool/assets/research.md#conductor-model-and-the-advisor-tool-own-measurement-2026-10-11) |
+| "Avoid the predictable" | **+2.00** Sonnet (p = .005), **+2.80** Opus (p < .001); 290 samples | [research](skills/subagent-pool/assets/research.md#own-experiment-2026-10-0910-spelling-and-tone-vs-creativity) |
+| Multi-agent vs chat | ~15× tokens (Anthropic reference) | [research §2](skills/subagent-pool/assets/research.md#2-effort-scaling-and-multi-agent-cost) |
 
 ---
 
-## 📁 Repository layout
+## 🧪 Tests
+
+```bash
+python3 -B -m unittest discover -s skills/subagent-pool/scripts
+```
+
+**131 tests**, Python standard library only:
+
+- `test_skills_lib.py` (103): validator for the reviewed-skills library. Schema of `index.json` and `vetadas.json`, veto rules, lookup, and re-review when the source changes.
+- `test_skill_prescan.py` (13): static pre-scan over the `skill-benign` and `skill-malicious` fixtures.
+- `test_codex_models.py` (15): Codex model registry. Version comparison, and missing, corrupt or stale cache.
+
+`skill-review.sh` has no automated tests: its `--dry-run` mode prints every command without running any.
+
+---
+
+## 🔒 Security
+
+External skill review is the only part that handles third-party code:
+
+- **Official sources only:** `anthropics/skills`, `openai/skills` and `vercel-labs/agent-skills`. Aggregators only point to the official repo, they never provide content.
+- **Container 1 (pre-scan):** no network (`--network none`), skill mounted read-only.
+- **Container 2 (reviewer):** internal network whose only exit is a squid allow-list proxy, reaching only the model API.
+- **Both:** `--read-only`, `--cap-drop ALL`, `no-new-privileges`, non-root user, memory and process limits.
+- **Approval on every run:** `--approved-by-user`, with no remembered consent. Any doubt (symlinks, opaque files, truncated pre-scan) turns an APPROVED into DOUBTFUL.
+- **Codex** runs at most with `workspace-write`; Approve-tier actions come back as `BLOCKED`.
+
+**Accepted residual risk:** the reviewer holds a read-only credential next to untrusted text. Use a dedicated, scoped key for reviews, never your main account credential. Details in [skills-library.md](skills/subagent-pool/assets/skills-library.md).
+
+---
+
+## 📁 Structure
 
 ```
 Orquestacion_Agentes_claude/
 ├── AGENTS.md                          # Overview, rules and system diagram
-├── skills/
-│   ├── subagent-pool/
-│   │   ├── SKILL.md                   # Main skill — the Conductor role
-│   │   ├── assets/
-│   │       ├── prompts.md             # Task templates + return contracts
-│   │       ├── research.md            # Evidence and sources behind each v9 rule
-│   │       ├── agent-definitions.md   # Definitions and troubleshooting
-│   │       ├── interview-protocol.md  # Full mini-interview protocol
-│   │       ├── codex-modes.md         # codex-agent debug and browser recipes
-│   │       ├── skills-library.md      # Reviewed-skills library spec and gated review
-│   │       ├── skill-review-prompt.md # Reviewer prompt
-│   │       └── official-sources.json  # Allowed official sources
-│   │   └── scripts/
-│   │       ├── codex-models.py        # Codex model registry (latest per family)
-│   │       ├── skills_lib.py          # Library validator and lookup
-│   │       ├── skill_prescan.py       # Offline static pre-scan
-│   │       └── skill-review.sh        # Two-container gated review
-│   ├── arquitec-dev-ia/
-│   │   ├── SKILL.md                   # AI context documentation skill
-│   │   ├── assets/                    # AGENTS.md, CLAUDE.md, skill templates
-│   │   └── references/                # Reference docs
-│   └── graphify/
-│       └── SKILL.md                   # Knowledge graph skill (see below)
+├── CHANGELOG.md                       # Version history
+├── FUNDING.md                         # Ways to support the project
+├── LICENSE
+├── README.md · README.es.md
 ├── agents/
 │   ├── planning-agent.agent.md        # Researches and drafts the plan (with graphify)
 │   ├── implement-agent.agent.md       # Implements code and tests per phase
 │   ├── review-agent.agent.md          # Reviews and validates each phase
-│   └── AgentArchitect.agent.md        # Designs and generates new agent teams
-├── CHANGELOG.md
-├── LICENSE
-├── FUNDING.md
-├── README.md                          # English
-└── README.es.md                       # Español
+│   ├── AgentArchitect.agent.md        # Designs new agent teams
+│   └── optional/
+│       └── codex-agent.agent.md       # Optional bridge to OpenAI Codex
+└── skills/
+    ├── subagent-pool/                 # The Conductor (main skill)
+    │   ├── SKILL.md
+    │   ├── assets/                    # Templates, evidence and skill review
+    │   │   ├── prompts.md · agent-definitions.md · interview-protocol.md
+    │   │   ├── research.md · codex-modes.md · codex-verdict.schema.json
+    │   │   ├── skills-library.md · skill-review-prompt.md · official-sources.json
+    │   └── scripts/
+    │       ├── codex-models.py        # Codex model registry (latest version per family)
+    │       ├── skills_lib.py          # Library validator and lookup
+    │       ├── skill_prescan.py       # Offline static pre-scan
+    │       ├── skill-review.sh        # Gated review in two containers
+    │       ├── test_*.py              # 131 tests (see Tests)
+    │       └── fixtures/              # Test skills: one benign, one malicious
+    ├── arquitec-dev-ia/
+    │   ├── SKILL.md                   # AI context documentation skill
+    │   ├── assets/                    # Templates (AGENTS, project-context, skill, Mermaid)
+    │   └── references/docs.md
+    └── graphify/
+        ├── SKILL.md                   # Knowledge graph skill (see Graphify)
+        └── .graphify_version
 ```
 
 ---
 
-## 🧠 Graphify — Knowledge Graph
+## 🧭 Graphify
 
-This stack includes the **[graphify](https://github.com/safishamsi/graphify)** skill, a third-party tool that turns any code repo, docs, PDFs, images and videos into a **queryable knowledge graph**.
-
-`planning-agent` uses it automatically to explore the codebase before planning — it replaces manual Glob/Grep in medium and large projects and reveals hidden dependencies.
-
-> Original project: **[github.com/safishamsi/graphify](https://github.com/safishamsi/graphify)**
-
-### Installing Graphify
-
-Installed separately as a global tool. Requires Python 3.10+ and `uv` (recommended).
+**[graphify](https://github.com/safishamsi/graphify)** is a third-party tool that turns a repo (code, docs, PDFs, images) into a queryable knowledge graph. If `graphify-out/` exists, `planning-agent` uses it to find the central nodes and dependencies before planning.
 
 ```bash
-uv tool install graphifyy   # PyPI package is graphifyy (double y); the CLI is graphify
-graphify install            # register the skill in Claude Code
+uv tool install graphifyy   # the PyPI package is graphifyy; the command is graphify
+graphify install            # registers the skill in Claude Code
 ```
 
-Alternative: `pipx install graphifyy && graphify install`. Check with `graphify --version`.
+---
 
-### Basic usage
+## 📚 Documentation
 
-```bash
-/graphify .                                   # current project
-/graphify ./src                               # a specific path
-/graphify https://github.com/owner/repo       # a remote repo
-/graphify query "where is auth handled?"      # semantic query
-/graphify path "AuthModule" "Database"        # shortest path between concepts
-/graphify . --update                          # incremental update
-/graphify . --mcp                             # expose as an MCP server
-```
+| Document | Contents |
+|---|---|
+| [SKILL.md](skills/subagent-pool/SKILL.md) | The Conductor: rules, tiers, flow, Codex and skill review |
+| [prompts.md](skills/subagent-pool/assets/prompts.md) | Task templates and return contracts |
+| [agent-definitions.md](skills/subagent-pool/assets/agent-definitions.md) | Roles, delegation rules and troubleshooting |
+| [interview-protocol.md](skills/subagent-pool/assets/interview-protocol.md) | Full protocol for designing teams (AgentArchitect) |
+| [research.md](skills/subagent-pool/assets/research.md) | Evidence and sources behind each rule |
+| [codex-modes.md](skills/subagent-pool/assets/codex-modes.md) | Recipes for `debug` (Docker) and `browser` (Flatpak Chrome) |
+| [skills-library.md](skills/subagent-pool/assets/skills-library.md) | Reviewed-skills library and gated review |
+| [CHANGELOG.md](CHANGELOG.md) | Version history and known limits |
 
-### Outputs
+---
 
-`/graphify .` creates `graphify-out/` with:
+## 🗺️ What's missing
 
-| File | Description |
-|---------|-------------|
-| `graph.html` | Interactive graph — open in a browser |
-| `GRAPH_REPORT.md` | Key nodes, surprising links and suggested questions |
-| `graph.json` | Raw graph data for programmatic queries |
-
-### Integration with planning-agent
-
-If `graphify-out/` exists, `planning-agent` uses it to find **god nodes** (most connected components), discover module dependencies without reading every file, and ground the plan in the real structure. Otherwise it scans the workspace with Glob/Grep.
+- **The container-2 reviewer has not been run end to end** on a real skill.
+- **`codex debug` inside Docker:** reachability from the container is unverified.
+- **Model release dates:** the table in `skills-library.md` has `TODO` entries. Until they are filled in, the freshness rule flags a candidate instead of discarding it.
+- **Decision model** for vetting calls (OpenAI Decisions API or a `luna` decider): deferred until there are measurements.
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome:
+1. Fork the repo and create a branch (`feat/my-improvement`, `docs/…`).
+2. Follow the project conventions and use commits `type(scope): message`.
+3. Run the tests before opening a PR (see [Tests](#-tests)).
+4. Open a Pull Request describing the change.
 
-1. Fork the repo
-2. Create a branch (`git checkout -b feat/my-improvement`)
-3. Follow the project conventions
-4. Open a Pull Request describing the changes
-
-### Ideas
-
-- 🤖 New specialist agents (frontend, DevOps, ML, etc.)
-- 📚 Docs and usage examples
-- 🧪 Test cases and orchestration scenarios
-- 🌐 Translations (Português)
+Ideas: specialist agents (frontend, DevOps, ML), usage examples and orchestration scenarios with their tests. Report bugs in [GitHub Issues](https://github.com/elisaul77/Orquestacion_Agentes_claude/issues).
 
 ---
 
 ## 💖 Support the project
 
-If this orchestration system helps you, consider supporting it:
-
-- ⭐ **Star** the repo
-- 💰 **[Donate](FUNDING.md)** to support ongoing development
-- 🐛 **Report bugs** and suggest improvements
-- 📢 **Share** it with other Claude Code users
-
-[![GitHub Sponsors](https://img.shields.io/badge/❤️%20Sponsor-GitHub-pink)](https://github.com/sponsors/elisaul77)
-[![PayPal](https://img.shields.io/badge/💰%20Donate-PayPal-blue)](https://paypal.me/eflorezp)
-[![Buy Me A Coffee](https://img.shields.io/badge/☕%20Coffee-BuyMeACoffee-yellow)](https://buymeacoffee.com/elisaul77)
-
----
-
-## 📋 Roadmap
-
-- [x] Research-driven skill v9.0 (creativity, governance, token savings)
-- [x] English internal channel with measured token savings
-- [ ] Reproducible skill evals with Haiku / Sonnet / Opus
-- [ ] Multi-project support
-- [ ] Testing specialist agent (TDD-agent)
-- [ ] Automatic documentation agent (docs-agent)
-- [ ] External MCP tool integration
-- [ ] Orchestration status dashboard
+If it saves you time: ⭐ star the repo, share it with other Claude Code users, and report what you find. If you want to contribute financially, the options are in [FUNDING.md](FUNDING.md): GitHub Sponsors, PayPal, Buy Me a Coffee, Ko-fi and Patreon.
 
 ---
 
 ## 📄 License
 
-**MIT License** — see [LICENSE](LICENSE).
-
-Copyright (c) 2026 Elisaul Florez ([@elisaul77](https://github.com/elisaul77))
-
----
-
-## 🐛 Issues
-
-Use [GitHub issues](https://github.com/elisaul77/Orquestacion_Agentes_claude/issues) to report bugs or suggest improvements.
+MIT — see [LICENSE](LICENSE). Copyright (c) 2026 Elisaul Florez ([@elisaul77](https://github.com/elisaul77)).
