@@ -10,7 +10,7 @@ when_to_use: >
 license: MIT
 metadata:
   author: elisaul77
-  version: "9.7.0"
+  version: "9.8.0"
   scope: [root]
 model: inherit
 agents:
@@ -22,7 +22,7 @@ agents:
 allowed-tools: Task, Write, Edit, Read
 ---
 
-# Subagent Pool — Conductor v9.7.0
+# Subagent Pool — Conductor v9.8.0
 
 You are the **Conductor**: you scope, delegate, verify and talk to the user. Subagents do the work.
 You already know how to plan, write code and review it; this skill only adds what is specific to this team.
@@ -276,8 +276,10 @@ DESIGN_READY (plans/team-{domain}.md) ──► user approves/edits ──► ge
 ```
 - Templates: `assets/prompts.md` §6. Never pass the user's approval for generate unless the user gave it.
 - No coordinator layer: a sub-domain gets its own specialist (or trio) with its own prefix; **you** run them in parallel.
-- User doesn't want to restart now → fallback: `general-purpose` with "Read and follow `.claude/agents/{Name}.agent.md`
-  exactly". Say once that its `tools:`/`model:` aren't enforced this way.
+- User doesn't want to restart now → with `CODEX: on`, run the new team **inside Codex today**: generate also synced
+  the `.agent.toml` roles, so `codex-agent mode=coordinate` can use them at once (Claude still reviews). Without
+  Codex → `general-purpose` with "Read and follow `.claude/agents/{Name}.agent.md` exactly"; say once that its
+  `tools:`/`model:` aren't enforced this way.
 - With several orchestrations at once, prefix agent names by domain (`DevPlanner`, `DocWriter`…).
 
 ## 10b. Second vendor — Codex (optional)
@@ -298,11 +300,17 @@ Codex models live in the `codex-agent` file (user's call, like §1); never pass 
 | **Planning second opinion** | Tier L plan touching god nodes | `codex-agent mode=plan` critiques `plans/task-plan.md` before the user approves. |
 | **Debug** | Bug reproducible only in Docker; logs to read | `codex-agent mode=debug` (Docker only, never the host) → repro steps go to `implement-agent` for the fix. |
 | **Visual check** | UI phase with a local page (localhost / file://) | `codex-agent mode=browser` → PNG in `artifacts` → `review-agent` reads it (Read) next to Codex review. |
+| **Coordinate** | Tier L: 2+ independent phases/sub-domains on disjoint files, or a team that needs a coordinator layer | `codex-agent mode=coordinate` → Codex fans out to its roles in parallel (it can nest; Claude subagents can't) and returns one report with `subagents` → **`review-agent` reviews every phase** it produced. |
 
 - Codex runs sandboxed (`workspace-write` at most); Approve-tier actions (§7) still come back as `BLOCKED`.
 - Same brief and return contract as `implement-agent`/`review-agent` (`assets/prompts.md`).
 - `STATUS: UNAVAILABLE` (quota, auth, missing CLI) is not a failure: continue Claude-only and say so in one line.
 - Don't run implement-agent and codex-agent on the **same** phase in parallel (file conflicts); parallel phases on disjoint files are fine.
+- **Coordinate mode facts (verified, Codex 0.160):** sub-agents and nesting work; custom roles come from
+  `~/.codex/agents/*.agent.toml` and a new role is usable at once (no restart). Roles must be in sync with our
+  `.agent.md`: `scripts/sync_codex_agents.py` (doctor flags drift). Limits (≤3 sub-agents, no nesting) are set in the
+  brief — Codex's own `agents.max_*` keys had no effect. Its internal reviews are a pre-check, never the verdict.
+  Cost: each sub-agent spends Codex quota and is invisible to our cost ledger.
 
 ## 11. External skills: gated review only
 

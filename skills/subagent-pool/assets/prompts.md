@@ -14,6 +14,7 @@ Write prompts as directives (what + why + files + constraints), not background e
 7. Final report to the user
 8. codex-agent — debug (Docker only)
 9. codex-agent — browser (screenshot check)
+10. codex-agent — coordinate (fan-out inside Codex)
 
 ---
 
@@ -176,6 +177,7 @@ After `DESIGN_READY`, show the user the design file's TL;DR + agents table. On a
 Task(description="Generate team {domain}", subagent_type="AgentArchitect", prompt="""
 mode=generate
 Design file: plans/team-{domain}.md — APPROVED by the user on {date}
+CODEX: {on|off}
 Edits requested by the user: {list, or "none"}
 """)
 ```
@@ -238,3 +240,18 @@ Question: {what to judge in the UI, e.g. "do all 4 form fields fit without overf
 ```
 
 Relay: `artifacts` = PNG path; hand it to `review-agent` (Read) per SKILL.md §10b.
+
+## 10. codex-agent — coordinate (fan-out inside Codex)
+
+```
+Task(description="Coordinate: {scope}", subagent_type="codex-agent", prompt="""
+mode=coordinate   max_agents={≤3}
+Plan: plans/{task}-plan.md — run phases {list} (independent, disjoint files)
+Roles allowed: {e.g. implement-agent, VidImplementer}   (synced in ~/.codex/agents)
+Per phase: objective · files · acceptance criteria · verify command   (same fields as §2)
+Governance: Approve-tier actions → BLOCKED, never performed.
+""")
+```
+
+Then dispatch one `review-agent` per phase in ONE message (§3). `STATUS: BLOCKED` with stale roles → ask the user to
+run `sync_codex_agents.py` (it writes to ~/.codex/agents).

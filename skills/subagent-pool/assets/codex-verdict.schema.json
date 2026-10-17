@@ -9,7 +9,8 @@
     "artifacts",
     "criteria",
     "not_verified",
-    "unknowns"
+    "unknowns",
+    "subagents"
   ],
   "properties": {
     "status": {
@@ -114,6 +115,39 @@
         "type": "string"
       },
       "description": "Open questions hit; [] if none."
+    },
+    "subagents": {
+      "type": "array",
+      "description": "Coordinate mode: one entry per spawned sub-agent; [] otherwise.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "role",
+          "task",
+          "status",
+          "summary"
+        ],
+        "properties": {
+          "role": {
+            "type": "string"
+          },
+          "task": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DONE",
+              "BLOCKED",
+              "FAILED"
+            ]
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
+      }
     }
   }
 }

@@ -68,7 +68,7 @@ flowchart LR
 
 | Skill | Trigger | Version |
 |-------|---------|---------|
-| `subagent-pool` | "delegate", "orchestrate", "conductor", "complex task" | 9.7 |
+| `subagent-pool` | "delegate", "orchestrate", "conductor", "complex task" | 9.8 |
 | `arquitec-dev-ia` | "create AGENTS.md", "document architecture", "structure for AI", "output style", "add rules", "prepare for orchestration" | 5.0 |
 | `graphify` | `/graphify` | — |
 
@@ -86,7 +86,7 @@ flowchart LR
 
 ---
 
-## Workflow v9.7
+## Workflow v9.8
 
 1. Conductor reads `.claude/project-context.md` (HALT and suggest `arquitec-dev-ia` if missing); offers to resume an unfinished `plans/*-state.md`
 2. Picks a tier: **S** do it directly · **M** plan + phases · **L** full flow
