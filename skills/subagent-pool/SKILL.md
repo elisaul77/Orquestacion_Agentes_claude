@@ -397,7 +397,7 @@ Codex models live in the `codex-agent` file (user's call, like §1); never pass 
 | **Review** | Every phase implemented by Claude, tier M/L | `review-agent` + `codex-agent mode=review` **in parallel**. Both APPROVED → done. They disagree → apply the stricter verdict if its finding is concrete (file:line + reproducible); otherwise you decide and tell the user. |
 | **Implement** | Phases with clear contracts and tests, or to spare Claude quota | `codex-agent mode=implement` (or `implement-light` for mechanical phases) → **`review-agent` reviews** (never Codex reviewing Codex). |
 | **Divergent round** | Design choice outside a plan (§5) | One proposal from `codex-agent mode=plan` alongside the Claude fork; they must not see each other. |
-| **Plan council** | Plan level council (§5b) | `council-lateral` asks Codex directly (read-only) before writing its own draft. No codex-agent needed. |
+| **Plan council** | Plan level council (§5b) | `council-lateral` asks Codex directly (read-only) before writing; with `CODEX: off` it asks Opus instead. No codex-agent needed. |
 | **Planning second opinion** | Tier L plan touching god nodes | `codex-agent mode=plan` critiques `plans/task-plan.md` before the user approves. |
 | **Debug** | Bug reproducible only in Docker; logs to read | `codex-agent mode=debug` (Docker only, never the host) → repro steps go to `implement-agent` for the fix. |
 | **Visual check** | UI phase with a local page (localhost / file://) | `codex-agent mode=browser` → PNG in `artifacts` → `review-agent` reads it (Read) next to Codex review. |

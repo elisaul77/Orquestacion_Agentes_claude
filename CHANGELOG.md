@@ -12,6 +12,7 @@ The Conductor now works a task as a case: it triages on four axes, diagnoses bef
 - **Case file in `plans/{task}-state.md`:** objective, classification, owner, status, hypotheses, evidence, decisions, changes, verification, next action, plus the counters. Tier S has none.
 - **Close means verified, not deployed.** Closing never authorizes a publish or a deploy. The Approve row is unchanged.
 - **Council run on issue #17** built the case-flow plan.
+- **The council's lateral member asks Opus when Codex is off.** With `CODEX: off`, `council-lateral` asks Opus through the Claude CLI (no tools, read-only) before it writes its own draft, so a council without Codex still gets a second voice.
 - **Reviews found and fixed before release:**
   - Phase 1: tests that could pass without checking the rule. Tightened.
   - Phase 2: overlapping plan levels; a case that could close before its last phase; a falsifier that tested the implementation instead of the hypothesis; a budget check that blocked approved phases.

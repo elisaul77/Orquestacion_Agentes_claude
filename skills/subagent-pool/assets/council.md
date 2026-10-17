@@ -7,14 +7,14 @@ lenses instead of one, and makes them disagree on purpose.
 |--------|-----------------|------------------|----------|
 | Specifier | `council-spec` | `spec` | What exactly counts as done, and how will we know? |
 | Architect + synthesizer | `council-architect` | `architect` | How do we build it, in what order, in which real files? |
-| Lateral thinker | `council-lateral` | `lateral` | What is the non-obvious solution? (asks Codex when on) |
+| Lateral thinker | `council-lateral` | `lateral` | What is the non-obvious solution? (asks Codex when on, else Opus) |
 | Risk + verification | `council-risk` | `risk` | What breaks, and how do we prove it didn't? |
 
 ## Why this shape (verified / measured)
 
 - Same-model agents that see each other's ideas converge on one answer → **R1 is blind**: nobody reads another draft.
 - Open-ended agent chats drift into polite agreement → **one debate round with hard limits**, then synthesis.
-- A second vendor thinks differently for real → the lateral member asks **Codex** when `CODEX: on`.
+- A second voice thinks differently from the drafters: the lateral member asks **Codex** when `CODEX: on`; otherwise **Opus** as the second voice (same family, less diverse than another vendor, still better than four Sonnet drafts).
 - Claude Code agent teams (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, verified 2026-10-17 on 2.1.302, headless and
   interactive): agents spawned with `Agent(name=…)` message each other directly with `SendMessage`; messages wake an
   idle agent. Agents with a closed `tools:` list need `SendMessage` in it (verified: without it they can't send).

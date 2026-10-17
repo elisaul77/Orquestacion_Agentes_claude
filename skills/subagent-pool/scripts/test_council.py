@@ -44,6 +44,11 @@ class CouncilTest(unittest.TestCase):
             self.assertIn("accept → <final text>", (ROOT / "agents" / f"{a}.agent.md").read_text(), a)
         self.assertIn("CROSSED_ACCEPTANCES", (ROOT / "agents" / "council-architect.agent.md").read_text())
 
+    def test_lateral_asks_a_second_voice_when_codex_is_off(self):
+        body = (ROOT / "agents" / "council-lateral.agent.md").read_text()
+        self.assertIn("CODEX: off", body)
+        self.assertIn("opus", body)
+
     def test_only_architect_writes_the_plan(self):
         for a in doctor.COUNCIL_AGENTS:
             body = (ROOT / "agents" / f"{a}.agent.md").read_text()

@@ -151,7 +151,7 @@ An interrupted task resumes from `plans/{task}-state.md`, and the Conductor offe
 | `planning-agent` | Scans the repo (graphify if present) and writes a phased plan | ❌ |
 | `council-spec` | Council: what "done" means, as testable criteria | ❌ |
 | `council-architect` | Council: phases over the real files; writes the final plan | ❌ |
-| `council-lateral` | Council: the non-obvious option (don't build it, half the parts, a false assumption) | ❌ |
+| `council-lateral` | Council: the non-obvious option (don't build it, half the parts, a false assumption) — asks Codex, or Opus without Codex | ❌ |
 | `council-risk` | Council: what breaks, and how each claim will be proven | ❌ |
 | `implement-agent` | Implements one phase, test first | ✅ the only one |
 | `review-agent` | APPROVED / NEEDS_REVISION / FAILED, with evidence per criterion | ❌ |
@@ -299,7 +299,7 @@ python3 -B -m unittest discover -s skills/subagent-pool/scripts
 ## 🔒 Security
 
 - **Approval tiers.** Edits inside the approved scope and tests are automatic. Anything outside it is reported. Delete, migrate, secrets, push, publish and deploy come back as `BLOCKED` until you approve them.
-- **Codex** runs sandboxed (`read-only`, `workspace-write` at most). The council's lateral member only calls Codex `read-only`.
+- **Codex** runs sandboxed (`read-only`, `workspace-write` at most). The council's lateral member only calls Codex (`read-only`) or Opus (no tools).
 - **Outside skills** are fetched from official sources only (`anthropics/skills`, `openai/skills`, `vercel-labs/agent-skills`) and reviewed in two containers:
   - Pre-scan: `--network none`, the skill mounted read-only.
   - Reviewer: its only exit is a squid allow-list proxy to the model API.
@@ -322,7 +322,7 @@ Orquestacion_Agentes_claude/
 │   ├── review-agent.agent.md          # Verdict with evidence levels
 │   ├── council-spec.agent.md          # Council: acceptance criteria
 │   ├── council-architect.agent.md     # Council: phases + final synthesis
-│   ├── council-lateral.agent.md       # Council: the non-obvious option (asks Codex)
+│   ├── council-lateral.agent.md       # Council: the non-obvious option (asks Codex, or Opus without Codex)
 │   ├── council-risk.agent.md          # Council: risks and verification
 │   ├── AgentArchitect.agent.md        # Designs new specialist teams
 │   └── optional/codex-agent.agent.md  # Bridge to OpenAI Codex

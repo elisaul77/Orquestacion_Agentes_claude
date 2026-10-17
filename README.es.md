@@ -151,7 +151,7 @@ Si una tarea se interrumpe, se retoma desde `plans/{task}-state.md`; el Conducto
 | `planning-agent` | Explora el repo (con graphify si lo hay) y escribe un plan por fases | ❌ |
 | `council-spec` | Consejo: qué significa "listo", en criterios que se puedan probar | ❌ |
 | `council-architect` | Consejo: fases sobre los archivos reales; escribe el plan final | ❌ |
-| `council-lateral` | Consejo: la opción no obvia (no construirlo, la mitad de piezas, un supuesto falso) | ❌ |
+| `council-lateral` | Consejo: la opción no obvia (no construirlo, la mitad de piezas, un supuesto falso) — consulta a Codex, o a Opus sin Codex | ❌ |
 | `council-risk` | Consejo: qué se rompe y cómo se demostrará cada afirmación | ❌ |
 | `implement-agent` | Implementa una fase, empezando por el test | ✅ el único |
 | `review-agent` | APPROVED / NEEDS_REVISION / FAILED, con evidencia para cada criterio | ❌ |
@@ -299,7 +299,7 @@ python3 -B -m unittest discover -s skills/subagent-pool/scripts
 ## 🔒 Seguridad
 
 - **Niveles de aprobación.** Lo que se edita dentro del alcance aprobado y los tests van solos. Cualquier cosa fuera de ese alcance se reporta. Borrar, migrar, tocar secretos, hacer push, publicar o desplegar vuelve como `BLOCKED` hasta que lo apruebas.
-- **Codex** corre en sandbox (`read-only`, y como mucho `workspace-write`). El miembro lateral del consejo solo llama a Codex en modo `read-only`.
+- **Codex** corre en sandbox (`read-only`, y como mucho `workspace-write`). El miembro lateral del consejo solo llama a Codex (`read-only`) o a Opus (sin herramientas).
 - **Las skills externas** se descargan solo de fuentes oficiales (`anthropics/skills`, `openai/skills`, `vercel-labs/agent-skills`) y se revisan en dos contenedores:
   - Análisis previo: `--network none`, con la skill montada en solo lectura.
   - Revisor: su única salida es un proxy squid con lista blanca hacia la API del modelo.
@@ -322,7 +322,7 @@ Orquestacion_Agentes_claude/
 │   ├── review-agent.agent.md          # Veredicto con niveles de evidencia
 │   ├── council-spec.agent.md          # Consejo: criterios de aceptación
 │   ├── council-architect.agent.md     # Consejo: fases y síntesis final
-│   ├── council-lateral.agent.md       # Consejo: la opción no obvia (consulta a Codex)
+│   ├── council-lateral.agent.md       # Consejo: la opción no obvia (consulta a Codex, o a Opus sin Codex)
 │   ├── council-risk.agent.md          # Consejo: riesgos y verificación
 │   ├── AgentArchitect.agent.md        # Diseña equipos especialistas nuevos
 │   └── optional/codex-agent.agent.md  # Puente a OpenAI Codex
