@@ -5,8 +5,8 @@
 🌐 **English** · [Español](README.es.md)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-v9.9.1-blueviolet.svg)](CHANGELOG.md)
-[![Tests](https://img.shields.io/badge/tests-182%20passing-3fb950.svg)](#-tests)
+[![Version](https://img.shields.io/badge/version-v9.10.0-blueviolet.svg)](CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-196%20passing-3fb950.svg)](#-tests)
 [![Claude Code](https://img.shields.io/badge/brain-Claude%20Code-8a63f0.svg)](https://claude.com/claude-code)
 [![Codex](https://img.shields.io/badge/Codex-optional-412991.svg)](#optional-add-ons)
 
@@ -44,9 +44,13 @@ you ──> Conductor (scopes and delegates, never touches code)
 git clone https://github.com/elisaul77/Orquestacion_Agentes_claude.git
 cd Orquestacion_Agentes_claude
 
-cp -r skills/subagent-pool skills/arquitec-dev-ia skills/graphify ~/.claude/skills/
-cp agents/*.agent.md ~/.claude/agents/
+python3 skills/subagent-pool/scripts/install.py --dry-run          # preview, changes nothing
+python3 skills/subagent-pool/scripts/install.py --with teams       # core + the add-ons you choose
 ```
+
+The installer backs up what is installed, copies the skills and agents, **merges** `settings.json` (never overwrites it), and ends with doctor's checks. Add-ons: `teams`, `cost-hook`, `codex`, `claude-md` (see the table below). It is safe to re-run for updates.
+
+> 🤖 **An agent installing this?** Point it to [INSTALL.md](INSTALL.md): it asks you about the add-ons, installs, and hands over.
 
 Restart Claude Code (agent files load when a session starts), then check the install:
 
@@ -257,7 +261,7 @@ The council's cost (about +4–6× a single plan) is still an estimate; see [Wha
 python3 -B -m unittest discover -s skills/subagent-pool/scripts
 ```
 
-**182 tests**, standard library only. Two are skipped on Python < 3.11 because they need `tomllib`.
+**196 tests**, standard library only. Two are skipped on Python < 3.11 because they need `tomllib`.
 
 | File | Tests | Covers |
 |---|---|---|
@@ -266,6 +270,7 @@ python3 -B -m unittest discover -s skills/subagent-pool/scripts
 | `test_skill_prescan.py` | 13 | Offline pre-scan over a benign and a malicious fixture |
 | `test_trim_output.py` | 12 | Test-output trimming never drops a failure line (real unittest/pytest output) |
 | `test_cost_tracker.py` | 9 | Cost ledger: dedup of streamed ids, subagents, report |
+| `test_install.py` | 14 | Installer: dry run, settings merge without overwrite, backup, CLAUDE.md block, Codex add-on |
 | `test_doctor.py` | 9 | Install health check: drift, remotes, Codex roles, council, teams flag |
 | `test_sync_codex_agents.py` | 9 | Agent → Codex role sync: TOML escaping, YAML blocks, foreign files |
 | `test_instincts.py` | 4 | Per-project lessons store |
@@ -294,7 +299,7 @@ python3 -B -m unittest discover -s skills/subagent-pool/scripts
 
 ```
 Orquestacion_Agentes_claude/
-├── AGENTS.md · CHANGELOG.md · LICENSE · FUNDING.md
+├── AGENTS.md · INSTALL.md · CHANGELOG.md · LICENSE · FUNDING.md
 ├── README.md · README.es.md · docs/banner.png
 ├── agents/
 │   ├── planning-agent.agent.md        # Phased plan (graphify)
@@ -319,7 +324,8 @@ Orquestacion_Agentes_claude/
     │   │   ├── skills-library.md · skill-review-prompt.md · official-sources.json
     │   │   └── skills-probadas-template/
     │   └── scripts/
-    │       ├── doctor.py              # Read-only install health check
+    │       ├── install.py             # Installer (backup, merge, add-ons)
+│       ├── doctor.py              # Read-only install health check
     │       ├── trim_output.py         # Shrinks test output, keeps every failure
     │       ├── cost_tracker.py        # Token ledger (Stop hook) and report
     │       ├── instincts.py           # Per-project lessons
@@ -327,7 +333,7 @@ Orquestacion_Agentes_claude/
     │       ├── sync_codex_agents.py   # Agents → Codex roles
     │       ├── codex-models.py        # Latest Codex model per family
     │       ├── skills_lib.py · skill_prescan.py · skill-review.sh
-    │       ├── test_*.py              # 182 tests
+    │       ├── test_*.py              # 196 tests
     │       └── fixtures/
     ├── arquitec-dev-ia/               # AI context docs; writes project-context.md
     └── graphify/                      # Knowledge-graph skill

@@ -1,5 +1,29 @@
 # Changelog
 
+## v9.10.0 — 2026-10-17 · Installer and INSTALL.md for agents
+
+An agent asked to "install this repo" can now leave Claude Code set up the way the author runs it.
+
+- **`scripts/install.py`.** It checks the requirements, backs up what is installed (skills, agents, settings, CLAUDE.md), copies the skills and agents, and runs doctor's checks at the end. It **merges** `settings.json` and never overwrites it: an invalid file is left untouched with a warning, and running it twice adds nothing.
+  - Optional add-ons, enabled only with `--with`:
+    - `teams`: the agent-teams flag.
+    - `cost-hook`: the token ledger.
+    - `codex`: codex-agent plus synced roles. It is skipped with a warning when the `codex` CLI is missing.
+    - `claude-md`: a routing table added between markers, replaced on re-run and removable.
+  - `--dry-run` changes nothing.
+  - The final lines are `STATUS`, `ADDONS`, `BACKUP` and `RESTART_REQUIRED`.
+- **`INSTALL.md`.** The procedure for agents: preview, ask the user about each add-on in prose, install, report, and hand over with the restart. Hard rules: never overwrite settings, never push or delete, and don't treat agents missing before the restart as a failure.
+- **`assets/claude-md-block.md`.** The routing table that the `claude-md` add-on installs.
+- README (EN and ES): the install section now uses the installer. AGENTS.md points agents to INSTALL.md.
+- Codex cross-review found 7 bugs, all fixed with regression tests:
+  - A `CLAUDE.md` with a lone or misordered marker could lose personal text, or crash halfway. Markers are now validated before anything changes.
+  - Codex roles were overwritten without a backup.
+  - Files removed upstream stayed behind and made doctor fail. Managed skills are now replaced, not overlaid.
+  - Any mention of `cost_tracker` in any hook blocked the Stop hook.
+  - `--dry-run --with codex` imported a module, which could write a `__pycache__`.
+  - Doctor's `fix:` hints weren't printed.
+- Tests: `test_install.py` with 14 tests, 196 in total. They also caught two runs in the same second sharing one backup folder.
+
 ## v9.9.1 — 2026-10-17 · Council hardening from the first real run
 
 First real council run, on kybercore's print queue. The plan was good: it caught a false premise in the prompt, a wizard step that starts real prints, and a legacy queue file. Four protocol problems showed up, and this release fixes them:

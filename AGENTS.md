@@ -1,5 +1,7 @@
 # Orquestacion Agentes Claude — AGENTS.md
 
+> **Installing this stack?** Follow [INSTALL.md](INSTALL.md). It covers the installer, backups, settings merge, add-ons and the restart.
+
 ## Overview
 
 ```mermaid
@@ -74,7 +76,7 @@ flowchart LR
 
 | Skill | Trigger | Version |
 |-------|---------|---------|
-| `subagent-pool` | "delegate", "orchestrate", "conductor", "complex task" | 9.9 |
+| `subagent-pool` | "delegate", "orchestrate", "conductor", "complex task" | 9.10 |
 | `arquitec-dev-ia` | "create AGENTS.md", "document architecture", "structure for AI", "output style", "add rules", "prepare for orchestration" | 5.0 |
 | `graphify` | `/graphify` | — |
 

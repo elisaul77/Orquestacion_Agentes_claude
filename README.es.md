@@ -5,8 +5,8 @@
 🌐 [English](README.md) · **Español**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-v9.9.1-blueviolet.svg)](CHANGELOG.md)
-[![Tests](https://img.shields.io/badge/tests-182%20passing-3fb950.svg)](#-tests)
+[![Version](https://img.shields.io/badge/version-v9.10.0-blueviolet.svg)](CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-196%20passing-3fb950.svg)](#-tests)
 [![Claude Code](https://img.shields.io/badge/brain-Claude%20Code-8a63f0.svg)](https://claude.com/claude-code)
 [![Codex](https://img.shields.io/badge/Codex-opcional-412991.svg)](#complementos-opcionales)
 
@@ -44,9 +44,13 @@ tú ──> Conductor (acota y delega, nunca toca el código)
 git clone https://github.com/elisaul77/Orquestacion_Agentes_claude.git
 cd Orquestacion_Agentes_claude
 
-cp -r skills/subagent-pool skills/arquitec-dev-ia skills/graphify ~/.claude/skills/
-cp agents/*.agent.md ~/.claude/agents/
+python3 skills/subagent-pool/scripts/install.py --dry-run          # vista previa, no cambia nada
+python3 skills/subagent-pool/scripts/install.py --with teams       # núcleo + los complementos que elijas
 ```
+
+El instalador hace copia de seguridad de lo que ya tienes, copia las skills y los agentes, **fusiona** `settings.json` (nunca lo sobrescribe) y termina con los chequeos de doctor. Complementos: `teams`, `cost-hook`, `codex` y `claude-md` (ver la tabla de abajo). Puedes volver a ejecutarlo sin riesgo para actualizar.
+
+> 🤖 **¿Lo instala un agente?** Indícale [INSTALL.md](INSTALL.md): te pregunta por los complementos, instala y te entrega el resultado.
 
 Reinicia Claude Code, porque los agentes se cargan al abrir una sesión. Luego comprueba la instalación:
 
@@ -257,7 +261,7 @@ El coste del consejo (entre 4 y 6 veces el de un plan simple) todavía es una es
 python3 -B -m unittest discover -s skills/subagent-pool/scripts
 ```
 
-**182 tests**, solo con la biblioteca estándar. Dos se saltan en Python < 3.11 porque necesitan `tomllib`.
+**196 tests**, solo con la biblioteca estándar. Dos se saltan en Python < 3.11 porque necesitan `tomllib`.
 
 | Archivo | Tests | Qué cubre |
 |---|---|---|
@@ -266,6 +270,7 @@ python3 -B -m unittest discover -s skills/subagent-pool/scripts
 | `test_skill_prescan.py` | 13 | Análisis previo sin red sobre un ejemplo benigno y otro malicioso |
 | `test_trim_output.py` | 12 | El recorte de la salida de tests nunca pierde una línea de fallo (con salida real de unittest y pytest) |
 | `test_cost_tracker.py` | 9 | Registro de costes: deduplicación de ids en streaming, subagentes, informe |
+| `test_install.py` | 14 | Instalador: dry run, fusión de settings sin sobrescribir, copia de seguridad, bloque de CLAUDE.md, complemento Codex |
 | `test_doctor.py` | 9 | Chequeo de instalación: desajustes, equipos remotos, roles de Codex, consejo, bandera de equipos |
 | `test_sync_codex_agents.py` | 9 | Sincronización de agentes a roles de Codex: escapado TOML, bloques YAML, archivos ajenos |
 | `test_instincts.py` | 4 | Almacén de lecciones por proyecto |
@@ -294,7 +299,7 @@ python3 -B -m unittest discover -s skills/subagent-pool/scripts
 
 ```
 Orquestacion_Agentes_claude/
-├── AGENTS.md · CHANGELOG.md · LICENSE · FUNDING.md
+├── AGENTS.md · INSTALL.md · CHANGELOG.md · LICENSE · FUNDING.md
 ├── README.md · README.es.md · docs/banner.png
 ├── agents/
 │   ├── planning-agent.agent.md        # Plan por fases (graphify)
@@ -319,7 +324,8 @@ Orquestacion_Agentes_claude/
     │   │   ├── skills-library.md · skill-review-prompt.md · official-sources.json
     │   │   └── skills-probadas-template/
     │   └── scripts/
-    │       ├── doctor.py              # Chequeo de instalación, solo lectura
+    │       ├── install.py             # Instalador (copia de seguridad, fusión, complementos)
+│       ├── doctor.py              # Chequeo de instalación, solo lectura
     │       ├── trim_output.py         # Recorta la salida de tests sin perder ningún fallo
     │       ├── cost_tracker.py        # Registro de tokens (hook Stop) e informe
     │       ├── instincts.py           # Lecciones por proyecto
@@ -327,7 +333,7 @@ Orquestacion_Agentes_claude/
     │       ├── sync_codex_agents.py   # Agentes → roles de Codex
     │       ├── codex-models.py        # Modelo de Codex más reciente por familia
     │       ├── skills_lib.py · skill_prescan.py · skill-review.sh
-    │       ├── test_*.py              # 182 tests
+    │       ├── test_*.py              # 196 tests
     │       └── fixtures/
     ├── arquitec-dev-ia/               # Documentación de contexto para IA; escribe project-context.md
     └── graphify/                      # Skill de grafo de conocimiento
