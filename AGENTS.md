@@ -6,6 +6,8 @@
 flowchart LR
     USER["👤 User"] -->|"request"| CONDUCTOR["🎭 Conductor<br/>NEVER touches code"]
     CONDUCTOR -->|"investigate + workspace scan"| PA["📋 planning-agent"]
+    CONDUCTOR -->|"tier L / risky plans"| CC["🧭 plan council<br/>spec · architect · lateral · risk"]
+    CC -.->|"plan + decisions.md"| CONDUCTOR
     CONDUCTOR -->|"implement"| IA["💻 implement-agent"]
     CONDUCTOR -->|"review + security"| RA["🔍 review-agent"]
     CONDUCTOR -->|"design new team"| AA["🏗️ AgentArchitect"]
@@ -36,7 +38,7 @@ flowchart LR
 | ✅ Updates TodoWrite | ✅ review-agent: verdict + security |
 | ✅ Announces delegations | ✅ AgentArchitect: generates new agents |
 | ❌ **NEVER** Read/Grep/Edit on code | ❌ Don't touch plans or coordination docs |
-| ❌ **NEVER** runs Bash on the repo | ❌ Don't delegate to other subagents |
+| ❌ **NEVER** runs Bash on the repo | ❌ Don't spawn subagents (council members only message each other) |
 
 ---
 
@@ -59,6 +61,10 @@ flowchart LR
 | planning-agent | `agents/planning-agent.agent.md` | `planning-agent` | sonnet | `🤖 [planning-agent] Investigating...` — uses graphify for knowledge graph |
 | implement-agent | `agents/implement-agent.agent.md` | `implement-agent` | haiku | `🤖 [implement-agent] Running Phase {N}...` |
 | review-agent | `agents/review-agent.agent.md` | `review-agent` | sonnet | `🤖 [review-agent] Reviewing Phase {N}...` |
+| council-spec | `agents/council-spec.agent.md` | `council-spec` | sonnet | `🧭 [council-spec]` — acceptance criteria |
+| council-architect | `agents/council-architect.agent.md` | `council-architect` | sonnet | `🏛️ [council-architect]` — phases + final synthesis |
+| council-lateral | `agents/council-lateral.agent.md` | `council-lateral` | sonnet | `🌀 [council-lateral]` — the non-obvious option (asks Codex) |
+| council-risk | `agents/council-risk.agent.md` | `council-risk` | sonnet | `⚠️ [council-risk]` — risks and verification |
 | AgentArchitect | `agents/AgentArchitect.agent.md` | `AgentArchitect` | opus | `🏗️ [AgentArchitect] Designing team...` |
 | codex-agent (optional) | `agents/optional/codex-agent.agent.md` | `codex-agent` | per mode (registry) | `🤖 [codex-agent] mode=<mode> model=<model>` — only if you use Codex; see SKILL §10b |
 
@@ -68,7 +74,7 @@ flowchart LR
 
 | Skill | Trigger | Version |
 |-------|---------|---------|
-| `subagent-pool` | "delegate", "orchestrate", "conductor", "complex task" | 9.8 |
+| `subagent-pool` | "delegate", "orchestrate", "conductor", "complex task" | 9.9 |
 | `arquitec-dev-ia` | "create AGENTS.md", "document architecture", "structure for AI", "output style", "add rules", "prepare for orchestration" | 5.0 |
 | `graphify` | `/graphify` | — |
 
@@ -86,13 +92,15 @@ flowchart LR
 
 ---
 
-## Workflow v9.8
+## Workflow v9.9
 
 1. Conductor reads `.claude/project-context.md` (HALT and suggest `arquitec-dev-ia` if missing); offers to resume an unfinished `plans/*-state.md`
-2. Picks a tier: **S** do it directly · **M** plan + phases · **L** full flow
+2. States `Tier · operation · plan level` in one line (e.g. `Tier L · feature · council`); the user can override it
 3. Asks only questions that change the plan (max 3, each with a default); states other assumptions
-4. Tier L with a real design choice → **divergent round**: 2-3 independent forks with distinct lenses, user picks
-5. `planning-agent` writes the plan to `plans/{task}-draft.md` → ⏸️ **PAUSE** for approval
+4. Plan: **single** → `planning-agent` · **duo** → architect + lateral · **council** (tier L or security/API/data/money) →
+   four members, blind drafts → direct debate via SendMessage → architect synthesizes plan + `decisions.md`
+   (protocol: `skills/subagent-pool/assets/council.md`)
+5. The plan lands in `plans/{task}-draft.md` → ⏸️ **PAUSE** for approval
 6. Per phase: `implement-agent` → `review-agent` (contract-first + independent check)
    - NEEDS_REVISION → max 2 loops, then consult the user
    - Approve-tier actions (delete, migrate, secrets, push/publish/deploy) → BLOCKED until the user approves
@@ -128,4 +136,5 @@ Models: each agent's `model:` frontmatter decides; the Conductor never overrides
 - **Prompt templates:** `skills/subagent-pool/assets/prompts.md`
 - **Definitions + troubleshooting:** `skills/subagent-pool/assets/agent-definitions.md`
 - **Full interview protocol:** `skills/subagent-pool/assets/interview-protocol.md`
+- **Plan council protocol:** `skills/subagent-pool/assets/council.md`
 - **Agents:** `agents/*.agent.md`
