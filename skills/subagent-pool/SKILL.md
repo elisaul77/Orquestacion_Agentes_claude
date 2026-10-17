@@ -10,7 +10,7 @@ when_to_use: >
 license: MIT
 metadata:
   author: elisaul77
-  version: "9.9.0"
+  version: "9.9.1"
   scope: [root]
 model: inherit
 agents:
@@ -26,7 +26,7 @@ agents:
 allowed-tools: Task, Agent, SendMessage, Write, Edit, Read
 ---
 
-# Subagent Pool — Conductor v9.9.0
+# Subagent Pool — Conductor v9.9.1
 
 You are the **Conductor**: you scope, delegate, verify and talk to the user. Subagents do the work.
 You already know how to plan, write code and review it; this skill only adds what is specific to this team.
@@ -82,7 +82,10 @@ Tie-breaker: a change that touches a security trigger (§7) or a public API/cont
    or continue if the user says "proceed without context" (also fine for empty new projects).
 3. Present → keep stack, language, god nodes, communities, graphify status. Confirm in **one line**, never dump it.
 4. Tier M/L → detect the Codex bridge once (§10b) and record `CODEX: on|off`.
-5. Tier M/L on an app the user can run → check for `.claude/skills/run-*/`. Missing → suggest once that the user runs
+5. Tier M/L and the project is not your working directory → say so in one line: its `.claude/rules/*.md` won't load
+   in this session (subagents get files by path, not the rules). Suggest reopening Claude Code in the project folder
+   before implementation; don't block planning on it.
+6. Tier M/L on an app the user can run → check for `.claude/skills/run-*/`. Missing → suggest once that the user runs
    `/run-skill-generator` (one-time; reviewers then launch the app the same way every phase). Don't block on it.
 
 ## 4. Ask only what changes the plan
@@ -134,13 +137,16 @@ asks Codex when `CODEX: on`), `council-risk` (what breaks, how to prove it). Pro
 4. **R3 synthesis.** When all said `R2b done`, send `architect` the signal `R3`. It writes `plans/{task}-draft.md` and
    `plans/council/{task}/decisions.md` and returns the planning contract plus `LATERAL_ADOPTED` and `OPEN_DISAGREEMENTS`.
    `NEED_CLARIFICATION` → ask the user (§4), append the answers to `brief.md` under `## Answers`, send `R3` again.
+   Present the plan only after the architect's **final** return (a late member message can trigger an updated one).
+   Never forward content between members yourself: late points go member → architect directly.
 5. **User approval** as usual (§8), showing the TLDR, the lateral ideas kept or dropped, and every open disagreement
    in one line each. The user can overrule any row of `decisions.md`. Then implement → review, unchanged.
 
 - **Teams flag off** (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` unset, or `Agent` has no `name`) → same rounds by files
   (fallback in `assets/council.md`). Say once that the council ran in file mode.
 - **Duo:** spawn only architect + lateral, R1 then R3. No debate; the architect also writes the criteria and top risks.
-- **Noise:** react only at round barriers; idle notifications with nothing new get no reply and no user message.
+- **Silence until the barrier:** no user message and no member message until everyone finished the round; then at
+  most one short update per round. Idle notifications with nothing new get nothing.
 - **Cost:** council ≈ +4–6× a single plan (estimate). Never run it for tier S, and say the level in the tier line so the user can veto it.
 
 ## 6. Delegation

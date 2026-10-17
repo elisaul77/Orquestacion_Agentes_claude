@@ -19,6 +19,12 @@ lenses instead of one, and makes them disagree on purpose.
   interactive): agents spawned with `Agent(name=…)` message each other directly with `SendMessage`; messages wake an
   idle agent. Agents with a closed `tools:` list need `SendMessage` in it (verified: without it they can't send).
 
+## Where to run it
+
+Run the council from a session opened **in the project folder**. Members get the project by absolute path either way,
+but the project's own `.claude/rules/*.md` (path-scoped rules such as a UI design system) load only for the session's
+working directory, and implementers will need them.
+
 ## Layout
 
 ```
@@ -48,10 +54,22 @@ The Conductor never carries content between members. It only starts each round a
 the R2a barrier every objection is in the log even if delivery is late; R2b works from the log. Nobody writes to the
 log after R2b, so R3 reads a closed transcript.
 
+**An acceptance restates the result.** "accept" alone is not a reply: write the resulting wording
+(`accept → ready = printer online and idle`). Two members can each accept the *other's* version and swap positions;
+restated results make that visible in the log.
+
 **Message limits (per member):** R2a at most **one objection per other draft**; R2b one reply per objection addressed
 to you — at most 6 messages. An objection is concrete: it names a criterion, file, input, phase or command.
 "I agree" is not sent; silence means no objection. No further round: anything still disputed goes to `decisions.md`
 as an open disagreement for the user. If R2a produced no objections, skip R2b.
+
+**R3 starts with a consistency pass.** Before writing, the architect lists every decision that has two different
+restated results in `debate.log` (crossed acceptances) and settles each one in `decisions.md` with the reason, or
+marks it open. The Conductor never forwards a late point from one member to another: a member that finds something
+after R2b messages the architect directly (one message, logged), and the architect takes it into account.
+
+**The Conductor presents the plan only after the architect's final return.** If a member's late message reaches the
+architect during R3, wait for the architect's updated return; never present a plan and correct it seconds later.
 
 **`NEED_CLARIFICATION` from R3:** the Conductor asks the user the architect's questions (prose, §4), appends the answers
 to `brief.md` under `## Answers`, and sends `architect` `R3` again. No new debate unless an answer changes the scope.
@@ -69,8 +87,9 @@ to `brief.md` under `## Answers`, and sends `architect` `R3` again. No new debat
 The architect synthesizes from **whatever drafts the level produced**; a missing `spec.md`, `risk.md` or `debate.log`
 is expected at duo level, not an error.
 
-**Notifications:** members going idle send notifications. React only at a round barrier (all members done); an
-idle notification with nothing new needs no reply and no message to the user.
+**Silence until the barrier.** Members going idle send notifications. Write nothing to the user and send nothing
+to members until every member has finished the round. Then one short update per round at most (what changed the
+plan), and the full presentation after R3.
 
 ## Fallback — teams flag off (or names unsupported)
 

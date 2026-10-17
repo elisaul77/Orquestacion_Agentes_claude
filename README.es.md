@@ -5,8 +5,8 @@
 🌐 [English](README.md) · **Español**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-v9.9.0-blueviolet.svg)](CHANGELOG.md)
-[![Tests](https://img.shields.io/badge/tests-181%20passing-3fb950.svg)](#-tests)
+[![Version](https://img.shields.io/badge/version-v9.9.1-blueviolet.svg)](CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-182%20passing-3fb950.svg)](#-tests)
 [![Claude Code](https://img.shields.io/badge/brain-Claude%20Code-8a63f0.svg)](https://claude.com/claude-code)
 [![Codex](https://img.shields.io/badge/Codex-opcional-412991.svg)](#complementos-opcionales)
 
@@ -257,7 +257,7 @@ El coste del consejo (entre 4 y 6 veces el de un plan simple) todavía es una es
 python3 -B -m unittest discover -s skills/subagent-pool/scripts
 ```
 
-**181 tests**, solo con la biblioteca estándar. Dos se saltan en Python < 3.11 porque necesitan `tomllib`.
+**182 tests**, solo con la biblioteca estándar. Dos se saltan en Python < 3.11 porque necesitan `tomllib`.
 
 | Archivo | Tests | Qué cubre |
 |---|---|---|
@@ -270,7 +270,7 @@ python3 -B -m unittest discover -s skills/subagent-pool/scripts
 | `test_sync_codex_agents.py` | 9 | Sincronización de agentes a roles de Codex: escapado TOML, bloques YAML, archivos ajenos |
 | `test_instincts.py` | 4 | Almacén de lecciones por proyecto |
 | `test_mutate.py` | 4 | La prueba de mutación corre en una copia aislada |
-| `test_council.py` | 3 | Los agentes del consejo tienen `SendMessage` y el protocolo coincide con la skill |
+| `test_council.py` | 4 | Los agentes del consejo tienen `SendMessage` y el protocolo coincide con la skill |
 
 `skill-review.sh` no tiene tests automáticos; su `--dry-run` imprime todos los comandos sin ejecutarlos.
 
@@ -327,7 +327,7 @@ Orquestacion_Agentes_claude/
     │       ├── sync_codex_agents.py   # Agentes → roles de Codex
     │       ├── codex-models.py        # Modelo de Codex más reciente por familia
     │       ├── skills_lib.py · skill_prescan.py · skill-review.sh
-    │       ├── test_*.py              # 181 tests
+    │       ├── test_*.py              # 182 tests
     │       └── fixtures/
     ├── arquitec-dev-ia/               # Documentación de contexto para IA; escribe project-context.md
     └── graphify/                      # Skill de grafo de conocimiento

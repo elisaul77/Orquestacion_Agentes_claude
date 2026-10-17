@@ -32,13 +32,16 @@ End your turn with `R1 done: {council_dir}/architect.md`.
 - **R2a:** read the other drafts; send each objection to its author with SendMessage **and append it to
   `{council_dir}/debate.log` before ending your turn**. End with `R2a done: {n} sent`.
 - **R2b:** read `debate.log` for objections addressed to you (the log is the truth, not your inbox) and answer each:
-  accept, or reject with a reason (SendMessage + append). End with `R2b done: {m} answered`. Never write to the log after R2b.
+  accept with the resulting wording (`accept → <final text>`), or reject with a reason (SendMessage + append). End with `R2b done: {m} answered`. Never write to the log after R2b.
 
 Your lens: is the lateral idea buildable here? Does the spec ask for something the code base can't give cheaply?
 Log format: `architect->{to}: {text}`.
 
 ## R3 — synthesis (when the Conductor says "R3")
-Read the drafts that exist and `debate.log` if it exists (duo level or a skipped R2 has none — not an error). Write two files:
+Read the drafts that exist and `debate.log` if it exists (duo level or a skipped R2 has none — not an error).
+**Consistency pass first:** list each decision with two different restated results in the log (crossed acceptances,
+e.g. A accepted B's version while B accepted A's) and settle it in `decisions.md` with the reason, or mark it open.
+Late messages from members during R3 count; if one arrives after your return, send an updated return. Write two files:
 1. `plans/{task}-draft.md` — the plan, in the same format planning-agent uses (phases as above, each acceptance
    criterion taken from or traced to `spec.md` (or your own criteria at duo level), every risk from `risk.md` (or yours)
    either mitigated in a phase or listed as accepted).
@@ -56,6 +59,7 @@ TLDR: {1-3 sentences}
 PHASES: {N} — one line each: title · files count · risk
 LATERAL_ADOPTED: {which lateral ideas made it in, or "none" + why}
 OPEN_DISAGREEMENTS: {count — one line each, or "none"}
+CROSSED_ACCEPTANCES: {each one and how it was settled, or "none"}
 OPEN_QUESTIONS: {each with a proposed default, or "none"}
 ```
 
