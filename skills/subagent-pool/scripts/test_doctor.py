@@ -55,6 +55,40 @@ class DoctorTest(unittest.TestCase):
                     "StrictHostKeyChecking=yes", "BatchMode=yes"):
             self.assertIn(opt, argv)
 
+    def test_fresh_ledger_ok_and_boundary(self):
+        c = self.home / ".claude"
+        (c / "settings.json").write_text(json.dumps({"hooks": {"Stop": [{"hooks": [{"command": "cost_tracker.py hook"}]}]}}))
+        (c / "metrics").mkdir()
+        led = c / "metrics/costs.jsonl"
+        led.write_text("{}\n")
+        mt = led.stat().st_mtime
+        self.assertEqual(self.status(doctor.run_checks(now=mt + 47 * 3600), "cost ledger fresh"), "ok")
+        self.assertEqual(self.status(doctor.run_checks(now=mt + 49 * 3600), "cost ledger fresh"), "warn")
+
+    def test_remote_version_mismatch_and_ssh_error(self):
+        from unittest import mock
+        with mock.patch("doctor.subprocess.run") as run:
+            run.return_value = mock.Mock(returncode=0, stdout='version: "9.7.0"', stderr="")
+            self.assertEqual(self.status(doctor.run_checks(remotes=["h"]), "remote h"), "ok")
+            run.return_value = mock.Mock(returncode=0, stdout='version: "9.5.0"', stderr="")
+            r = next(x for x in doctor.run_checks(remotes=["h"]) if x["check"] == "remote h")
+            self.assertEqual((r["status"], r["detail"]), ("fail", "v9.5.0"))
+            run.return_value = mock.Mock(returncode=255, stdout='version: "9.7.0"', stderr="boom\nPermission denied")
+            r = next(x for x in doctor.run_checks(remotes=["h"]) if x["check"] == "remote h")
+            self.assertEqual((r["status"], r["detail"]), ("fail", "Permission denied"))
+
+    def test_agent_content_drift_and_codex(self):
+        from unittest import mock
+        (self.home / ".claude/agents/review-agent.agent.md").write_text("changed")
+        res = doctor.run_checks(str(self.repo))
+        self.assertEqual(self.status(res, "review-agent matches repo"), "fail")
+        self.assertEqual(self.status(res, "skill matches repo"), "ok")
+        (self.home / ".claude/agents/codex-agent.agent.md").write_text("x")
+        with mock.patch("doctor.shutil.which", return_value="/usr/bin/codex"):
+            self.assertEqual(self.status(doctor.run_checks(), "codex (optional)"), "ok")
+        with mock.patch("doctor.shutil.which", return_value=None):
+            self.assertEqual(self.status(doctor.run_checks(), "codex (optional)"), "warn")
+
     def test_unreachable_remote_fails(self):
         res = doctor.run_checks(remotes=["nonexistent.invalid"])
         self.assertEqual(self.status(res, "remote nonexistent.invalid"), "fail")

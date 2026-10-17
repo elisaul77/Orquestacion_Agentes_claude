@@ -162,11 +162,26 @@ The Conductor then picks the 2-3 strongest *distinct* options, recommends one, a
 
 ```
 Task(description="Design team for {domain}", subagent_type="AgentArchitect", prompt="""
-Problem: {description}
-Known context: {what the user said}
-Interview the user, design the agent pyramid, generate files in .claude/agents/.
+mode=design
+Domain: {domain}   Problem: {description}
+Known context: {what the user said; project-context.md summary}
+User answers so far: {numbered answers to earlier QUESTIONS, or "none"}
+Why the base pool isn't enough: {one line}
 """)
 ```
+
+After `DESIGN_READY`, show the user the design file's TL;DR + agents table. On approval:
+
+```
+Task(description="Generate team {domain}", subagent_type="AgentArchitect", prompt="""
+mode=generate
+Design file: plans/team-{domain}.md — APPROVED by the user on {date}
+Edits requested by the user: {list, or "none"}
+""")
+```
+
+`AGENTS_CREATED` → write the state file, then tell the user (their language): the agents exist but load on the
+next session; restart Claude Code and say "resume" to continue from the state file.
 
 ## 7. Final report to the user (user's language)
 

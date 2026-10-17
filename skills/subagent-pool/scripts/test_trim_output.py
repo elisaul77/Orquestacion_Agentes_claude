@@ -36,6 +36,34 @@ class TrimOutputTest(unittest.TestCase):
         for i in range(200):
             self.assertTrue(any(f"diagnostic {i:03}" in l for l in out), i)
 
+    def test_context_window_and_gap_marker(self):
+        lines = [f"line {i}" for i in range(20)]
+        lines[10] = "ERROR here"
+        out = trim(lines, context=2)
+        self.assertEqual(out[1:], ["line 8", "line 9", "ERROR here", "line 11", "line 12"])
+        lines[18] = "ERROR again"
+        out = trim(lines, context=1)
+        self.assertEqual(out[1:], ["line 9", "ERROR here", "line 11", "  …", "line 17", "ERROR again", "line 19"])
+
+    def test_no_failure_shows_exactly_last_15(self):
+        lines = [f"info {i}" for i in range(40)]
+        out = trim(lines)
+        self.assertEqual(out[1:], lines[-15:])
+
+    def test_unittest_block_closes_at_ran(self):
+        lines = ["=" * 70, "FAIL: t", "-" * 70, "Traceback (most recent call last):", "AssertionError: x",
+                 "-" * 70, "Ran 1 test in 0.0s", *[f"after {i}" for i in range(30)], "FAILED (failures=1)"]
+        out = trim(lines, context=0, max_lines=0)
+        self.assertNotIn("after 10", out)
+        self.assertIn("FAILED (failures=1)", out)
+
+    def test_context_trimmed_but_summary_kept_when_budget_tight(self):
+        lines = ["ctx a", "ctx b", "ERROR boom", "ctx c", "Ran 5 tests in 1s"]
+        out = trim(lines, context=3, max_lines=2)
+        self.assertIn("ERROR boom", out)
+        self.assertIn("Ran 5 tests in 1s", out)
+        self.assertFalse([l for l in out if l.startswith("ctx")])
+
     def test_all_green_shows_tail(self):
         lines = ["."] * 100 + ["Ran 100 tests in 0.1s", "", "OK"]
         out = trim(lines)

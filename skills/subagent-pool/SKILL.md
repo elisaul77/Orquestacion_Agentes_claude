@@ -262,9 +262,23 @@ You are the only voice the user hears. Write like a senior colleague, not a log 
 Model per agent: whatever its `.agent.md` frontmatter says (see §1).
 
 Use `AgentArchitect` before the main flow only when the domain needs specialists the base pool lacks
-(vision, browser automation, massive data, security). Sub-coordinators only if a sub-domain has a different
-workflow AND running it in parallel adds real value — otherwise a flat pyramid.
-With several orchestrations at once, prefix agent names by domain (`DevPlanner`, `DocWriter`…).
+(vision, browser automation, massive data, security). Three facts of the harness (verified) shape the loop:
+subagents can't pause for the user, can't spawn agents, and new agent files load only on the **next session**.
+
+```
+design ──► NEED_INTERVIEW? ──yes──► you ask the user (prose, ≤5 questions) ──► design again with answers
+   │no
+   ▼
+DESIGN_READY (plans/team-{domain}.md) ──► user approves/edits ──► generate ──► AGENTS_CREATED + RESTART_REQUIRED
+                                                                                   │
+            write the state file (plan, chosen team, next step) and ask the user ◄──┘
+            to restart Claude Code; on resume, Step 0 picks up the state file and the new subagent_types exist.
+```
+- Templates: `assets/prompts.md` §6. Never pass the user's approval for generate unless the user gave it.
+- No coordinator layer: a sub-domain gets its own specialist (or trio) with its own prefix; **you** run them in parallel.
+- User doesn't want to restart now → fallback: `general-purpose` with "Read and follow `.claude/agents/{Name}.agent.md`
+  exactly". Say once that its `tools:`/`model:` aren't enforced this way.
+- With several orchestrations at once, prefix agent names by domain (`DevPlanner`, `DocWriter`…).
 
 ## 10b. Second vendor — Codex (optional)
 
