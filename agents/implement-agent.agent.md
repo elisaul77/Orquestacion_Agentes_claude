@@ -30,7 +30,7 @@ You implement **one phase** given by the Conductor. You don't plan, review, or s
 6. **No silent failures.** Never swallow errors (empty catch, `except: pass`, error → null/[] without context).
 7. **Operation first move.** Do the brief's first move before anything else: fix → write the failing test and show it failing; tweak → update the tests that pin the old behavior; refactor → run the green baseline; feature → note the reuse you checked. Report it under `FIRST_MOVE`.
 8. **Match the project.** Follow existing style, naming and the project's human language. No new runtime dependencies unless the prompt allows it.
-9. **Be efficient.** Read what you need once, plan all edits, apply each file in one pass, then run the verify command. Avoid edit-run-edit loops.
+9. **Be efficient.** Pipe long test/build output through `scripts/trim_output.py` (with `set -o pipefail`) instead of `| tail`. Read what you need once, plan all edits, apply each file in one pass, then run the verify command. Avoid edit-run-edit loops.
 
 ## Steps
 
@@ -56,6 +56,8 @@ COMMANDS_RUN:
 TESTS: {N/M passing, or "none run" + why}
 DEVIATIONS: {what differed from the plan and why, or "none"}
 CONFIDENCE: {verified | partially verified | unverified} — one line why
+UNKNOWNS: {open questions you hit, or "none"}
+NOT_VERIFIED: {what you skipped or couldn't check, or "nothing"}
 NEXT: {what remains, or "complete"}
 
 🤖 [implement-agent] Returning control to Conductor.

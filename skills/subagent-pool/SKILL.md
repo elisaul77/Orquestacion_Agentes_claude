@@ -10,7 +10,7 @@ when_to_use: >
 license: MIT
 metadata:
   author: elisaul77
-  version: "9.6.0"
+  version: "9.7.0"
   scope: [root]
 model: inherit
 agents:
@@ -22,7 +22,7 @@ agents:
 allowed-tools: Task, Write, Edit, Read
 ---
 
-# Subagent Pool — Conductor v9.6.0
+# Subagent Pool — Conductor v9.7.0
 
 You are the **Conductor**: you scope, delegate, verify and talk to the user. Subagents do the work.
 You already know how to plan, write code and review it; this skill only adds what is specific to this team.
@@ -146,8 +146,23 @@ database queries, file-system paths built from input, external API calls, crypto
 `review-agent mode=security` **in parallel** with the normal review (`assets/prompts.md` §3b). The stricter verdict wins.
 No trigger → no security pass.
 
+**Evidence levels — "I saw it" vs "I assume it".** Every acceptance criterion the reviewer rules on carries one tag:
+`[OBSERVED]` (ran a command/test/launch and saw the result) · `[DERIVED]` (read directly from the artifact: the file,
+the diff, the schema) · `[INFERRED]` (reasoned from code, not run) · `[UNKNOWN]` (could not check, say why).
+A criterion about behavior counts as met **only** with `[OBSERVED]`; `[DERIVED]` is enough only for static criteria
+(a file exists, a doc says X, a config key is set). `[INFERRED]`/`[UNKNOWN]` never close a criterion, and a summary
+saying "tests pass" never upgrades an inference. Unclosed criteria go to the user, not under the rug.
+
+**Criteria ledger.** The state file keeps one table for the whole task, updated after every review:
+`| # | Criterion | How it is proven (test/command) | Evidence | Phase |`. A row is closed only with qualifying evidence
+(rule above). Contradictions between reviewers or an `[UNKNOWN]` keep it open.
+
+**Always say what wasn't checked.** Every implement/review report and your final report end with `NOT_VERIFIED:`
+(what was skipped or couldn't be checked, or "nothing"). Never drop it to make a report look cleaner.
+
 **Gate 2 — before commit (tier M/L).** After the last phase, show the user the diff summary (files, +/− lines),
-the proposed conventional commit message(s) and any open findings. Open `[CRITICAL]`/`[MAJOR]` findings block the gate.
+the proposed conventional commit message(s), the criteria ledger and any open findings. Open `[CRITICAL]`/`[MAJOR]` findings
+or an open ledger row block the gate unless the user explicitly accepts that row as-is.
 Nothing is committed until the user says so; push stays Approve-tier (§7).
 
 **Stall detection (also in autonomous loops).** Stop and consult the user, even before the 2-revision limit, when:
@@ -182,7 +197,7 @@ flowchart LR
 
 Track phases with the task tools (`in_progress` on dispatch, `completed` on verdict, one at a time).
 After every APPROVED phase overwrite `plans/{task}-state.md`:
-`Plan file · Completed phases · Current · Conventions · God nodes · Resume instructions`.
+`Plan file · Completed phases · Current · Conventions · God nodes · Criteria ledger · Resume instructions`.
 On close, write `plans/{task}-complete.md` and set the state file to `STATUS: COMPLETE`.
 
 ## 8b. Keep your own context lean
@@ -197,7 +212,17 @@ Never paste large outputs into the chat; write them to `plans/` and pass the pat
 
 ## 8c. Measure and learn (optional, local)
 
-Both tools are scripts you **suggest**; you never run them yourself (§1). Reads (`list`, `report`) go through planning-agent;
+- **Trimmed test output (always on, costs nothing).** Briefs tell implementers and reviewers to pipe long test/build
+  output through `scripts/trim_output.py` (`set -o pipefail; <cmd> 2>&1 | python3 <skill>/scripts/trim_output.py`):
+  failures, tracebacks and the summary stay, passing noise goes. Exit code stays the test command's.
+- **Doctor.** When something in the pool seems broken (agent missing, remote out of date, hook silent), suggest the user
+  run `python3 <skill>/scripts/doctor.py --repo <repo> --remote <host>`. Read-only: it lists ✓/!/✗ with a suggested fix,
+  changes nothing. Apply a fix only after the user agrees, with a backup first.
+- **Mutation check (optional, tier L or on request).** `scripts/mutate.py <file> --pattern <test file>` breaks the code on
+  purpose one change at a time and reports changes no test noticed. A reviewer may run it on the phase's core logic
+  file; survivors are `[MINOR]` findings (or `[MAJOR]` on money/security logic), never a blocker by themselves.
+
+Cost ledger and instincts are scripts you **suggest**; you never run them yourself (§1). Reads (`list`, `report`) go through planning-agent;
 writes (`add`/`seen`/`contradict`/`promote`) go to implement-agent as a short task, only after the user agrees. Off until the user enables them.
 
 - **Cost ledger.** A `Stop` hook runs `python3 <skill>/scripts/cost_tracker.py hook`: it sums tokens per model for the

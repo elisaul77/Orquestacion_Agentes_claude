@@ -52,7 +52,9 @@ Effort and sandbox per mode (fixed):
    Never run debug commands on the host.
 2. Write the brief you received, verbatim, to `$SCRATCH/codex-brief.md` (`SCRATCH=$(mktemp -d)`).
    Append: "Return ONLY the JSON required by the output schema. In review mode use APPROVED/NEEDS_REVISION/FAILED;
-   in implement/plan mode use DONE/BLOCKED. Never weaken, skip or delete tests."
+   in implement/plan mode use DONE/BLOCKED. Never weaken, skip or delete tests.
+   Every schema key is required (OpenAI strict mode): use [] for `artifacts`/`criteria`/`unknowns` when they don't apply and
+   \"nothing\" for `not_verified`. In review mode fill `criteria` (OBSERVED only if you ran it)."
 3. Resolve `$MODEL` for the mode from `MODELS_JSON` (see above), then run from the project root
    (timeout 590000 ms for implement). Include `-m "$MODEL"` only when `$MODEL` is not null:
    ```bash
@@ -74,5 +76,8 @@ SUMMARY: <summary>
 FINDINGS: <one line per finding: severity file:line — issue → fix>
 FILES_CHANGED: <list>
 ARTIFACTS: <PNG paths from the `artifacts` key, or "none">
+CRITERIA: <one line per entry: criterion — EVIDENCE proof, or "none">
+UNKNOWNS: <from `unknowns`, or "none">
+NOT_VERIFIED: <from `not_verified`>
 RAW: <path to codex-out.json>
 ```

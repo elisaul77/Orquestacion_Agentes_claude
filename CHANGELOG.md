@@ -1,5 +1,19 @@
 # Changelog
 
+## v9.7.0 — 2026-10-17 · Evidence levels, criteria ledger, "not verified", trimmed output, doctor, mutation check
+
+Ideas from `morluto/rea` (evidence discipline), `DietrichGebert/ponytail` (say what wasn't checked) and `JuliusBrussee/caveman` (read less). Read, not installed.
+
+- **Evidence levels (§7):** every criterion is `[OBSERVED]` / `[DERIVED]` / `[INFERRED]` / `[UNKNOWN]`. Behavior criteria close only with OBSERVED; an inference is never upgraded by a "tests pass" summary. Review contract gains `CRITERIA:`; Codex schema gains optional `criteria` and `not_verified`.
+- **Criteria ledger (§7, §8):** one table in `plans/{task}-state.md`; Gate 2 blocks on open rows unless the user accepts them.
+- **`NOT_VERIFIED:` and `UNKNOWNS:`** close every implement/review report and the final report.
+- **`scripts/trim_output.py`:** keeps failures, tracebacks and the summary of long test/build output; used in briefs instead of `| tail`.
+- **`scripts/doctor.py`:** read-only health check (install vs repo drift, agents, Codex, cost hook freshness, remotes over SSH) with suggested fixes.
+- **`scripts/mutate.py`:** dependency-free mutation testing (flips comparisons/operators/constants, skips `main()`); optional for tier L core logic. First run on the pool's own scripts: 44–63 % killed — tests to strengthen.
+- **Fix (bug since v9.5):** `codex-verdict.schema.json` had an optional key (`artifacts`), and OpenAI strict mode rejects that with HTTP 400, so every `codex exec --output-schema` call failed. All keys are now required (`[]` / `"nothing"` when not applicable); new keys `criteria`, `not_verified`, `unknowns`.
+- Hardening from the Claude + Codex cross-review: `trim_output` never cuts failure lines or whole failure blocks (unittest and pytest), and only "Ran N" closes a unittest block; `mutate` runs in the copy (cwd, PYTHONPATH, `-t`) with a bounded `--limit`; the `doctor` SSH probe can't write locally (no host-key updates, no control sockets, no LocalCommand).
+- Tests: `test_trim_output.py`, `test_doctor.py`, `test_mutate.py` (156 total).
+
 ## v9.6.0 — 2026-10-16 · Operation types, security by trigger, Gate 2, stall stop, cost ledger, instincts
 
 Ideas taken from `affaan-m/ECC` (read, not installed) and adapted to the pool:
