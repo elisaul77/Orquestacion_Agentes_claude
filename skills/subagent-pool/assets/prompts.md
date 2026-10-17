@@ -1,4 +1,4 @@
-# Task Templates — Conductor v9.0
+# Task Templates — Conductor v9.6
 
 Copy, fill, send. Every prompt ends with the agent's return contract so the handoff is parseable.
 Write prompts as directives (what + why + files + constraints), not background essays.
@@ -7,6 +7,7 @@ Write prompts as directives (what + why + files + constraints), not background e
 1. planning-agent
 2. implement-agent
 3. review-agent
+3b. review-agent — security mode
 4. Revision after NEEDS_REVISION
 5. Divergent fork (creativity round)
 6. AgentArchitect
@@ -22,7 +23,8 @@ Write prompts as directives (what + why + files + constraints), not background e
 Task(description="Plan: {brief}", subagent_type="planning-agent", prompt="""
 Investigate and draft a plan for: {one-line task}
 
-Tier: {M | L}
+Tier: {M | L}   Operation: {feature | fix | tweak | refactor} — first move: {from SKILL.md §2}
+Instincts for this project: {output of `instincts.py list --min 0.5`, or "none"}
 Scope: {existing project | new folder} — {stack or "detect"}
 Graphify: {EXISTS at graphify-out/graph.json | NOT_EXISTS, ~N files}
 Chosen approach: {from divergent round, or "pick the simplest sound one; list 1-2 rejected alternatives"}
@@ -53,6 +55,7 @@ Task(description="Phase {N}: {title}", subagent_type="implement-agent", prompt="
 Phase {N}: {title}   (plan: plans/{task}-plan.md)
 
 Objective: {one sentence}
+Operation: {feature | fix | tweak | refactor} — first move: {e.g. "fix: write the failing test first and show it failing"}
 Rationale: {why — the criterion to self-correct with}
 Contracts/Invariants: {falsifiable guarantees; breaking one → report under DEVIATIONS}
 Acceptance criteria: {bullets}
@@ -63,9 +66,10 @@ Conventions: lang={language}, stack={stack}
 Graph warnings: {god nodes / hidden deps — never omit if present}
 Governance: Auto = edits inside listed files + tests. Notify = anything else → DEVIATIONS.
   Approve = delete/overwrite data, migrations, secrets, push/publish/deploy → STOP, STATUS: BLOCKED.
-Never weaken, skip or delete tests to make them pass.
+Never weaken, skip or delete tests to make them pass. Never swallow errors (empty catch, error → null/[] without context).
 
 STATUS: DONE | BLOCKED | PARTIAL
+FIRST_MOVE: {evidence, e.g. "test_x failed before the fix (exit 1), passes after"}
 FILES_CHANGED: path:lines — what
 COMMANDS_RUN: command → exit code
 TESTS: {N/M passing, or "none run" + why}
@@ -82,6 +86,7 @@ Task(description="Review Phase {N}: {title}", subagent_type="review-agent", prom
 Review Phase {N}: {title}
 
 Objective: {one sentence}
+Operation: {feature | fix | tweak | refactor} — check the first move was honored
 Rationale: {judge intent, not only literal steps}
 Contracts/Invariants: {declared ones — derive others, try to break each BEFORE reading the code}
 Acceptance criteria: {bullets}
@@ -96,6 +101,23 @@ FINDINGS: file:line — issue  ([INVARIANT] / [CRITICAL] / [MAJOR] / [TEST-INTEG
 INDEPENDENT_CHECK: {what you ran yourself beyond the implementer's tests → result}
 REQUIRED_CHANGES: {specific + actionable, or "none"}
 DEVIATION_VERDICT: {per deviation, or "none reported"}
+""")
+```
+
+## 3b. review-agent — security mode
+
+Send in the SAME message as §3 when the diff touches a security trigger (SKILL.md §7). Stricter verdict wins.
+
+```
+Task(description="Security review Phase {N}", subagent_type="review-agent", prompt="""
+mode=security — Phase {N}: {title}
+Trigger(s) touched: {auth | user input | DB queries | file paths | external API | crypto | secrets}
+Files changed: {list}
+Review ONLY security: injection (SQL/command/path), authz bypass, secrets in code or logs, unsafe deserialization,
+SSRF on external calls, weak crypto, missing input validation at the trust boundary. Try one concrete exploit input per
+trigger and report the result. Skip style and general correctness (the normal review covers them).
+
+Same return contract as §3; tag findings [SECURITY-CRITICAL] or [SECURITY-MAJOR] (they map to CRITICAL / MAJOR).
 """)
 ```
 
@@ -141,6 +163,16 @@ Interview the user, design the agent pyramid, generate files in .claude/agents/.
 ```
 
 ## 7. Final report to the user (user's language)
+
+Tier M/L: send the Gate 2 block first and wait for the user before any commit.
+
+```
+**Ready to commit — {N} files, +{a}/−{d} lines.**
+- {file} — {what}
+Open findings: {none | list — CRITICAL/MAJOR block the commit}
+Proposed commit(s): `{type(scope): message}`
+Commit? (push stays a separate approval)
+```
 
 ```
 **{Outcome in one sentence.}**

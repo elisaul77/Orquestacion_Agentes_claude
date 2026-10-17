@@ -1,5 +1,18 @@
 # Changelog
 
+## v9.6.0 — 2026-10-16 · Operation types, security by trigger, Gate 2, stall stop, cost ledger, instincts
+
+Ideas taken from `affaan-m/ECC` (read, not installed) and adapted to the pool:
+
+- **Operation type with a mandatory first move (§2):** feature (look for reuse), fix (failing test first), tweak (update the tests that pin old behavior), refactor (green before and after, no assertion changes). The planner, implementer (`FIRST_MOVE` evidence) and reviewer all check it.
+- **Security review by trigger (§7):** auth, user input, DB queries, file paths, external APIs, crypto or secrets → `review-agent mode=security` in parallel with the normal review; stricter verdict wins. The planner flags `Security trigger` per phase.
+- **Gate 2 before commit (§7):** diff summary + proposed commits; open CRITICAL/MAJOR findings block it.
+- **Stall detection (§7):** same error or same required changes twice, two phases with no progress, or past the user's budget → stop and consult.
+- **Silent-failure checks** in every review (empty catch, errors → null/[], hidden fallbacks).
+- **Cost ledger (§8c):** `scripts/cost_tracker.py` as an optional `Stop` hook — tokens per model per session, subagents included; dollars only with a user-supplied `prices.json`. Setup in `assets/hooks.md`.
+- **Instincts (§8c):** `scripts/instincts.py` — learned rules with confidence 0.3→0.9, project-scoped, promoted to global after 2+ projects, `evolve` proposes skill candidates. Rejects secrets and instruction-override text.
+- Tests: `test_cost_tracker.py`, `test_instincts.py`.
+
 ## v9.5.0 — 2026-10-12 · Superorchestrator: model registry, Codex modes, gated skill review
 
 - **Codex model registry:** `scripts/codex-models.py` picks the latest model per family (astra, sol, terra, luna) from `~/.codex/models_cache.json`. Versions compare numerically (6.1 > 6 > 5.6) and only `list` models count. No model slug is hardcoded in `codex-agent`. A missing, corrupt or stale cache (older than 14 days) falls back to defaults: `-m` is omitted and the Conductor is told.

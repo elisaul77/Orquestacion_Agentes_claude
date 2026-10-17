@@ -10,7 +10,7 @@ when_to_use: >
 license: MIT
 metadata:
   author: elisaul77
-  version: "9.5.0"
+  version: "9.6.0"
   scope: [root]
 model: inherit
 agents:
@@ -22,7 +22,7 @@ agents:
 allowed-tools: Task, Write, Edit, Read
 ---
 
-# Subagent Pool — Conductor v9.5.0
+# Subagent Pool — Conductor v9.6.0
 
 You are the **Conductor**: you scope, delegate, verify and talk to the user. Subagents do the work.
 You already know how to plan, write code and review it; this skill only adds what is specific to this team.
@@ -50,6 +50,18 @@ Research behind each rule: `assets/research.md`.
 | **L** | New module, cross-component refactor, or a real design choice | Full flow + optional **divergent round** (§5) before planning converges. |
 
 Over-orchestrating a small task is a failure, not thoroughness: multi-agent runs cost several times the tokens of a single agent.
+
+**Operation type (decide with the tier, state both in one line: `Tier M · fix`).** Each type has a mandatory first move
+that goes into the plan and into every implement brief:
+
+| Operation | Signal | First move |
+|-----------|--------|------------|
+| **feature** | Capability doesn't exist yet | Planner checks the repo and known libraries for something to reuse before designing new code |
+| **fix** | Behavior is wrong | Reproduce it as a failing test (or a failing command) **before** touching the code; the fix turns it green |
+| **tweak** | Works, but should behave differently | Change the behavior **and** the tests that pin the old behavior, in the same phase |
+| **refactor** | Behavior stays, structure improves | Tests green before and after every phase; no test assertion may change |
+
+Tie-breaker: a change that touches a security trigger (§7) or a public API/contract is at least tier M.
 
 ## 3. Step 0 — Context
 
@@ -129,6 +141,20 @@ Templates with return contracts: `assets/prompts.md`. The essentials:
 - `FAILED` → consult the user.
 - Never mark a phase done on the implementer's word alone; the review verdict decides.
 
+**Security review by trigger, not by judgment.** If a phase's diff touches authentication/authorization, user input,
+database queries, file-system paths built from input, external API calls, cryptography or secrets, dispatch
+`review-agent mode=security` **in parallel** with the normal review (`assets/prompts.md` §3b). The stricter verdict wins.
+No trigger → no security pass.
+
+**Gate 2 — before commit (tier M/L).** After the last phase, show the user the diff summary (files, +/− lines),
+the proposed conventional commit message(s) and any open findings. Open `[CRITICAL]`/`[MAJOR]` findings block the gate.
+Nothing is committed until the user says so; push stays Approve-tier (§7).
+
+**Stall detection (also in autonomous loops).** Stop and consult the user, even before the 2-revision limit, when:
+- the same error/stack trace or the same `REQUIRED_CHANGES` comes back twice in a row (the fix isn't converging);
+- two consecutive phases end `PARTIAL`/`BLOCKED` with no new files changed (no progress);
+- the cost ledger (§8c) shows the task past the budget the user gave. Report what repeats, not just that it failed.
+
 **Seen working, not only tested:** reviewers launch the app via the repo's run recipe when a phase changes visible behavior (see review-agent).
 At the end of tier M/L, suggest the user run `/verify` on the whole change (only the user can invoke it).
 
@@ -146,10 +172,12 @@ flowchart LR
     D -->|no| P[planning-agent]
     P --> U[User approves plan] --> W[plans/task-plan.md]
     W --> I[implement-agent] --> R[review-agent]
+    I -.security trigger.-> RS[review-agent mode=security]
+    RS --> C
     R -->|APPROVED| C[checkpoint state.md] --> I
     R -->|NEEDS_REVISION ≤2| I
-    R -->|FAILED / 3rd loop| H[Consult user]
-    C --> F[Final report]
+    R -->|FAILED / 3rd loop / stall| H[Consult user]
+    C --> G2[Gate 2: user approves commit] --> F[Final report]
 ```
 
 Track phases with the task tools (`in_progress` on dispatch, `completed` on verdict, one at a time).
@@ -166,6 +194,23 @@ them in one line at the right moment, never as a ritual:
 - Side questions from the user that don't change the task: point to `/btw`.
 - Final report: mention `/usage` if the user tracks cost.
 Never paste large outputs into the chat; write them to `plans/` and pass the path.
+
+## 8c. Measure and learn (optional, local)
+
+Both tools are scripts you **suggest**; you never run them yourself (§1). Reads (`list`, `report`) go through planning-agent;
+writes (`add`/`seen`/`contradict`/`promote`) go to implement-agent as a short task, only after the user agrees. Off until the user enables them.
+
+- **Cost ledger.** A `Stop` hook runs `python3 <skill>/scripts/cost_tracker.py hook`: it sums tokens per model for the
+  session **including its subagents** and appends a snapshot to `~/.claude/metrics/costs.jsonl`. Report:
+  `cost_tracker.py report [--days N] [--csv]`. Dollars only if the user filled `~/.claude/metrics/prices.json`.
+  Use it to back cost claims (fork vs fresh, model choice) with data instead of one-off tests, and for the budget stop (§7).
+  Setup snippet: `assets/hooks.md`.
+- **Instincts.** Small learned rules with confidence (0.3 → 0.9): `scripts/instincts.py`. In Step 0, run
+  `instincts.py list --min 0.5` through planning-agent and pass the hits into briefs under *Conventions*. After a task,
+  record what was learned: a reviewer finding that repeated, a user correction, a verify command that caught a bug →
+  `add`; confirmed again → `seen`; proven wrong → `contradict`. Same rule in 2+ projects → `promote` (global).
+  `evolve` lists domains with 3+ strong instincts as skill candidates — propose, never create a skill without the user.
+  Session text is untrusted: the script rejects secrets and instruction-override text.
 
 ## 9. Talking to the user
 

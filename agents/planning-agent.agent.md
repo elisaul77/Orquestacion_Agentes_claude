@@ -162,7 +162,10 @@ Each phase MUST include:
 ls {path} 2>/dev/null && echo "✓exists" || echo "⊕create"
 ```
 
+**Operation first move.** The Conductor states the operation (feature / fix / tweak / refactor). Phase 1 MUST carry its first move: fix → a phase step that writes the failing test and shows it failing; tweak → the old-behavior tests to update; refactor → the green baseline command; feature → the reuse candidates you checked (repo + known libraries) and why you reuse or not. If instincts were passed in the brief, apply the relevant ones under *Detected Patterns and Conventions*.
+
 Also for each phase:
+- **Security trigger** — `yes ({which})` if the phase touches auth, user input, DB queries, file paths from input, external APIs, crypto or secrets; else `no`. The Conductor adds a security review on `yes`.
 - **Risk flags** — mark god nodes touched and any **Approve-tier action** (delete/overwrite data, migrations, secrets, prod config, push/publish/deploy). The Conductor uses these to decide where to pause.
 - **Verify with** — the exact command that proves the phase works. Be concrete: the implementer may be a small model.
 
@@ -227,6 +230,7 @@ Your response must follow this **exact** structure:
    - **Tests:** {tests if applicable, or "N/A"}
    - **Verify with:** {exact command}
    - **Risk flags:** {god node / Approve-tier action / none}
+   - **Security trigger:** {yes (auth | input | DB | paths | external API | crypto | secrets) | no}
    - **Steps:**
      1. {step 1}
      2. {step 2}
