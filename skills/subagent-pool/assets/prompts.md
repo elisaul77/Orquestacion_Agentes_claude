@@ -7,7 +7,7 @@ Write prompts as directives (what + why + files + constraints), not background e
 1. planning-agent
 2. implement-agent
 3. review-agent
-3b. review-agent — security mode
+3b. review-agent — specialty mode (security, api, data, ui, perf, ops)
 4. Revision after NEEDS_REVISION
 5. Divergent fork (creativity round)
 6. AgentArchitect
@@ -16,6 +16,7 @@ Write prompts as directives (what + why + files + constraints), not background e
 9. codex-agent — browser (screenshot check)
 10. codex-agent — coordinate (fan-out inside Codex)
 11. Plan council (brief, spawn, round signals)
+12. Consult (one specialist, one bounded question)
 
 ---
 
@@ -45,6 +46,32 @@ PLAN_FILE: plans/{task}-draft.md
 TLDR: {1-3 sentences}
 PHASES: {N} — one line each: title · files count · risk (god node? approve-tier action?)
 OPEN_QUESTIONS: {only those that change the plan, each with a proposed default, or "none"}
+""")
+```
+
+### Diagnosis brief
+
+Use when a failure has no known cause yet (SKILL.md §2b). The output is an understanding and a proposed intervention, not a validated fix.
+
+```
+Task(description="Diagnose: {symptom}", subagent_type="planning-agent", prompt="""
+Diagnose: {one-line symptom, exact error text if known}
+
+Operation: {fix | tweak | feature | refactor}
+Case file: plans/{task}-state.md   (hypotheses, evidence and rounds so far are there; read it, do not write it)
+Prior hypotheses and their FALSIFIER results: {list, or "none"}
+Round: {k} — rounds without new evidence so far: {0 | 1}
+Out of scope: {what NOT to touch}
+
+Do not write a plan and do not modify project files. Enough evidence = justified understanding + proposed
+intervention, not a validated fix. FALSIFIER: required when operation=fix or a hypothesis drives the change; else n/a.
+
+FACTS: {observed or read facts, each tagged [OBSERVED] or [DERIVED] with its proof}
+HYPOTHESES: {numbered, each with why it fits the facts}
+EVIDENCE: {H# · command → result · supports | weakens}
+MISSING (project|specialist|user): {what is unknown, and who can answer it}
+PROPOSED_INTERVENTION: {smallest change for the leading hypothesis; files ✓exists | ⊕create}
+FALSIFIER: {hypothesis + command + expected result that would disprove it, or "n/a"}
 """)
 ```
 
@@ -100,8 +127,12 @@ Deviations reported: {list or "none"}
 Conventions: lang={language}, stack={stack}
 Security: {apply OWASP | N/A — no external input}
 Open ledger rows to rule on: {criterion list from the state file}
+Case file: plans/{task}-state.md (security-trigger baseline listed there)
+Falsifier (diagnosis, from the case file, or n/a): {hypothesis + command + expected result, or "n/a"}
 
 STATUS: APPROVED | NEEDS_REVISION | FAILED
+FAILURE_ORIGIN: implementation | diagnosis | scope | none
+ORIGIN_EVIDENCE: {one line; "n/a" with APPROVED}
 FINDINGS: file:line — issue  ([INVARIANT] / [CRITICAL] / [MAJOR] / [TEST-INTEGRITY] tags)
 CRITERIA: {#} {criterion} — [OBSERVED|DERIVED|INFERRED|UNKNOWN] {proof: command → result}
 INDEPENDENT_CHECK: {what you ran yourself beyond the implementer's tests → result}
@@ -112,9 +143,10 @@ NOT_VERIFIED: {or "nothing"}
 """)
 ```
 
-## 3b. review-agent — security mode
+## 3b. review-agent — specialty mode (`mode=<specialty>`)
 
 Send in the SAME message as §3 when the diff touches a security trigger (SKILL.md §7). Stricter verdict wins.
+Specialties: `security` (the template below, trigger-driven) · `api` · `data` · `ui` · `perf` · `ops` (checklists after it).
 
 ```
 Task(description="Security review Phase {N}", subagent_type="review-agent", prompt="""
@@ -128,6 +160,62 @@ trigger and report the result. Skip style and general correctness (the normal re
 Same return contract as §3; tag findings [SECURITY-CRITICAL] or [SECURITY-MAJOR] (they map to CRITICAL / MAJOR).
 """)
 ```
+
+### Other specialties (api, data, ui, perf, ops)
+
+Same shape. The reviewer checks only the five lines of the specialty's checklist and answers with the §3 contract.
+Tag findings `[CRITICAL]` or `[MAJOR]`. A checklist line the reviewer cannot check → `[UNKNOWN]` on that criterion.
+
+```
+Task(description="{specialty} review Phase {N}", subagent_type="review-agent", prompt="""
+mode={specialty} — Phase {N}: {title}
+Surface touched: {what in this diff falls under the specialty}
+Files changed: {list}
+Review ONLY the checklist below. Try one concrete case per line where you can and report what happened.
+Skip everything else (the normal review covers it).
+
+{the five checklist lines for the specialty, copied from below}
+
+Same return contract as §3.
+""")
+```
+
+Checklists (one per specialty; if the specialty is not listed here, there is no checklist, so mark the criterion `[UNKNOWN]`):
+
+- **api**
+  1. Contract / backward compatibility: existing requests and responses unchanged, or the break is listed and approved
+  2. Versioning: breaking changes go to a new version path or field; deprecations carry a date
+  3. Errors: stable error shape and status codes; no stack traces or internal ids leak
+  4. Auth on endpoints: every new or changed route declares its auth, and a test shows the 401/403
+  5. Docs: the API doc matches the implemented request and response
+
+- **data**
+  1. Migrations reversible: a down path exists, or the irreversibility is stated and approved (Approve-tier)
+  2. Backups: a restore point exists before destructive or bulk changes
+  3. Constraints: new NOT NULL, unique and foreign-key rules are enforced in the database, not only in code
+  4. PII: personal fields are identified, minimized, and kept out of logs and fixtures
+  5. Volume: row counts and query cost at production scale are estimated or measured
+
+- **ui**
+  1. Accessibility AA: contrast, input labels, alt text, focus order, no color-only meaning
+  2. States: empty, error and loading states each render and are visible
+  3. Design-system tokens: colors, spacing and type come from tokens, no hard-coded values
+  4. Responsive: checked at mobile and desktop widths, no overflow or clipped controls
+  5. Keyboard: every action reachable and operable by keyboard alone, with visible focus
+
+- **perf**
+  1. Hot path measured: before/after timing or profile on the real path, with the command
+  2. N+1: no query or call inside a loop over results; batch or join instead
+  3. Memory: no unbounded lists, caches or buffers; sizes are capped
+  4. Concurrency / locks: no lock held across I/O; lock ordering is consistent
+  5. Timeouts: every external call and queue wait has a timeout and a failure path
+
+- **ops**
+  1. Config / secrets: new settings have defaults and docs; no secret in code, images or logs
+  2. Rollback: the previous version runs against the new data and config; the rollback command is written
+  3. Health checks: liveness and readiness checks reflect the new dependency
+  4. Logging: errors logged with context and without secrets; log level set per environment
+  5. Resource limits: CPU, memory and disk limits set for new services or jobs
 
 ## 4. Revision after NEEDS_REVISION
 
@@ -203,6 +291,8 @@ Commit? (push stays a separate approval)
 ```
 **{Outcome in one sentence.}**
 
+Status: VERIFIED (not deployed) | STOPPED — {reasons + pending items}
+
 - Changed: {files / features, grouped}
 - Verified: {tests + reviewer independent checks}
 - Not done / risks: {honest list, or "nothing pending"}
@@ -273,6 +363,7 @@ User decisions (invariants): {each one}
 Constraints / out of scope: {list}
 Members: {duo: architect, lateral | council: spec, architect, lateral, risk}   Council dir: plans/council/{task}
 Plan file (R3): plans/{task}-draft.md
+Lens for swapped seat: {specialty (security | api | data | ui | perf | ops) or none}
 ```
 
 Spawn (one per member of the level, same message; omit `model`):
@@ -294,4 +385,28 @@ SendMessage(to="architect", message="R3: synthesize plans/{task}-draft.md and pl
 
 File-mode fallback (teams flag off): the same prompts through `Task` without `name`; R2a becomes
 "read the other drafts and append objections to debate.log", R2b one answer wave (see `council.md`).
+
+---
+
+## 12. Consult (one specialist, one bounded question)
+
+One question, one existing agent, one answer. No council, no new agent, no plan. Use `planning-agent` for a code fact
+(what calls this, where is the config read); use `review-agent mode=<specialty>` for a judgement (checklists in §3b).
+A consult result goes into the case file as evidence; it does not change any review STATUS.
+
+```
+Task(description="Consult {specialty}: {short question}", subagent_type="review-agent" | "planning-agent", prompt="""
+mode={specialty}      # review-agent only; delete this line for planning-agent
+QUESTION: {one bounded question, answerable in one value, yes/no, or file:line}
+CONTEXT: {only what the answer needs: files ✓exists, command outputs, the hypothesis it tests}
+EXPECTED RESULT: {the shape of the answer, e.g. "yes/no + file:line"}
+Read-only. Do not change files. Answer this question only.
+
+ANSWER: {the answer, one line}
+EVIDENCE: [OBSERVED|DERIVED|INFERRED|UNKNOWN] {proof: command → result, or file:line}
+CONFIDENCE: {verified | partially verified | unverified} — one line why
+UNKNOWNS: {or "none"}
+""")
+```
+
 

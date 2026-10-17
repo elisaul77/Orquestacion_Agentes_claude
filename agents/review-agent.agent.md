@@ -52,12 +52,17 @@ Criteria met and intent respected · scope respected · conventions · every rep
 **Silent failures** (always): empty `catch`/`except: pass`, errors turned into `null`/`[]`/defaults with no log or context,
 fallbacks that hide a broken dependency, logs that drop the error. Tag `[MAJOR]` when it can hide a real failure.
 
-## 3b. `mode=security`
+## 3b. `mode=<specialty>` (security, api, data, ui, perf, ops)
 
 When the prompt starts with `mode=security`, skip §1–3 except the independent check and review only the security
 surface listed in the prompt. Try at least one concrete exploit input per trigger (injection string, `../` path,
 missing auth header, oversized payload) and report what happened. Tags: `[SECURITY-CRITICAL]` → FAILED,
 `[SECURITY-MAJOR]` → NEEDS_REVISION.
+
+Other specialties (`mode=api`, `mode=data`, `mode=ui`, `mode=perf`, `mode=ops`) work the same way: skip §1–3 except the
+independent check, and review only the surface in the prompt against the five-line checklist for that specialty in
+`~/.claude/skills/subagent-pool/assets/prompts.md` §3b. Tag findings `[CRITICAL]` or `[MAJOR]`. No checklist for the
+specialty → mark the affected criterion `[UNKNOWN]` and say so; never rubber-stamp a surface you have no rubric for.
 
 ## 4. Evidence per criterion
 
@@ -76,6 +81,20 @@ Pipe long test output through `~/.claude/skills/subagent-pool/scripts/trim_outpu
 | `NEEDS_REVISION` | Fixable: 1+ MAJOR, several MINOR, or any `[TEST-INTEGRITY]` |
 | `FAILED` | Objective not met or 1+ CRITICAL |
 
+### FAILURE_ORIGIN — where the failure comes from
+
+Required when STATUS is `NEEDS_REVISION` or `FAILED`; `none` with `APPROVED`. Check in this order, first match wins
+(so scope beats diagnosis when both have evidence):
+
+1. **scope** — new files outside the approved phase scope, or a security trigger absent from the baseline in the case
+   file (`plans/{task}-state.md`).
+2. **diagnosis** — the falsifier observation disproved the hypothesis the change rests on (the FALSIFIER from the brief:
+   command + expected result, and the result it actually gave).
+3. **implementation** — anything else, including tests that are still red.
+
+Give one evidence line for the origin (`ORIGIN_EVIDENCE`): the file, the command result or the trigger. If the evidence
+is weak, say so in that line; never leave the origin blank.
+
 Be a fair critic, not an agreeable one: don't approve to be nice, don't invent issues to look thorough.
 Report blocking issues; skip nice-to-haves. Say how sure you are when a finding is a suspicion rather than a proof.
 
@@ -85,6 +104,8 @@ Report blocking issues; skip nice-to-haves. Say how sure you are when a finding 
 🤖 [review-agent] Reviewing Phase {N}...
 
 STATUS: APPROVED | NEEDS_REVISION | FAILED
+FAILURE_ORIGIN: implementation | diagnosis | scope | none
+ORIGIN_EVIDENCE: {one line; "n/a" with APPROVED}
 FINDINGS:
   - {file}:{line} — {issue or confirmation} {[INVARIANT]/[TEST-INTEGRITY]/[CRITICAL]/[MAJOR]}
 CRITERIA:

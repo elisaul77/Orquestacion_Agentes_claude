@@ -8,7 +8,7 @@
 flowchart LR
     USER["👤 User"] -->|"request"| CONDUCTOR["🎭 Conductor<br/>NEVER touches code"]
     CONDUCTOR -->|"investigate + workspace scan"| PA["📋 planning-agent"]
-    CONDUCTOR -->|"tier L / risky plans"| CC["🧭 plan council<br/>spec · architect · lateral · risk"]
+    CONDUCTOR -->|"open important decision"| CC["🧭 plan council<br/>spec · architect · lateral · risk"]
     CC -.->|"plan + decisions.md"| CONDUCTOR
     CONDUCTOR -->|"implement"| IA["💻 implement-agent"]
     CONDUCTOR -->|"review + security"| RA["🔍 review-agent"]
@@ -76,7 +76,7 @@ flowchart LR
 
 | Skill | Trigger | Version |
 |-------|---------|---------|
-| `subagent-pool` | "delegate", "orchestrate", "conductor", "complex task" | 9.10 |
+| `subagent-pool` | "delegate", "orchestrate", "conductor", "complex task" | 9.11 |
 | `arquitec-dev-ia` | "create AGENTS.md", "document architecture", "structure for AI", "output style", "add rules", "prepare for orchestration" | 5.0 |
 | `graphify` | `/graphify` | — |
 
@@ -94,20 +94,18 @@ flowchart LR
 
 ---
 
-## Workflow v9.9
+## Workflow v9.11
 
 1. Conductor reads `.claude/project-context.md` (HALT and suggest `arquitec-dev-ia` if missing); offers to resume an unfinished `plans/*-state.md`
-2. States `Tier · operation · plan level` in one line (e.g. `Tier L · feature · council`); the user can override it
+2. Admission and triage: states `Tier · operation · plan level · urgency · uncertainty · risk` in one line (e.g. `Tier M · fix · single · urgency normal · uncertainty high · risk low`); urgency never removes controls; the user can override it
 3. Asks only questions that change the plan (max 3, each with a default); states other assumptions
-4. Plan: **single** → `planning-agent` · **duo** → architect + lateral · **council** (tier L or security/API/data/money) →
-   four members, blind drafts → direct debate via SendMessage → architect synthesizes plan + `decisions.md`
-   (protocol: `skills/subagent-pool/assets/council.md`)
+4. Case flow (`skills/subagent-pool/SKILL.md` §2b): diagnosis by `planning-agent` (facts · hypotheses · evidence · missing · proposed intervention · falsifier) → consult one specialist, or the council **only when an open important decision remains** (duo for an open non-important choice or a vague spec; single otherwise) → plan (council protocol: `skills/subagent-pool/assets/council.md`). Security, API, data and money raise the risk axis; they never convene the council alone
 5. The plan lands in `plans/{task}-draft.md` → ⏸️ **PAUSE** for approval
-6. Per phase: `implement-agent` → `review-agent` (contract-first + independent check)
-   - NEEDS_REVISION → max 2 loops, then consult the user
+6. Per phase: `implement-agent` → `review-agent` (contract-first + independent check); a NEEDS_REVISION routes by `FAILURE_ORIGIN` (implementation → implement-agent, max 2 loops; diagnosis → planning-agent; scope → re-triage); 3 re-routes per case in total, then the user decides
+   - FAILED → consult the user first
    - Approve-tier actions (delete, migrate, secrets, push/publish/deploy) → BLOCKED until the user approves
-   - checkpoint `plans/{task}-state.md`; pause only on god nodes, approve-tier actions, FAILED or user request
-7. Final report: changed · verified · not done/risks · commit message
+   - checkpoint `plans/{task}-state.md` (the case file); pause only on god nodes, approve-tier actions, FAILED or user request
+7. Close: VERIFIED, not DEPLOYED. The final report lists changed · verified · not done/risks · commit message; closing never authorizes publish or deploy
 
 Models: each agent's `model:` frontmatter decides; the Conductor never overrides it unless the user asks.
 

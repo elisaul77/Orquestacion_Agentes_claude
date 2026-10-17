@@ -3,6 +3,7 @@
   "additionalProperties": false,
   "required": [
     "status",
+    "failure_origin",
     "summary",
     "findings",
     "files_changed",
@@ -22,6 +23,16 @@
         "DONE",
         "BLOCKED"
       ]
+    },
+    "failure_origin": {
+      "type": "string",
+      "enum": [
+        "implementation",
+        "diagnosis",
+        "scope",
+        "none"
+      ],
+      "description": "Review mode: implementation | diagnosis | scope when status is NEEDS_REVISION or FAILED; none when APPROVED or in other modes."
     },
     "summary": {
       "type": "string"

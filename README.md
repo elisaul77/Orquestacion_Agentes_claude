@@ -5,8 +5,8 @@
 🌐 **English** · [Español](README.es.md)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-v9.10.0-blueviolet.svg)](CHANGELOG.md)
-[![Tests](https://img.shields.io/badge/tests-196%20passing-3fb950.svg)](#-tests)
+[![Version](https://img.shields.io/badge/version-v9.11.0-blueviolet.svg)](CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-206%20passing-3fb950.svg)](#-tests)
 [![Claude Code](https://img.shields.io/badge/brain-Claude%20Code-8a63f0.svg)](https://claude.com/claude-code)
 [![Codex](https://img.shields.io/badge/Codex-optional-412991.svg)](#optional-add-ons)
 
@@ -21,7 +21,7 @@ For complex work (3 or more files, a new module, a refactor). You approve the pl
 you ──> Conductor (scopes and delegates, never touches code)
           │
           ├─ plan ──────► planning-agent                      (simple plans)
-          │               or plan council: spec · architect   (big or risky plans)
+          │               or plan council: spec · architect   (an open important decision)
           │                  · lateral · risk, debating
           │                         │
           │                  plans/*.md ──► your approval
@@ -110,12 +110,13 @@ Ask in plain language: `use the conductor to…`, `delegate to subagents`, `comp
 Before planning, the Conductor states its reading of the task in one line:
 
 ```
-Tier L · feature · council
+Tier M · fix · single · urgency normal · uncertainty high · risk low
 ```
 
 - **Tier** is the effort (S, M or L).
 - **Operation** is feature, fix, tweak or refactor. Each one has a mandatory first move; a fix, for example, starts with a failing test.
 - **Plan level** is who writes the plan: single, duo or council.
+- **Urgency, uncertainty and risk** are three more axes. Urgency sets priority and never removes controls; uncertainty sets how much to investigate; risk sets how much specialist review.
 
 If you disagree, say so and that wins: `a single planner is enough`, `use the council for the plan`, `do it directly`. Nothing else needs configuring.
 
@@ -163,21 +164,25 @@ Each agent's model is set in its own file (`model:`), and you decide it. The Con
 
 ## 🔄 How a task flows
 
-**1. Effort by size**
+**1. Admission and four-axis triage.** The Conductor states the objective and what success looks like, then scores four separate axes: **urgency** (priority; it never removes controls), **effort** (S, M or L, below), **uncertainty** (investigate, consult or compare alternatives) and **risk** (controls and specialist review). Tier S is done directly, with no case file. For M and L the case file is `plans/{task}-state.md`. If the diagnosis changes the scope or the risk, the Conductor re-triages.
 
 | Tier | Signal | Flow |
 |---|---|---|
 | S | 1–2 files, clear fix | Done directly, no orchestration |
 | M | 3–6 files, one area | Plan, then implement and review per phase |
-| L | New module, cross-component refactor, design choice | The same, with the plan written by the council |
+| L | New module, cross-component refactor, design choice | The same; the plan level decides who writes the plan |
 
-**2. Who writes the plan**
+**2. Diagnosis with a falsifier.** `planning-agent`, in Diagnosis mode, returns facts, hypotheses, evidence, what is missing (project, specialist or user), the proposed intervention and a **falsifier**: the hypothesis plus the observation (a command and its expected result) that would disprove it. Two rounds without new evidence stop the loop.
+
+**3. Consult, or plan.** A **consult** is one specialist answering one bounded question. A **council** runs only when an **open important decision** remains after diagnosis.
 
 | Plan level | When | Who |
 |---|---|---|
-| single | Clear approach, precise request | `planning-agent` |
-| duo | Open design choice or vague request | architect + lateral, blind drafts, architect synthesizes |
-| council | Tier L, or anything touching security, a public API, data or money | the four members, with a debate round |
+| single | Clear approach: Tier M, or Tier L with no open important decision | `planning-agent` |
+| duo | An open choice that is not important, or a vague request | architect + lateral, blind drafts, architect synthesizes |
+| council | An open important decision remains after diagnosis | the four members, with a debate round |
+
+Sensitive changes (security, a public API, data, money) raise the **risk** axis: they get a specialist review, and they never convene the council by themselves.
 
 ```
 council   R1  blind drafts ── spec · architect · lateral · risk (nobody reads anyone)
@@ -188,9 +193,18 @@ council   R1  blind drafts ── spec · architect · lateral · risk (nobody r
 
 The Conductor only signals the rounds; the debate content never passes through it. Without the agent-teams flag the same rounds run through files. Full protocol: [council.md](skills/subagent-pool/assets/council.md).
 
-**3. Per phase:** `implement-agent` → `review-agent`, plus a Codex review in parallel if Codex is on. Phases that touch security also get a security review. NEEDS_REVISION gets two retries, then you decide. A checkpoint goes to `plans/{task}-state.md` after every approved phase.
+**4. Per phase, routed by origin.** `implement-agent` → `review-agent`, plus a Codex review in parallel if Codex is on. A NEEDS_REVISION also names a `FAILURE_ORIGIN`, and the Conductor routes the fix by it:
 
-**4. Close:** a final report covering what changed, what was verified, what wasn't, and the risks. The commit waits for your OK.
+```
+review ─► FAILURE_ORIGIN ─► implementation → implement-agent (max 2 loops per phase)
+                         ─► diagnosis      → planning-agent, citing the falsifier
+                         ─► scope          → re-triage
+                         (3 re-routes per case in total, then you decide)
+```
+
+FAILED goes to you first. A checkpoint goes to `plans/{task}-state.md` after every approved phase.
+
+**5. Close: verified, not deployed.** A final report covering what changed, what was verified, what wasn't, and the risks. Closing a case means it is verified. It never authorizes a publish or a deploy, which stay approve-tier. The commit waits for your OK.
 
 ---
 
@@ -261,7 +275,7 @@ The council's cost (about +4–6× a single plan) is still an estimate; see [Wha
 python3 -B -m unittest discover -s skills/subagent-pool/scripts
 ```
 
-**196 tests**, standard library only. Two are skipped on Python < 3.11 because they need `tomllib`.
+**206 tests**, standard library only. Two are skipped on Python < 3.11 because they need `tomllib`.
 
 | File | Tests | Covers |
 |---|---|---|
@@ -276,6 +290,7 @@ python3 -B -m unittest discover -s skills/subagent-pool/scripts
 | `test_instincts.py` | 4 | Per-project lessons store |
 | `test_mutate.py` | 4 | Mutation check runs in an isolated copy |
 | `test_council.py` | 4 | Council agents have `SendMessage`, and the protocol matches the skill |
+| `test_caseflow.py` | 10 | Case flow rules are written (structural only — not routing behavior) |
 
 `skill-review.sh` has no automated tests; its `--dry-run` prints every command without running it.
 
@@ -333,7 +348,7 @@ Orquestacion_Agentes_claude/
     │       ├── sync_codex_agents.py   # Agents → Codex roles
     │       ├── codex-models.py        # Latest Codex model per family
     │       ├── skills_lib.py · skill_prescan.py · skill-review.sh
-    │       ├── test_*.py              # 196 tests
+    │       ├── test_*.py              # 206 tests
     │       └── fixtures/
     ├── arquitec-dev-ia/               # AI context docs; writes project-context.md
     └── graphify/                      # Knowledge-graph skill
@@ -360,6 +375,7 @@ Orquestacion_Agentes_claude/
 
 ## 🗺️ What's missing
 
+- **Routing behavior is measured only by the A/B competition** (`competition/`, pending). The case-flow tests check that the rules are written, not that a model follows them.
 - **The council hasn't been measured on a real project yet.** We still need a run comparing a council plan with a single planner, and its real cost; +4–6× is an estimate.
 - **Agent teams are an experimental Claude Code flag** and may change. If they do, the council falls back to file mode.
 - **The container-2 reviewer hasn't run end to end** on a real skill.
