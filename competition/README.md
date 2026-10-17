@@ -3,7 +3,7 @@
 Same challenge, two systems, one image, one fresh kuNNA copy per run:
 
 - **A** = subagent-pool from git `master` (v9.10.0, `157d7b8`)
-- **B** = subagent-pool from git `4de0831` (v9.11.0 case flow, committed)
+- **B** = subagent-pool from git `5772d5c` (v9.11.0 case flow; the lateral member asks Opus when Codex is off), full sha `5772d5cadfe3af09569a7e07ef4f6ba8d5804135`
 
 Both run Claude Code and Codex CLI in identical containers against a fresh copy of kuNNA at a pinned commit. The prompt is identical (`prompts/<round>.md`). The target is kuNNA (`$KUNNA_REPO`, default `~/Documentos/Docker/kunna`), read with `git archive <sha>`; the original repo and its working tree are never touched.
 
@@ -45,7 +45,7 @@ Every ref is resolved **once** with `git rev-parse`, before anything runs, and t
 | flag | default | resolved to |
 |---|---|---|
 | `--a-ref` | `master` | `a_sha` (A is `git archive <a_sha> skills agents`) |
-| `--b-ref` | `4de0831` | `b_sha` (B is `git archive <b_sha> skills agents`) |
+| `--b-ref` | `5772d5cadfe3af09569a7e07ef4f6ba8d5804135` (`5772d5c`, the lateral-Opus commit) | `b_sha` (B is `git archive <b_sha> skills agents`) |
 | `--b-source` | `commit` | `worktree` is explicit only: it snapshots the working tree, refuses while `git status --porcelain -- skills agents` is non-empty, and requires `--b-ref` to be HEAD |
 | `--kunna-ref` | `HEAD` | `kunna_sha` (kuNNA is `git archive <kunna_sha>`); also stored in `baseline.json` |
 
@@ -58,8 +58,12 @@ Every ref is resolved **once** with `git rev-parse`, before anything runs, and t
 python3 competition/run.py --system A --round bug --run 1 --dry-run
 
 # real run (paid). Same-model comparison: pin the model yourself with --model, or leave it to the CLI default and read it back from meta.json
-python3 competition/run.py --system A --round bug --run 1 --a-ref master --b-source commit --b-ref 4de0831
-python3 competition/run.py --system B --round bug --run 1 --a-ref master --b-source commit --b-ref 4de0831
+python3 competition/run.py --system A --round bug --run 1 --a-ref master --b-source commit --b-ref 5772d5c
+python3 competition/run.py --system B --round bug --run 1 --a-ref master --b-source commit --b-ref 5772d5c
+
+# the same pair without Codex (a separate cell: run name gets -nocodex, no codex-agent, no ~/.codex/auth.json)
+python3 competition/run.py --system A --round bug --run 1 --no-codex --a-ref master --b-source commit --b-ref 5772d5c
+python3 competition/run.py --system B --round bug --run 1 --no-codex --a-ref master --b-source commit --b-ref 5772d5c
 
 # score, blind, judge (judges are paid), report
 python3 competition/score.py score competition/runs/A-bug-1 competition/runs/B-bug-1
@@ -67,15 +71,19 @@ python3 competition/score.py blind competition/runs/A-bug-1 competition/runs/B-b
 python3 competition/report.py
 ```
 
-Options: `--timeout-min` (default 45, wall clock for the whole run), `--max-turns` (default 400, cap on **main-agent** assistant messages), `--model` (sets `ANTHROPIC_MODEL`; default: CLI default, recorded from the stream init record), `--allow-same-version`.
+Options: `--timeout-min` (default 45, wall clock for the whole run), `--max-turns` (default 400, cap on **main-agent** assistant messages), `--model` (sets `ANTHROPIC_MODEL`; default: CLI default, recorded from the stream init record), `--allow-same-version`, `--no-codex`.
+
+### Codex on or off
+
+The default cell runs with Codex: `install.py --with teams,codex`, the Conductor finds `codex-agent` and records `CODEX: on`. `--no-codex` runs `install.py --with teams` only, copies no `~/.codex/auth.json`, and records `"codex": false` in `meta.json`. With no codex-agent in the agent list, the Conductor records `CODEX: off`, and `council-lateral` asks Opus as its second voice. The run name gets `-nocodex` (`A-bug-nocodex-1`), so the two kinds of cell never mix in `runs/`, and `report.py` groups the summary by system, round and codex on/off.
 
 ### What a run does
 
 1. `runs/<system>-<round>-<N>/` (refuses to overwrite an existing run). Refs are pinned first; `claude --version` and `codex --version` are read from the image.
 2. Snapshot `skills/` and `agents/` at the pinned sha. Version guard: refuses if A and B report the same SKILL.md version.
 3. kuNNA copy at `kunna_sha`, `git init`, the seed applied and verified (round `bug`), baseline committed. The diff is measured from that commit.
-4. Temp HOME created **outside the repo**, credentials copied in (chmod 600), minimal `~/.claude.json`.
-5. Container: `install.py --with teams,codex` from the read-only snapshot, then `claude -p "<prompt>" --output-format stream-json --verbose --dangerously-skip-permissions`, with `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` and a timeout.
+4. Temp HOME created **outside the repo**, credentials copied in (chmod 600; `~/.codex/auth.json` too, unless `--no-codex`), minimal `~/.claude.json`.
+5. Container: `install.py --with teams,codex` (`--with teams` with `--no-codex`) from the read-only snapshot, then `claude -p "<prompt>" --output-format stream-json --verbose --dangerously-skip-permissions`, with `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` and a timeout.
 6. Host: stream copied to `transcript.jsonl`. Main-agent assistant messages are counted (over `--max-turns` → container killed). Subagent messages (records with `parent_tool_use_id`) are logged separately and not capped. Wall-clock timeout (+3 min grace) → killed.
 7. Outputs: `final.diff` and `diffstat.txt` (the judged material, see below), `artifacts.diff` (excluded paths), `sessions/` (Claude session JSONL), `codex_sessions/` (Codex rollouts, if any), `meta.json`, `out/install.log`.
 8. Cleanup in a `finally`: any container still running is killed, the session files are copied, credentials are deleted, the temp HOME is removed, and the run dir is grepped for the credential values. A hit fails the run with exit 3 and names the files.

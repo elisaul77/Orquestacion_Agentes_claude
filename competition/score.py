@@ -387,6 +387,7 @@ def score_run(run_dir, no_docker=False):
     tokens = token_usage(run_dir)
     result = {
         "run_id": meta["run_id"], "system": meta["system"], "round": meta["round"], "run": meta["run"],
+        "codex": meta.get("codex", True),  # runs before the --no-codex flag always had Codex
         "pins": {"a_sha": meta.get("a_sha"), "b_sha": meta.get("b_sha"), "b_source": meta.get("b_source"),
                  "skill_sha": meta.get("skill_sha"), "kunna_sha": meta.get("kunna_sha"),
                  "image_id": meta.get("image_id")},

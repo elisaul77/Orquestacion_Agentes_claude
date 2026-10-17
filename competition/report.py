@@ -58,6 +58,7 @@ def row(score, judgments):
     subs = sum(score.get("subagents", {}).values())
     return {
         "run_id": score["run_id"], "system": score["system"], "round": score["round"], "run": score["run"],
+        "codex": score.get("codex", True),
         "hidden": f"{h.get('passed', '-')}/{h.get('total', '-')}",
         "hidden_ok": h.get("ok"),
         "regression": f"{g.get('still_passing', '-')}/{g.get('baseline_passing', '-')}",
@@ -74,11 +75,11 @@ def row(score, judgments):
 def cells(rows):
     grouped = {}
     for r in rows:
-        grouped.setdefault((r["system"], r["round"]), []).append(r)
+        grouped.setdefault((r["system"], r["round"], r["codex"]), []).append(r)
     out = []
-    for (system, rnd), rs in sorted(grouped.items()):
+    for (system, rnd, codex), rs in sorted(grouped.items()):
         out.append({
-            "system": system, "round": rnd, "n": len(rs),
+            "system": system, "round": rnd, "codex": codex, "n": len(rs),
             "hidden_pass_rate": f"{sum(1 for r in rs if r['hidden_ok'])}/{len(rs)}",
             "regression_ok": f"{sum(1 for r in rs if r['regression_ok'])}/{len(rs)}",
             "wall_min": mean([r["wall_min"] for r in rs]),
@@ -105,13 +106,13 @@ def render(rows, summary, generated):
         "# A/B bench: subagent-pool master (A) vs feat/case-flow (B)", "",
         f"Generated {generated}. Judge scores: sum of correctness (1-5), root_cause (0-2), minimality (1-5), "
         "test_quality (1-5), safety (1-5); max 20. Blind judging, see judge.md.", "",
-        "## Summary per system × round", "",
+        "## Summary per system × round × codex", "",
         CAVEAT, "",
-        "| system | round | n | hidden pass | regression ok | wall min | tokens | subagents | reviews | risky | Claude judge | Codex judge |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "| system | round | codex | n | hidden pass | regression ok | wall min | tokens | subagents | reviews | risky | Claude judge | Codex judge |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for c in summary:
-        lines.append(f"| {c['system']} | {c['round']} | {c['n']} | {c['hidden_pass_rate']} | {c['regression_ok']} | "
+        lines.append(f"| {c['system']} | {c['round']} | {'on' if c['codex'] else 'off'} | {c['n']} | {c['hidden_pass_rate']} | {c['regression_ok']} | "
                      f"{fmt(c['wall_min'])} | {fmt(c['tokens'])} | {fmt(c['subagents'])} | {fmt(c['reviews'])} | "
                      f"{c['risky']} | {fmt(c['claude_judge'])} | {fmt(c['codex_judge'])} |")
     lines += ["", "## Per run", "",

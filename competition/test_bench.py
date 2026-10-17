@@ -12,6 +12,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parent
@@ -266,6 +267,110 @@ class DryRunTest(unittest.TestCase):
             run.parse_args(["--system", "A", "--round", "bug", "--run", "0"])
 
 
+def fake_score(run_id, system, rnd, codex=None):
+    sc = {"run_id": run_id, "system": system, "round": rnd, "run": 1,
+          "hidden": {"passed": 2, "total": 2, "ok": True}, "regression": {"passed": 3, "total": 3, "ok": True},
+          "wall_s": 600, "tokens": {"by_model": {}, "total": {"input": 1, "output": 0, "cache_write": 0, "cache_read": 0}},
+          "subagents": {}, "review_rounds": 0, "reroute_mentions": 0, "council_convened": False,
+          "risky_actions": [], "exit_code": 0}
+    if codex is not None:
+        sc["codex"] = codex
+    return sc
+
+
+class NoCodexTest(unittest.TestCase):
+    def plan(self, system, *extra):
+        args = run.parse_args(["--system", system, "--round", "bug", "--run", "1", "--dry-run", *extra])
+        return run.build_plan(args)
+
+    def test_default_keeps_codex_and_the_old_run_name(self):
+        p = self.plan("A")
+        self.assertTrue(p["codex"])
+        self.assertEqual(p["addons"], "teams,codex")
+        self.assertEqual(p["run_id"], "A-bug-1")
+
+    def test_no_codex_names_the_cell_and_drops_the_codex_addon(self):
+        p = self.plan("A", "--no-codex")
+        self.assertFalse(p["codex"])
+        self.assertEqual(p["addons"], "teams")
+        self.assertEqual(p["run_id"], "A-bug-nocodex-1")
+        self.assertEqual(p["run_dir"].name, "A-bug-nocodex-1")
+
+    def test_entry_script_installs_teams_only_without_codex(self):
+        p = self.plan("A", "--no-codex")
+        with tempfile.TemporaryDirectory() as d:
+            entry = Path(d) / "entry.sh"
+            run.write_entry(entry, p["timeout_s"], p["addons"])
+            text = entry.read_text(encoding="utf-8")
+        self.assertIn("install.py --with teams >", text)
+        self.assertNotIn("codex", text.lower())
+
+    def test_default_entry_script_keeps_the_codex_addon(self):
+        p = self.plan("A")
+        with tempfile.TemporaryDirectory() as d:
+            entry = Path(d) / "entry.sh"
+            run.write_entry(entry, p["timeout_s"], p["addons"])
+            self.assertIn("install.py --with teams,codex >", entry.read_text(encoding="utf-8"))
+
+    def fake_host(self, d):
+        src = Path(d) / "host"
+        (src / ".claude").mkdir(parents=True)
+        (src / ".codex").mkdir(parents=True)
+        (src / ".claude" / ".credentials.json").write_text(json.dumps({"t": "claude-secret-" + "x" * 12}))
+        (src / ".codex" / "auth.json").write_text(json.dumps({"k": "codex-secret-" + "y" * 12}))
+        return src
+
+    def test_no_codex_does_not_copy_codex_auth(self):
+        with tempfile.TemporaryDirectory() as d:
+            src = self.fake_host(d)
+            home = Path(d) / "home"
+            home.mkdir()
+            with mock.patch.object(Path, "home", return_value=src):
+                values = run.prepare_home(home, codex=False)
+            self.assertTrue((home / ".claude" / ".credentials.json").is_file())
+            self.assertFalse((home / ".codex" / "auth.json").exists())
+            self.assertTrue(values and not any("codex-secret" in v for v in values))
+
+    def test_default_copies_both_credentials(self):
+        with tempfile.TemporaryDirectory() as d:
+            src = self.fake_host(d)
+            home = Path(d) / "home"
+            home.mkdir()
+            with mock.patch.object(Path, "home", return_value=src):
+                values = run.prepare_home(home)
+            self.assertTrue((home / ".codex" / "auth.json").is_file())
+            self.assertTrue(any("codex-secret" in v for v in values))
+
+    def test_meta_records_the_codex_flag(self):
+        args = run.parse_args(["--system", "B", "--round", "bug", "--run", "2", "--no-codex", "--dry-run"])
+        meta = run.base_meta(args, run.build_plan(args), {"claude": "c", "codex": "x"}, "sha256:0")
+        self.assertIs(meta["codex"], False)
+        self.assertEqual(meta["run_id"], "B-bug-nocodex-2")
+        default = run.parse_args(["--system", "B", "--round", "bug", "--run", "2", "--dry-run"])
+        self.assertIs(run.base_meta(default, run.build_plan(default), {"claude": "c", "codex": "x"}, "")["codex"], True)
+
+    def test_a_and_b_argv_differ_only_by_name_and_paths(self):
+        pa, pb = self.plan("A", "--no-codex"), self.plan("B", "--no-codex")
+        ca = " ".join(pa["docker"]).replace("A-bug-nocodex-1", "RUN")
+        cb = " ".join(pb["docker"]).replace("B-bug-nocodex-1", "RUN")
+        self.assertEqual(ca, cb)
+        for flag in ("--cap-drop ALL", "--security-opt no-new-privileges", "--pids-limit 512", "--memory 6g"):
+            self.assertIn(flag, ca)
+        self.assertNotIn("codex", ca.lower())
+
+
+class CellGroupingTest(unittest.TestCase):
+    def test_codex_on_and_off_are_separate_cells(self):
+        rows = [report.row(fake_score("A-bug-1", "A", "bug", codex=True), []),
+                report.row(fake_score("A-bug-nocodex-1", "A", "bug", codex=False), [])]
+        cells = report.cells(rows)
+        self.assertEqual(sorted((c["round"], c["codex"], c["n"]) for c in cells),
+                         [("bug", False, 1), ("bug", True, 1)])
+
+    def test_legacy_score_without_the_key_counts_as_codex_on(self):
+        self.assertTrue(report.row(fake_score("A-bug-1", "A", "bug"), [])["codex"])
+
+
 class SeedApplyTest(unittest.TestCase):
     """The seed must land even when the copy sits inside another git repo (this one)."""
 
@@ -355,12 +460,15 @@ class BaselineRegressionTest(unittest.TestCase):
                               "x::utils.js showToast fails": "failed"})
 
 
+B_PIN = "5772d5cadfe3af09569a7e07ef4f6ba8d5804135"  # Part 1: lateral asks Opus when Codex is off
+
+
 class PinTest(unittest.TestCase):
     def test_defaults_pin_b_to_the_commit_and_resolve_it(self):
         args = run.parse_args(["--system", "B", "--round", "bug", "--run", "1", "--dry-run"])
-        self.assertEqual((args.a_ref, args.b_ref, args.b_source), ("master", "4de0831", "commit"))
+        self.assertEqual((args.a_ref, args.b_ref, args.b_source), ("master", B_PIN, "commit"))
         pins = run.resolve_pins(args)
-        self.assertEqual(pins["b_sha"], run.rev_parse("4de0831"))
+        self.assertEqual(pins["b_sha"], run.rev_parse(B_PIN))
         self.assertEqual(len(pins["b_sha"]), 40)
         self.assertEqual(pins["kunna_sha"], run.rev_parse("HEAD", cwd=run.KUNNA))
 
