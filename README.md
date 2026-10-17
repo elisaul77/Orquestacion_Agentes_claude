@@ -5,8 +5,8 @@
 🌐 **English** · [Español](README.es.md)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-v9.9.0-blueviolet.svg)](CHANGELOG.md)
-[![Tests](https://img.shields.io/badge/tests-181%20passing-3fb950.svg)](#-tests)
+[![Version](https://img.shields.io/badge/version-v9.9.1-blueviolet.svg)](CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-182%20passing-3fb950.svg)](#-tests)
 [![Claude Code](https://img.shields.io/badge/brain-Claude%20Code-8a63f0.svg)](https://claude.com/claude-code)
 [![Codex](https://img.shields.io/badge/Codex-optional-412991.svg)](#optional-add-ons)
 
@@ -257,7 +257,7 @@ The council's cost (about +4–6× a single plan) is still an estimate; see [Wha
 python3 -B -m unittest discover -s skills/subagent-pool/scripts
 ```
 
-**181 tests**, standard library only. Two are skipped on Python < 3.11 because they need `tomllib`.
+**182 tests**, standard library only. Two are skipped on Python < 3.11 because they need `tomllib`.
 
 | File | Tests | Covers |
 |---|---|---|
@@ -270,7 +270,7 @@ python3 -B -m unittest discover -s skills/subagent-pool/scripts
 | `test_sync_codex_agents.py` | 9 | Agent → Codex role sync: TOML escaping, YAML blocks, foreign files |
 | `test_instincts.py` | 4 | Per-project lessons store |
 | `test_mutate.py` | 4 | Mutation check runs in an isolated copy |
-| `test_council.py` | 3 | Council agents have `SendMessage`, and the protocol matches the skill |
+| `test_council.py` | 4 | Council agents have `SendMessage`, and the protocol matches the skill |
 
 `skill-review.sh` has no automated tests; its `--dry-run` prints every command without running it.
 
@@ -327,7 +327,7 @@ Orquestacion_Agentes_claude/
     │       ├── sync_codex_agents.py   # Agents → Codex roles
     │       ├── codex-models.py        # Latest Codex model per family
     │       ├── skills_lib.py · skill_prescan.py · skill-review.sh
-    │       ├── test_*.py              # 181 tests
+    │       ├── test_*.py              # 182 tests
     │       └── fixtures/
     ├── arquitec-dev-ia/               # AI context docs; writes project-context.md
     └── graphify/                      # Knowledge-graph skill

@@ -1,5 +1,15 @@
 # Changelog
 
+## v9.9.1 — 2026-10-17 · Council hardening from the first real run
+
+First real council run, on kybercore's print queue. The plan was good: it caught a false premise in the prompt, a wizard step that starts real prints, and a legacy queue file. Four protocol problems showed up, and this release fixes them:
+
+- **Crossed acceptances.** Spec accepted architect's definition of "ready" while architect accepted spec's, so they swapped positions. Now an acceptance must restate the resulting wording (`accept → …`), and R3 starts with a consistency pass that settles each crossed acceptance in `decisions.md`. The architect also returns a new `CROSSED_ACCEPTANCES` line.
+- **The Conductor relayed content.** A member that finds something after R2b now messages the architect directly, and the Conductor never forwards anything.
+- **Race at the end.** The plan was presented, then corrected 5 seconds later. Now the Conductor presents only after the architect's final return.
+- **Noise.** The Conductor sent about 17 interim messages. Now it stays silent until each barrier, with at most one short update per round.
+- **Step 0:** when the project isn't the working directory, the Conductor says so, because the project's `.claude/rules` won't load, and suggests reopening the session in the project folder before implementation.
+
 ## v9.9.0 — 2026-10-17 · Plan council: the plan is built by a team that debates
 
 The plan decides most of the outcome, so for tier L it is no longer one agent's job.

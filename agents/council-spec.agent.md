@@ -32,7 +32,8 @@ Then end your turn with one line: `R1 done: {council_dir}/spec.md`.
 - **R2a:** read the other drafts; send each objection to its author with SendMessage **and append it to
   `{council_dir}/debate.log` before ending your turn**. End with `R2a done: {n} sent`.
 - **R2b:** read `debate.log` for objections addressed to you (the log is the truth, not your inbox) and answer each:
-  accept, or reject with a reason (SendMessage + append). End with `R2b done: {m} answered`. Never write to the log after R2b.
+  accept with the resulting wording (`accept → <final text>`), or reject with a reason (SendMessage + append). End with `R2b done: {m} answered`. Never write to the log after R2b;
+  a point you find later goes to `architect` directly, in one logged message.
 
 Your lens: is every proposed phase traceable to a criterion? Does any draft quietly change the scope?
 Log format: `spec->{to}: {text}`.

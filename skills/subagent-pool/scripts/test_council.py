@@ -35,6 +35,15 @@ class CouncilTest(unittest.TestCase):
         self.assertIn("## 11. Plan council", (SKILL / "assets" / "prompts.md").read_text())
         self.assertIn(doctor.TEAMS_FLAG, protocol)
 
+    def test_hardening_rules_present(self):
+        protocol = (SKILL / "assets" / "council.md").read_text()
+        for rule in ("restates the result", "consistency pass", "only after the architect's final return",
+                     "Silence until the barrier", "Where to run it"):
+            self.assertIn(rule, protocol)
+        for a in doctor.COUNCIL_AGENTS:
+            self.assertIn("accept → <final text>", (ROOT / "agents" / f"{a}.agent.md").read_text(), a)
+        self.assertIn("CROSSED_ACCEPTANCES", (ROOT / "agents" / "council-architect.agent.md").read_text())
+
     def test_only_architect_writes_the_plan(self):
         for a in doctor.COUNCIL_AGENTS:
             body = (ROOT / "agents" / f"{a}.agent.md").read_text()
