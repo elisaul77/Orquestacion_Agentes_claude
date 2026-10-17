@@ -1,6 +1,7 @@
 # Full Interview Protocol — Agent Orchestration Design
 
-> **Who uses this file:** The **AgentArchitect** and the **Conductor** when designing a new orchestration.
+> **Who uses this file:** only the **Conductor** asks these questions — a subagent can't talk to the user.
+> AgentArchitect returns the missing ones as `NEED_INTERVIEW`; the Conductor asks them in prose and passes the answers back.
 > For the Conductor in operational mode, the 3-question mini-interview in SKILL.md is sufficient.
 
 ---
@@ -30,7 +31,7 @@ Ask the questions **in order**. Stop when you have enough to design the pyramid.
 > What does the team deliver when done? Typical options: new code + tests, structured Markdown documentation, processed dataset, report, deployment.
 
 ### Q5 — Sub-domains
-> Does the problem have clearly separable sub-domains that justify **sub-coordinators** (e.g. backend + frontend, migration + integration)? Which ones?
+> Does the problem have clearly separable sub-domains with a different workflow (e.g. backend + frontend, migration + integration)? Each gets its own specialist or trio; the Conductor runs them in parallel (subagents can't coordinate other subagents).
 
 ### Q6 — Special capabilities
 Checklist (mark those that apply):
@@ -81,13 +82,9 @@ Safe defaults:
 
 ## Post-interview decision rules
 
-### Add sub-coordinators? (Q5)
-Only if ALL are met:
-1. The sub-domain has a different workflow (different tools, different review criteria)
-2. Running in parallel with the other sub-domain creates real value
-3. A single Analyst/Executor/Reviewer trio cannot handle both sub-domains
-
-If any fails → flat pyramid.
+### Separate specialists per sub-domain? (Q5)
+Only if the sub-domain has a different workflow (different tools or review criteria). Prefer one extra specialist over
+a whole trio. No coordinator agents: subagents can't spawn subagents, so all fan-out is the Conductor's.
 
 ### Merge Analyst + Executor?
 Only if the analysis is trivial (< 10% of the phase effort). Otherwise keep them separate.

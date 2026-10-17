@@ -1,5 +1,25 @@
 # Changelog
 
+## v9.7.0 — 2026-10-17 · Evidence levels, criteria ledger, "not verified", trimmed output, doctor, mutation check, AgentArchitect v2
+
+Ideas from `morluto/rea` (evidence discipline), `DietrichGebert/ponytail` (say what wasn't checked) and `JuliusBrussee/caveman` (read less). Read, not installed.
+
+- **Evidence levels (§7):** every criterion is `[OBSERVED]` / `[DERIVED]` / `[INFERRED]` / `[UNKNOWN]`. Behavior criteria close only with OBSERVED; an inference is never upgraded by a "tests pass" summary. Review contract gains `CRITERIA:`; Codex schema gains optional `criteria` and `not_verified`.
+- **Criteria ledger (§7, §8):** one table in `plans/{task}-state.md`; Gate 2 blocks on open rows unless the user accepts them.
+- **`NOT_VERIFIED:` and `UNKNOWNS:`** close every implement/review report and the final report.
+- **`scripts/trim_output.py`:** keeps failures, tracebacks and the summary of long test/build output; used in briefs instead of `| tail`.
+- **`scripts/doctor.py`:** read-only health check (install vs repo drift, agents, Codex, cost hook freshness, remotes over SSH) with suggested fixes.
+- **`scripts/mutate.py`:** dependency-free mutation testing (flips comparisons/operators/constants, skips `main()`); optional for tier L core logic. First run on the pool's own scripts: 44–63 % killed — tests to strengthen.
+- **Fix (bug since v9.5):** `codex-verdict.schema.json` had an optional key (`artifacts`), and OpenAI strict mode rejects that with HTTP 400, so every `codex exec --output-schema` call failed. All keys are now required (`[]` / `"nothing"` when not applicable); new keys `criteria`, `not_verified`, `unknowns`.
+- Hardening from the Claude + Codex cross-review: `trim_output` never cuts failure lines or whole failure blocks (unittest and pytest), and only "Ran N" closes a unittest block; `mutate` runs in the copy (cwd, PYTHONPATH, `-t`) with a bounded `--limit`; the `doctor` SSH probe can't write locally (no host-key updates, no control sockets, no LocalCommand).
+- Tests: `test_trim_output.py`, `test_doctor.py`, `test_mutate.py`, plus tests written against surviving mutants. 168 total. Mutation score went from 46 to 82 % on `cost_tracker`, 37 to 76 % on `trim_output` and 55 to 79 % on `doctor`.
+- **AgentArchitect v2** (two harness facts, verified this release: a subagent has no `Agent`/`Task` tool, and agent files created mid-session load only in the next session):
+  - It can't interview the user, so it returns `NEED_INTERVIEW` with questions; the Conductor asks them and calls it again.
+  - Two modes: `design` writes `plans/team-{domain}.md`; `generate` writes the agents only with stated user approval and never overwrites.
+  - It returns `AGENTS_CREATED` with the exact `subagent_type` names plus `RESTART_REQUIRED: yes`. The Conductor saves state and asks the user to restart; a `general-purpose` fallback is documented.
+  - Sub-coordinators removed (they needed nested spawning). A sub-domain now gets its own specialist, run in parallel by the Conductor. The dead `Task` tool is removed.
+  - Generated specialists inherit the pool contracts: evidence levels, `NOT_VERIFIED`, governance.
+
 ## v9.6.0 — 2026-10-16 · Operation types, security by trigger, Gate 2, stall stop, cost ledger, instincts
 
 Ideas taken from `affaan-m/ECC` (read, not installed) and adapted to the pool:

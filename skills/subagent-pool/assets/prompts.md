@@ -1,4 +1,4 @@
-# Task Templates — Conductor v9.6
+# Task Templates — Conductor v9.7
 
 Copy, fill, send. Every prompt ends with the agent's return contract so the handoff is parseable.
 Write prompts as directives (what + why + files + constraints), not background essays.
@@ -61,7 +61,7 @@ Contracts/Invariants: {falsifiable guarantees; breaking one → report under DEV
 Acceptance criteria: {bullets}
 Files: {path ✓exists | path ⊕create}
 Steps: {numbered}
-Verify with: {exact command(s)}
+Verify with: {exact command(s)}  — long output: `set -o pipefail; {cmd} 2>&1 | python3 ~/.claude/skills/subagent-pool/scripts/trim_output.py`
 Conventions: lang={language}, stack={stack}
 Graph warnings: {god nodes / hidden deps — never omit if present}
 Governance: Auto = edits inside listed files + tests. Notify = anything else → DEVIATIONS.
@@ -75,6 +75,8 @@ COMMANDS_RUN: command → exit code
 TESTS: {N/M passing, or "none run" + why}
 DEVIATIONS: {or "none"}
 CONFIDENCE: {verified | partially verified | unverified} — one line why
+UNKNOWNS: {open questions you hit, or "none"}
+NOT_VERIFIED: {what you skipped or couldn't check, or "nothing"}
 NEXT: {remaining, or "complete"}
 """)
 ```
@@ -95,12 +97,16 @@ Tests reported: {implementer TESTS line}
 Deviations reported: {list or "none"}
 Conventions: lang={language}, stack={stack}
 Security: {apply OWASP | N/A — no external input}
+Open ledger rows to rule on: {criterion list from the state file}
 
 STATUS: APPROVED | NEEDS_REVISION | FAILED
 FINDINGS: file:line — issue  ([INVARIANT] / [CRITICAL] / [MAJOR] / [TEST-INTEGRITY] tags)
+CRITERIA: {#} {criterion} — [OBSERVED|DERIVED|INFERRED|UNKNOWN] {proof: command → result}
 INDEPENDENT_CHECK: {what you ran yourself beyond the implementer's tests → result}
 REQUIRED_CHANGES: {specific + actionable, or "none"}
 DEVIATION_VERDICT: {per deviation, or "none reported"}
+UNKNOWNS: {or "none"}
+NOT_VERIFIED: {or "nothing"}
 """)
 ```
 
@@ -156,11 +162,26 @@ The Conductor then picks the 2-3 strongest *distinct* options, recommends one, a
 
 ```
 Task(description="Design team for {domain}", subagent_type="AgentArchitect", prompt="""
-Problem: {description}
-Known context: {what the user said}
-Interview the user, design the agent pyramid, generate files in .claude/agents/.
+mode=design
+Domain: {domain}   Problem: {description}
+Known context: {what the user said; project-context.md summary}
+User answers so far: {numbered answers to earlier QUESTIONS, or "none"}
+Why the base pool isn't enough: {one line}
 """)
 ```
+
+After `DESIGN_READY`, show the user the design file's TL;DR + agents table. On approval:
+
+```
+Task(description="Generate team {domain}", subagent_type="AgentArchitect", prompt="""
+mode=generate
+Design file: plans/team-{domain}.md — APPROVED by the user on {date}
+Edits requested by the user: {list, or "none"}
+""")
+```
+
+`AGENTS_CREATED` → write the state file, then tell the user (their language): the agents exist but load on the
+next session; restart Claude Code and say "resume" to continue from the state file.
 
 ## 7. Final report to the user (user's language)
 
@@ -170,6 +191,8 @@ Tier M/L: send the Gate 2 block first and wait for the user before any commit.
 **Ready to commit — {N} files, +{a}/−{d} lines.**
 - {file} — {what}
 Open findings: {none | list — CRITICAL/MAJOR block the commit}
+Criteria: {closed}/{total} — open: {list with why, or "none"}
+Not verified: {list, or "nothing"}
 Proposed commit(s): `{type(scope): message}`
 Commit? (push stays a separate approval)
 ```
@@ -180,6 +203,7 @@ Commit? (push stays a separate approval)
 - Changed: {files / features, grouped}
 - Verified: {tests + reviewer independent checks}
 - Not done / risks: {honest list, or "nothing pending"}
+- Not verified: {what nobody checked, or "nothing"}
 - Needs your decision: {list, or omit}
 
 Commit: `{type(scope): message}`
