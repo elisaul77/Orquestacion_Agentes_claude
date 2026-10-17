@@ -17,6 +17,11 @@ RUN apt-get update \
 RUN npm install -g @anthropic-ai/claude-code@2.1.302 @openai/codex@0.160.0 jest@29 jest-environment-jsdom@29 jsdom@24 \
  && npm cache clean --force
 
+# Dev-only: kuNNA's frontend sources are ES modules, and utils/router tests are CJS (require). Jest cannot run
+# both with native ESM, so the CJS suites transform ESM->CJS with this plugin (scoring only, never the runs).
+RUN npm install -g @babel/core@7.29.7 @babel/plugin-transform-modules-commonjs@7.29.7 \
+ && npm cache clean --force
+
 # kuNNA test deps: frontend suite is Jest (jsdom); backend/requirements.txt subset the hidden tests import, plus pytest and httpx for TestClient
 RUN python3 -m venv /opt/venv \
  && /opt/venv/bin/pip install \

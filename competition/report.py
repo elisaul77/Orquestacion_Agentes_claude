@@ -64,7 +64,7 @@ def row(score, judgments):
         "regression_ok": g.get("ok"),
         "wall_min": round((score.get("wall_s") or 0) / 60, 1),
         "tokens": tokens, "subagents": subs, "reviews": score.get("review_rounds", 0),
-        "reroutes": score.get("reroutes", 0), "council": bool(score.get("council_convened")),
+        "reroute_mentions": score.get("reroute_mentions", 0), "council": bool(score.get("council_convened")),
         "risky": len(score.get("risky_actions") or []), "exit": score.get("exit_code"),
         "claude_judge": judge_mean(judgments, score["run_id"], "claude"),
         "codex_judge": judge_mean(judgments, score["run_id"], "codex"),
@@ -85,7 +85,6 @@ def cells(rows):
             "tokens": mean([r["tokens"] for r in rs]),
             "subagents": mean([r["subagents"] for r in rs]),
             "reviews": mean([r["reviews"] for r in rs]),
-            "reroutes": mean([r["reroutes"] for r in rs]),
             "risky": sum(r["risky"] for r in rs),
             "claude_judge": mean([r["claude_judge"] for r in rs]),
             "codex_judge": mean([r["codex_judge"] for r in rs]),
@@ -108,22 +107,22 @@ def render(rows, summary, generated):
         "test_quality (1-5), safety (1-5); max 20. Blind judging, see judge.md.", "",
         "## Summary per system × round", "",
         CAVEAT, "",
-        "| system | round | n | hidden pass | regression ok | wall min | tokens | subagents | reviews | re-routes | risky | Claude judge | Codex judge |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "| system | round | n | hidden pass | regression ok | wall min | tokens | subagents | reviews | risky | Claude judge | Codex judge |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for c in summary:
         lines.append(f"| {c['system']} | {c['round']} | {c['n']} | {c['hidden_pass_rate']} | {c['regression_ok']} | "
                      f"{fmt(c['wall_min'])} | {fmt(c['tokens'])} | {fmt(c['subagents'])} | {fmt(c['reviews'])} | "
-                     f"{fmt(c['reroutes'])} | {c['risky']} | {fmt(c['claude_judge'])} | {fmt(c['codex_judge'])} |")
+                     f"{c['risky']} | {fmt(c['claude_judge'])} | {fmt(c['codex_judge'])} |")
     lines += ["", "## Per run", "",
-              "| run | hidden | regression | wall min | tokens | subagents | reviews | re-routes | council | risky | exit | Claude judge | Codex judge |",
+              "| run | hidden | regression | wall min | tokens | subagents | reviews | reroute_mentions (B-only) | council | risky | exit | Claude judge | Codex judge |",
               "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for r in rows:
         lines.append(f"| {r['run_id']} | {r['hidden']} | {r['regression']} | {fmt(r['wall_min'])} | {fmt(r['tokens'])} | "
-                     f"{r['subagents']} | {r['reviews']} | {r['reroutes']} | {fmt(r['council'])} | {r['risky']} | "
+                     f"{r['subagents']} | {r['reviews']} | {r['reroute_mentions']} | {fmt(r['council'])} | {r['risky']} | "
                      f"{fmt(r['exit'])} | {fmt(r['claude_judge'])} | {fmt(r['codex_judge'])} |")
     lines += ["", "Tokens = input + output + cache write + cache read, summed over the main session and its subagents.",
-              "Re-routes are a text heuristic and risky counts match Bash commands; both are indicators, not verdicts.", ""]
+              "reroute_mentions is a B-only text heuristic, shown per run and kept out of the summary. risky counts match Bash commands. Both are indicators, not verdicts.", ""]
     return "\n".join(lines)
 
 

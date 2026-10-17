@@ -11,13 +11,15 @@ python3 competition/score.py blind competition/runs/A-bug-1 competition/runs/B-b
 
 Each run gets a random 6-hex id. `blind/<id>/` contains:
 
-- `patch.diff`: the final diff, with versions, system and agent names, and co-author signatures replaced
-- `final_message.md`: the last message the main agent wrote to the user, anonymized the same way
+- `patch.diff`: the judged diff. `plans/`, `.claude/`, `.pytest_cache/` and `__pycache__/` are excluded (they are kept in the run's `artifacts.diff`, which judges never see). Versions, system and agent names, and co-author signatures are replaced.
+- `final_message.md`: the last message the main agent wrote to the user. Whole lines that name the workflow vocabulary (tier lines, phase and role names, `case file`, `re-route`, `triage`, `diagnosis`, `council`, review status lines, `plans/...`) are replaced by `[line removed]`; system and model names are replaced as whole words.
 - `prompt.md`: the challenge (identical for A and B)
+
+Structure may still hint at the system: the number of steps, how the report is laid out, or how the message is organised. Judges therefore score `patch.diff` first and `final_message.md` second, and a confident or tidy message does not raise a score on its own.
 
 The mapping id → run lives only in `runs/blind_key.json`. Judges never read it. Only `report.py` joins it back.
 
-Known leak, not fixed: the patch still carries kuNNA's own code, so anyone who knows the seeded bug can see it. Judges get the same prompt and the same seed for both systems, so this does not favour either side.
+Known leak, not fixed: the patch still carries kuNNA's own code, so anyone who knows the seeded bug can see it. Also not fixed: structural style (see above). Judges get the same prompt and the same seed for both systems, so this does not favour either side.
 
 ## 2. Rubric
 

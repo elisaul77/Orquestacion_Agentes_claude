@@ -3,21 +3,22 @@
 
     python3 competition/score.py score runs/<id> [runs/<id> ...] [--no-docker]
         -> runs/<id>/score.json  (hidden tests, regression suite, tokens, orchestration facts)
-    python3 competition/score.py baseline [--force]   (once: regression checks on untouched kuNNA)
+    python3 competition/score.py baseline [--force] [--kunna-ref REF]   (once per kuNNA sha: regression checks)
     python3 competition/score.py blind runs/<id> [runs/<id> ...]
         -> blind/<blind-id>/ (anonymized patch, final message, prompt) + runs/blind_key.json
 
-Hidden tests are copied into runs/<id>/score/ ONLY here, never before the run. Regression checks and
-hidden tests run inside the bench image against a scratch copy of the run's kuNNA tree.
+Hidden tests: BOTH hidden files run in every run (copied into runs/<id>/score/ only here, never before the
+run). The target round's file is the headline; the other file's results count as regression.
+Regression checks and hidden tests run inside the bench image against a scratch copy of the run's kuNNA tree.
+A run is only compared with a baseline built from the same kuNNA commit (kunna_sha).
 Token counts reuse the repo's cost_tracker.usage_by_model (from the run's own skillrepo snapshot).
 """
 import argparse
+import datetime as dt
 import importlib.util
 import json
 import os
 import re
-import secrets
-import shlex
 import shutil
 import subprocess
 import sys
@@ -25,18 +26,27 @@ import xml.etree.ElementTree as ET
 from collections import Counter
 from pathlib import Path
 
+import run as bench_run  # same directory, stdlib only: pins, sandbox flags, credential-free helpers
+
 HERE = Path(__file__).resolve().parent
 IMAGE = os.environ.get("KUNNA_BENCH_IMAGE", "kunna-bench:1")
-HIDDEN = {"bug": HERE / "hidden" / "test_bug_hidden.py", "improve": HERE / "hidden" / "test_improve_hidden.py"}
+HIDDEN_DIR = HERE / "hidden"
+HIDDEN_FILES = {"bug": "test_bug_hidden.py", "improve": "test_improve_hidden.py"}
 PY_FILES = ("backend/app.py", "backend/auth.py", "backend/netmap.py", "backend/caretaker.py",
             "backend/agent_manager.py", "backend/ssh_deployer.py", "monitor/docker_monitor.py", "agent/agent.py")
 SUBAGENT_TOOLS = ("Task", "Agent")
 TEAM_TOOLS = ("TeamCreate", "SendMessage")
-TRIAGE_RE = re.compile(r"\bTier\s+[SML]\s*·")
+TRIAGE_RE = re.compile(r"\bTier\s+[SML]\b\s*[·•-]")          # tier line: "Tier M · bug · ..." (any of · • - as separator)
 REROUTE_RE = re.compile(r"\bre-?rout", re.IGNORECASE)
 RISKY_RE = re.compile(r"git\s+push|docker\s+(rm|push|system\s+prune)|\brm\s+-[a-z]*r|git\s+reset\s+--hard|"
                       r"kubectl\s+delete|\bdeploy\b|--force\b|DELETE\s+/|curl\s+.*-X\s*DELETE", re.IGNORECASE)
-# Names that identify the system under test or the models; removed from anything a judge reads
+# Lines that name the system's internals (phases, roles, workflow vocabulary): removed whole, never edited
+DROP_LINE_PATTERNS = [re.compile(p, re.IGNORECASE) for p in (
+    r"\bTier\s+[SML]\b", r"FAILURE_ORIGIN", r"case file", r"re-?rout", r"admission", r"triage",
+    r"diagnos\w*", r"council", r"STATUS:\s*(APPROVED|NEEDS_REVISION|FAILED)", r"plans/\S+",
+)]
+LINE_REMOVED = "[line removed]"
+# Names that identify the system under test or the models; whole words only, replaced in what remains
 ANON_TERMS = [
     "planning-agent", "implement-agent", "review-agent", "AgentArchitect", "council-spec", "council-architect",
     "council-lateral", "council-risk", "codex-agent", "subagent-pool", "arquitec-dev-ia", "graphify",
@@ -109,9 +119,21 @@ def transcript_facts(records):
             reroutes += len(REROUTE_RE.findall(text))
             if not rec.get("parent_tool_use_id") and text.strip():
                 final_text = text
-    return {"subagents": dict(subagents), "review_rounds": reviews, "reroutes": reroutes,
+    return {"subagents": dict(subagents), "review_rounds": reviews, "reroute_mentions": reroutes,
             "triage": triage, "council_convened": council, "risky_actions": risky,
             "final_text": final_text}
+
+
+def final_result(records):
+    """The last `result` record of the stream: total_cost_usd and usage, as a cross-check of the session totals."""
+    last = None
+    for rec in records:
+        if rec.get("type") == "result":
+            last = rec
+    if last is None:
+        return {"present": False}
+    return {"present": True, "total_cost_usd": last.get("total_cost_usd"), "usage": last.get("usage"),
+            "num_turns": last.get("num_turns"), "is_error": last.get("is_error")}
 
 
 def diff_stats(diff_text):
@@ -142,42 +164,85 @@ def token_usage(run_dir):
     return {"source": source, "by_model": by_model, "total": total}
 
 
+def codex_usage(run_dir):
+    """Codex rollouts: event_msg/token_count carries a cumulative info.total_token_usage; the last one per file is the session total.
+
+    Format seen on the host (Codex desktop rollouts). If a file has no token_count, it is not counted.
+    """
+    root = run_dir / "codex_sessions"
+    files = sorted(root.rglob("*.jsonl")) if root.is_dir() else []
+    if not files:
+        return {"status": "not counted: no codex session files in the run"}
+    totals, with_usage = Counter(), 0
+    for f in files:
+        last = None
+        for rec in load_records(f):
+            payload = rec.get("payload")
+            if rec.get("type") == "event_msg" and isinstance(payload, dict) and payload.get("type") == "token_count":
+                info = payload.get("info") or {}
+                if isinstance(info.get("total_token_usage"), dict):
+                    last = info["total_token_usage"]
+        if last is not None:
+            with_usage += 1
+            totals.update({k: v for k, v in last.items() if isinstance(v, int)})
+    if with_usage == 0:
+        return {"status": f"not counted: {len(files)} codex file(s) without token_count records", "files": len(files)}
+    return {"status": "counted", "files": len(files), "files_with_usage": with_usage, "total": dict(totals)}
+
+
 # ---------- hidden tests and regression (in the bench image) ----------
 
 def container_script():
-    """Runs inside the bench image. Every check writes a raw result; the host turns them into statuses."""
-    jest = " ".join(["jest", "--config", "'{\"rootDir\":\"/work\",\"testEnvironment\":\"node\"}'", "--watchman=false"])
-    return """set -u
+    """Runs inside the bench image. Every check writes a raw result; the host turns them into statuses.
+
+    CJS suites (they use require): ESM sources transformed by the pinned babel plugin, node environment
+    (the tests build their own JSDOM). ESM suites (import / dynamic import / top-level await): native ESM,
+    jsdom environment; package.json {"type":"module"} is written into the scratch tree only, after the CJS phase.
+    """
+    return r"""set -u
 mkdir -p /bench/score/home
 R=/bench/score/regression.txt
 : > $R
-python3 -m py_compile """ + " ".join(PY_FILES) + """ > /bench/score/py_compile.log 2>&1
+python3 -m py_compile """ + " ".join(PY_FILES) + r""" > /bench/score/py_compile.log 2>&1
 echo "py_compile $?" >> $R
-for f in frontend/__tests__/*.test.js; do
+CJS='{"rootDir":"/work","testEnvironment":"node","transform":{"\\.js$":["babel-jest",{"babelrc":false,"configFile":false,"plugins":["/usr/local/lib/node_modules/@babel/plugin-transform-modules-commonjs"]}]}}'
+ESM='{"rootDir":"/work","testEnvironment":"jsdom","transform":{}}'
+for f in /work/frontend/__tests__/*.test.js; do
+  grep -q "require(" "$f" || continue
   n="$(basename "$f" .test.js)"
-  """ + jest + """ --json --outputFile="/bench/score/js_$n.json" "$f" > "/bench/score/js_$n.log" 2>&1
+  jest --config "$CJS" --watchman=false --json --outputFile="/bench/score/js_$n.json" "$f" > "/bench/score/js_$n.log" 2>&1
   echo "js_$n $?" >> $R
 done
-python3 -m pytest -q -p no:cacheprovider --junit-xml=/bench/score/hidden.xml /hidden > /bench/score/hidden.log 2>&1
-echo "hidden $?" >> $R
+echo '{"type":"module"}' > /work/package.json
+export NODE_OPTIONS=--experimental-vm-modules
+for f in /work/frontend/__tests__/*.test.js; do
+  grep -q "require(" "$f" && continue
+  n="$(basename "$f" .test.js)"
+  jest --config "$ESM" --watchman=false --json --outputFile="/bench/score/js_$n.json" "$f" > "/bench/score/js_$n.log" 2>&1
+  echo "js_$n $?" >> $R
+done
+for name in bug improve; do
+  python3 -m pytest -q -p no:cacheprovider --junit-xml="/bench/score/hidden_$name.xml" "/hidden/test_${name}_hidden.py" > "/bench/score/hidden_$name.log" 2>&1
+  echo "hidden_$name $?" >> $R
+done
 exit 0
 """
 
 
-def prepare_tree(score_dir, source, hidden_file=None):
-    """Scratch copy of a kuNNA tree (the agent's copy is never touched), plus the hidden test if given."""
+def prepare_tree(score_dir, source):
+    """Scratch copy of a kuNNA tree (the agent's copy is never touched), plus BOTH hidden tests."""
     if score_dir.exists():
         shutil.rmtree(score_dir)
     tree, hidden_dir = score_dir / "tree", score_dir / "hidden"
     shutil.copytree(source, tree, ignore=shutil.ignore_patterns(".git"))
     hidden_dir.mkdir(parents=True)
-    if hidden_file is not None:
-        shutil.copy2(hidden_file, hidden_dir / hidden_file.name)
+    for fname in HIDDEN_FILES.values():
+        shutil.copy2(HIDDEN_DIR / fname, hidden_dir / fname)
     return tree, hidden_dir
 
 
 def run_container_checks(score_dir, tree, hidden_dir, uid, gid):
-    argv = ["docker", "run", "--rm", "--user", f"{uid}:{gid}",
+    argv = ["docker", "run", "--rm", *bench_run.HARDENING, "--user", f"{uid}:{gid}",
             "-e", "KUNNA_ROOT=/work", "-e", "HOME=/bench/score/home", "-e", "PYTHONDONTWRITEBYTECODE=1",
             "-v", f"{tree}:/work", "-v", f"{hidden_dir}:/hidden:ro", "-v", f"{score_dir}:/bench/score",
             "-w", "/work", IMAGE, "bash", "-c", container_script()]
@@ -200,27 +265,43 @@ def jest_statuses(path, prefix):
 
 
 def regression_statuses(score_dir):
-    """Every regression check as {id: passed|failed}, from the raw files written in the container."""
+    """Every check as {id: passed|failed}, from the raw files written in the container.
+
+    Ids: py_compile, js_<suite> (exit code), <suite>::<test>, hidden_<round> (exit code), hidden_<round>::<test>.
+    """
     status = {}
     for line in (score_dir / "regression.txt").read_text().splitlines():
         name, rc = line.rsplit(" ", 1)
         status[name] = "passed" if rc == "0" else "failed"
     for jf in sorted(score_dir.glob("js_*.json")):
         status.update(jest_statuses(jf, jf.stem[3:]))
+    for name in HIDDEN_FILES:
+        xml = score_dir / f"hidden_{name}.xml"
+        if xml.is_file():
+            for test, st in junit_tests(xml).items():
+                status[f"hidden_{name}::{test}"] = "passed" if st == "passed" else "failed"
     return status
 
 
-def compare_to_baseline(run_status, base_status):
+def in_scope(check_id, target):
+    """The target round's hidden file is the headline, not part of the regression set."""
+    if target is None:
+        return True
+    return not (check_id == f"hidden_{target}" or check_id.startswith(f"hidden_{target}::"))
+
+
+def compare_to_baseline(run_status, base_status, target=None):
     """Regression = a check that passes on untouched kuNNA and does not pass in this run."""
-    passing = sorted(k for k, v in base_status.items() if v == "passed")
+    passing = sorted(k for k, v in base_status.items() if v == "passed" and in_scope(k, target))
     broken = [k for k in passing if run_status.get(k) != "passed"]
     return {"baseline_passing": len(passing), "still_passing": len(passing) - len(broken),
-            "broken": broken, "ok": not broken}
+            "broken": broken, "ok": not broken,
+            "non_target_hidden": None if target is None else f"hidden_{'improve' if target == 'bug' else 'bug'}"}
 
 
-def hidden_result(score_dir, file_name):
-    hidden = {"file": file_name, "tests": {}, "total": 0, "passed": 0}
-    xml = score_dir / "hidden.xml"
+def hidden_result(score_dir, name):
+    hidden = {"file": HIDDEN_FILES[name], "tests": {}, "total": 0, "passed": 0}
+    xml = score_dir / f"hidden_{name}.xml"
     if xml.is_file():
         hidden["tests"] = junit_tests(xml)
         hidden["total"] = len(hidden["tests"])
@@ -242,46 +323,57 @@ def junit_tests(path):
     return out
 
 
+def require_same_kunna(baseline, meta):
+    """A regression comparison is only meaningful against a baseline built from the same kuNNA commit."""
+    base_sha, run_sha = baseline.get("kunna_sha"), meta.get("kunna_sha")
+    if not base_sha or base_sha != run_sha:
+        raise SystemExit(f"kuNNA pin mismatch: baseline {base_sha} != run {run_sha}. Rebuild the baseline at the "
+                         f"run's commit: python3 competition/score.py baseline --force --kunna-ref {run_sha}")
+
+
 def baseline_path():
     return HERE / "runs" / "_baseline" / "baseline.json"
 
 
-def make_baseline(no_docker=False, force=False):
-    """Run the regression checks on untouched kuNNA HEAD once; every run is compared against this."""
-    import run as bench_run  # same directory, stdlib only
+def make_baseline(no_docker=False, force=False, kunna_ref="HEAD"):
+    """Run the regression checks on untouched kuNNA at one pinned commit; every run is compared against this."""
+    if no_docker:
+        raise SystemExit("baseline needs the bench image: run without --no-docker")
     if baseline_path().exists() and not force:
         raise SystemExit(f"{baseline_path()} exists: pass --force to rebuild it")
+    sha = bench_run.rev_parse(kunna_ref, cwd=bench_run.KUNNA)
     base_dir = HERE / "runs" / "_baseline"
     score_dir = base_dir / "score"
     source = base_dir / "kunna"
     if source.exists():
         shutil.rmtree(source)
-    bench_run.copy_kunna_baseline(source)
+    bench_run.copy_kunna_baseline(source, sha)
     tree, hidden_dir = prepare_tree(score_dir, source)
-    if no_docker:
-        raise SystemExit("baseline needs the bench image: run without --no-docker")
     run_container_checks(score_dir, tree, hidden_dir, os.getuid(), os.getgid())
     status = regression_statuses(score_dir)
-    baseline_path().write_text(json.dumps({"checks": status, "image": IMAGE}, indent=2, sort_keys=True) + "\n",
-                               encoding="utf-8")
-    passed = sum(1 for v in status.values() if v == "passed")
-    return passed, len(status)
+    image_id = subprocess.run(["docker", "image", "inspect", "-f", "{{.Id}}", IMAGE],
+                              capture_output=True, text=True, check=True).stdout.strip()
+    baseline = {"kunna_ref": kunna_ref, "kunna_sha": sha, "image": IMAGE, "image_id": image_id,
+                "built_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"), "checks": status}
+    baseline_path().write_text(json.dumps(baseline, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return status
 
 
-def run_checks(run_dir, round_name, no_docker):
-    """Hidden tests and regression for one run. Returns the score.json sections."""
+def run_checks(run_dir, meta, no_docker):
+    """Hidden tests (both files) and regression for one run. Returns the score.json sections."""
     score_dir = run_dir / "score"
-    hidden_file = HIDDEN[round_name]
-    tree, hidden_dir = prepare_tree(score_dir, run_dir / "kunna", hidden_file)
+    target = meta["round"]
+    tree, hidden_dir = prepare_tree(score_dir, run_dir / "kunna")
     if no_docker:
         return {"hidden": None, "regression": None}
+    base_file = baseline_path()
+    if not base_file.is_file():
+        raise SystemExit(f"no baseline at {base_file}: run `python3 competition/score.py baseline` first")
+    baseline = json.loads(base_file.read_text(encoding="utf-8"))
+    require_same_kunna(baseline, meta)
     run_container_checks(score_dir, tree, hidden_dir, os.getuid(), os.getgid())
-    base = baseline_path()
-    if not base.is_file():
-        raise SystemExit(f"no baseline at {base}: run `python3 competition/score.py baseline` first")
-    base_status = json.loads(base.read_text(encoding="utf-8"))["checks"]
-    regression = compare_to_baseline(regression_statuses(score_dir), base_status)
-    return {"hidden": hidden_result(score_dir, hidden_file.name), "regression": regression}
+    regression = compare_to_baseline(regression_statuses(score_dir), baseline["checks"], target=target)
+    return {"hidden": hidden_result(score_dir, target), "regression": regression}
 
 
 # ---------- score ----------
@@ -291,20 +383,31 @@ def score_run(run_dir, no_docker=False):
     records = load_records(run_dir / "transcript.jsonl")
     facts = transcript_facts(records)
     diff = (run_dir / "final.diff").read_text(encoding="utf-8") if (run_dir / "final.diff").is_file() else ""
-    checks = run_checks(run_dir, meta["round"], no_docker)
+    checks = run_checks(run_dir, meta, no_docker)
+    tokens = token_usage(run_dir)
     result = {
         "run_id": meta["run_id"], "system": meta["system"], "round": meta["round"], "run": meta["run"],
-        "skill_version": meta.get("skill_version"), "a_version": meta.get("a_version"),
+        "pins": {"a_sha": meta.get("a_sha"), "b_sha": meta.get("b_sha"), "b_source": meta.get("b_source"),
+                 "skill_sha": meta.get("skill_sha"), "kunna_sha": meta.get("kunna_sha"),
+                 "image_id": meta.get("image_id")},
+        "versions": {"skill": meta.get("skill_version"), "a": meta.get("a_version"),
+                     "claude_cli": meta.get("claude_version"), "codex_cli": meta.get("codex_version")},
+        "model": {"requested": meta.get("model_requested"), "reported": meta.get("model_reported")},
         "exit_code": meta.get("exit_code"), "timed_out": meta.get("timed_out"),
         "turn_limit_hit": meta.get("turn_limit_hit"), "wall_s": meta.get("wall_s"),
         "assistant_messages": meta.get("assistant_messages"),
-        "tokens": token_usage(run_dir),
+        "subagent_assistant_messages": meta.get("subagent_assistant_messages"),
+        "tokens": tokens,
+        "codex_tokens": codex_usage(run_dir),
+        "result_record": final_result(records),
+        "usage_crosscheck": {"sessions_total": tokens["total"]},
         "triage": facts["triage"], "council_convened": facts["council_convened"],
         "subagents": facts["subagents"], "review_rounds": facts["review_rounds"],
-        "reroutes": facts["reroutes"], "risky_actions": facts["risky_actions"],
+        "reroute_mentions": facts["reroute_mentions"], "risky_actions": facts["risky_actions"],
         "diff": diff_stats(diff),
         "hidden": checks["hidden"], "regression": checks["regression"], "skipped_checks": no_docker,
-        "notes": "reroutes is a text heuristic (\"re-route\" in assistant text); risky_actions match Bash commands",
+        "notes": ("reroute_mentions is a B-only concept: a text heuristic, kept out of the headline table; "
+                  "risky_actions match Bash commands; codex_tokens counts only rollouts that carry token_count"),
     }
     (run_dir / "score.json").write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return result
@@ -312,13 +415,24 @@ def score_run(run_dir, no_docker=False):
 
 # ---------- blind ----------
 
+def drop_flagged_lines(text):
+    """Whole lines that name phases, roles or workflow vocabulary are replaced, never edited."""
+    out = []
+    for line in text.splitlines(keepends=True):
+        if any(p.search(line) for p in DROP_LINE_PATTERNS):
+            out.append(LINE_REMOVED + ("\n" if line.endswith("\n") else ""))
+        else:
+            out.append(line)
+    return "".join(out)
+
+
 def anonymize(text):
-    """Strip system names, versions and signatures so a judge cannot tell A from B."""
-    out = text
+    """Remove workflow lines, system names, versions and signatures so a judge cannot tell A from B."""
+    out = drop_flagged_lines(text)
     for pattern, repl in ANON_PATTERNS:
         out = pattern.sub(repl, out)
     for term in sorted(ANON_TERMS, key=len, reverse=True):
-        out = re.sub(re.escape(term), "[tool]", out, flags=re.IGNORECASE)
+        out = re.sub(rf"\b{re.escape(term)}\b", "[tool]", out, flags=re.IGNORECASE)
     return out
 
 
@@ -331,9 +445,9 @@ def blind(run_dirs):
         meta = json.loads((run_dir / "meta.json").read_text(encoding="utf-8"))
         run_id = meta["run_id"]
         if run_id not in by_run:
-            bid = secrets.token_hex(3)
+            bid = os.urandom(3).hex()
             while bid in key:
-                bid = secrets.token_hex(3)
+                bid = os.urandom(3).hex()
             key[bid], by_run[run_id] = run_id, bid
         dest = out_root / by_run[run_id]
         dest.mkdir(parents=True, exist_ok=True)
@@ -353,16 +467,18 @@ def main(argv=None):
     s = sub.add_parser("score")
     s.add_argument("runs", nargs="+", type=Path)
     s.add_argument("--no-docker", action="store_true", help="skip the bench image checks (parsing only)")
-    bl = sub.add_parser("baseline", help="regression checks on untouched kuNNA HEAD (run once)")
+    bl = sub.add_parser("baseline", help="regression checks on untouched kuNNA at one commit (run once per sha)")
     bl.add_argument("--force", action="store_true")
     bl.add_argument("--no-docker", action="store_true")
+    bl.add_argument("--kunna-ref", default=bench_run.DEFAULT_KUNNA_REF)
     b = sub.add_parser("blind")
     b.add_argument("runs", nargs="+", type=Path)
     args = ap.parse_args(argv)
     run_dirs = [r.resolve() for r in getattr(args, "runs", [])]
     if args.cmd == "baseline":
-        passed, total = make_baseline(no_docker=args.no_docker, force=args.force)
-        print(f"baseline: {passed}/{total} checks passing on untouched kuNNA -> {baseline_path()}")
+        status = make_baseline(no_docker=args.no_docker, force=args.force, kunna_ref=args.kunna_ref)
+        passed = sum(1 for v in status.values() if v == "passed")
+        print(f"baseline: {passed}/{len(status)} checks passing on untouched kuNNA -> {baseline_path()}")
         return 0
     if args.cmd == "score":
         for r in run_dirs:
