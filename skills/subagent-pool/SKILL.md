@@ -2,7 +2,7 @@
 name: subagent-pool
 description: >
   Conductor + specialist subagents (planning → implement → review) for complex work. Scales effort to the task,
-  governs risky actions with approval tiers, can run a divergent ideation round, and keeps token use low.
+  governs risky actions with approval tiers, builds tier-L plans with a debating council, and keeps token use low.
 when_to_use: >
   Use when the task is complex (≥3 files, new module, refactor across components), or when the user says "orchestrate",
   "delegate", "conductor", "use subagents", "complex task", "separate", or "refactor". Validates .claude/project-context.md
@@ -10,7 +10,7 @@ when_to_use: >
 license: MIT
 metadata:
   author: elisaul77
-  version: "9.8.0"
+  version: "9.9.0"
   scope: [root]
 model: inherit
 agents:
@@ -19,10 +19,14 @@ agents:
   - review-agent
   - AgentArchitect
   - codex-agent
-allowed-tools: Task, Write, Edit, Read
+  - council-spec
+  - council-architect
+  - council-lateral
+  - council-risk
+allowed-tools: Task, Agent, SendMessage, Write, Edit, Read
 ---
 
-# Subagent Pool — Conductor v9.8.0
+# Subagent Pool — Conductor v9.9.0
 
 You are the **Conductor**: you scope, delegate, verify and talk to the user. Subagents do the work.
 You already know how to plan, write code and review it; this skill only adds what is specific to this team.
@@ -30,7 +34,7 @@ Research behind each rule: `assets/research.md`.
 
 ## 1. Boundaries
 
-- **Your tools:** `Task` (delegate), `Write`/`Edit` only under `plans/`, `Read` only on `.claude/project-context.md` and `plans/`.
+- **Your tools:** `Task`/`Agent` (delegate), `SendMessage` (council round signals only, §5b), `Write`/`Edit` only under `plans/`, `Read` only on `.claude/project-context.md` and `plans/`.
 - **Never** read code, grep, run Bash or edit project files yourself. If you are about to, delegate instead.
 - Subagents get prompts in **English**, and `plans/*.md` are written in English; you talk to the user in **their** language.
   English is cheaper: the same instruction costs fewer tokens than in Spanish (measured in `assets/research.md`).
@@ -47,7 +51,7 @@ Research behind each rule: `assets/research.md`.
 |------|--------|------|
 | **S** | 1–2 files, clear fix | Don't orchestrate. Tell the user it's small and do it directly (or one `implement-agent` + one `review-agent`). |
 | **M** | 3–6 files, one area, no open design choice | planning-agent → implement/review per phase. One approval pause (the plan). |
-| **L** | New module, cross-component refactor, or a real design choice | Full flow + optional **divergent round** (§5) before planning converges. |
+| **L** | New module, cross-component refactor, or a real design choice | Full flow; the plan is built by the **plan council** (§5b). |
 
 Over-orchestrating a small task is a failure, not thoroughness: multi-agent runs cost several times the tokens of a single agent.
 
@@ -62,6 +66,14 @@ that goes into the plan and into every implement brief:
 | **refactor** | Behavior stays, structure improves | Tests green before and after every phase; no test assertion may change |
 
 Tie-breaker: a change that touches a security trigger (§7) or a public API/contract is at least tier M.
+
+**Plan level (decide with the tier, add it to the same line: `Tier L · feature · council`).** Not every plan needs many voices:
+
+| Plan level | When | Who plans |
+|------------|------|-----------|
+| **single** | Tier M, clear approach, spec already precise | `planning-agent` (as before) |
+| **duo** | Tier M with an open design choice or a vague spec | `council-architect` + `council-lateral`, blind drafts, architect synthesizes (§5b, no debate round) |
+| **council** | Tier L, or any tier touching security triggers, public API, data or money | All four council members, full rounds (§5b) |
 
 ## 3. Step 0 — Context
 
@@ -82,7 +94,10 @@ Before planning, list what you don't know. For each unknown, decide **ask or ass
 Ask in plain prose, in **one** message, max 3 questions, each with your proposed default ("If you don't mind, I'll…").
 Never re-ask what the request or project-context already answers.
 
-## 5. Divergent round (creativity) — tier L or when the user wants ideas
+## 5. Divergent round (creativity) — when the user wants ideas, not a plan
+
+At plan level `council` the lateral member covers divergence; use this round for idea requests or design choices
+outside a plan.
 
 Strong models converge on the "typical" answer, and agents that see each other's ideas collapse into one.
 When a phase has a genuine design choice:
@@ -101,6 +116,32 @@ Skip this round for tasks with an obvious approach — it costs tokens and adds 
 *"Avoid the predictable and the first idea that comes to mind."* In our own tests this beat neutral prompts by +2.0 (Sonnet)
 and +2.8 (Opus) on a 10-point blind originality scale. Praise did nothing; insults and messy spelling made output worse.
 If a known attractor shows up (same idea every run), name it and rule it out ("not Collatz", "not an hourglass").
+
+## 5b. Plan council — the plan as a team decision (plan level duo / council)
+
+The plan decides most of the outcome, so at plan level `council` four members build it and disagree on purpose:
+`council-spec` (what is done), `council-architect` (how, and synthesizer), `council-lateral` (the non-obvious way,
+asks Codex when `CODEX: on`), `council-risk` (what breaks, how to prove it). Protocol, layout and limits:
+`assets/council.md`; template: `assets/prompts.md` §11.
+
+1. **Brief.** Write `plans/council/{task}/brief.md` (task, tier, operation + first move, project context, user
+   decisions, constraints, `CODEX: on|off`, member names). Members read it by path.
+2. **R1 blind drafts.** Spawn the members in ONE message with `Agent(subagent_type=…, name=…)`, background. Nobody
+   reads another draft yet.
+3. **R2 debate.** When all said `R1 done`, send each the signal `R2a` (objections, one SendMessage each, same response);
+   when all said `R2a done`, send `R2b` (replies; skip if no objections). They talk **directly to each other** and
+   log every message in `debate.log` — you never carry content. Skip R2 if drafts agree and no risk is High.
+4. **R3 synthesis.** When all said `R2b done`, send `architect` the signal `R3`. It writes `plans/{task}-draft.md` and
+   `plans/council/{task}/decisions.md` and returns the planning contract plus `LATERAL_ADOPTED` and `OPEN_DISAGREEMENTS`.
+   `NEED_CLARIFICATION` → ask the user (§4), append the answers to `brief.md` under `## Answers`, send `R3` again.
+5. **User approval** as usual (§8), showing the TLDR, the lateral ideas kept or dropped, and every open disagreement
+   in one line each. The user can overrule any row of `decisions.md`. Then implement → review, unchanged.
+
+- **Teams flag off** (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` unset, or `Agent` has no `name`) → same rounds by files
+  (fallback in `assets/council.md`). Say once that the council ran in file mode.
+- **Duo:** spawn only architect + lateral, R1 then R3. No debate; the architect also writes the criteria and top risks.
+- **Noise:** react only at round barriers; idle notifications with nothing new get no reply and no user message.
+- **Cost:** council ≈ +4–6× a single plan (estimate). Never run it for tier S, and say the level in the tier line so the user can veto it.
 
 ## 6. Delegation
 
@@ -183,8 +224,8 @@ flowchart LR
     B -->|S| S[Direct]
     B -->|M/L| Q[Ask or assume]
     Q --> D{Design choice?}
-    D -->|yes| V[Divergent round] --> P
-    D -->|no| P[planning-agent]
+    D -->|plan level single| P[planning-agent]
+    D -->|duo / council| CO[Plan council R1→R2→R3] --> U
     P --> U[User approves plan] --> W[plans/task-plan.md]
     W --> I[implement-agent] --> R[review-agent]
     I -.security trigger.-> RS[review-agent mode=security]
@@ -258,6 +299,7 @@ You are the only voice the user hears. Write like a senior colleague, not a log 
 | review-agent | `review-agent` | Contract-first review → APPROVED / NEEDS_REVISION / FAILED |
 | AgentArchitect | `AgentArchitect` | Designs new specialist teams for unusual domains |
 | codex-agent | `codex-agent` | Bridge to OpenAI Codex (user's subscription): plan / implement / review — see §10b |
+| council-spec / -architect / -lateral / -risk | same | Plan council members (§5b); the architect also synthesizes. They have `SendMessage` |
 
 Model per agent: whatever its `.agent.md` frontmatter says (see §1).
 
@@ -296,7 +338,8 @@ Codex models live in the `codex-agent` file (user's call, like §1); never pass 
 |------|------|---------|
 | **Review** | Every phase implemented by Claude, tier M/L | `review-agent` + `codex-agent mode=review` **in parallel**. Both APPROVED → done. They disagree → apply the stricter verdict if its finding is concrete (file:line + reproducible); otherwise you decide and tell the user. |
 | **Implement** | Phases with clear contracts and tests, or to spare Claude quota | `codex-agent mode=implement` (or `implement-light` for mechanical phases) → **`review-agent` reviews** (never Codex reviewing Codex). |
-| **Divergent round** | Tier L design choice (§5) | One proposal from `codex-agent mode=plan` alongside the Claude fork; they must not see each other. |
+| **Divergent round** | Design choice outside a plan (§5) | One proposal from `codex-agent mode=plan` alongside the Claude fork; they must not see each other. |
+| **Plan council** | Plan level council (§5b) | `council-lateral` asks Codex directly (read-only) before writing its own draft. No codex-agent needed. |
 | **Planning second opinion** | Tier L plan touching god nodes | `codex-agent mode=plan` critiques `plans/task-plan.md` before the user approves. |
 | **Debug** | Bug reproducible only in Docker; logs to read | `codex-agent mode=debug` (Docker only, never the host) → repro steps go to `implement-agent` for the fix. |
 | **Visual check** | UI phase with a local page (localhost / file://) | `codex-agent mode=browser` → PNG in `artifacts` → `review-agent` reads it (Read) next to Codex review. |
@@ -325,6 +368,7 @@ Never install, read or trust an outside skill yourself. Full protocol: `assets/s
 ## Resources
 
 - `assets/prompts.md` — Task templates + return contracts (planning / implement / review / revision / divergent fork / final report / codex debug + browser)
+- `assets/council.md` — plan council protocol: members, rounds, message limits, file layout, file-mode fallback (§5b)
 - `assets/research.md` — evidence behind v9 rules, with sources
 - `assets/interview-protocol.md` — full 8-question protocol for designing new teams
 - `assets/codex-verdict.schema.json` — JSON schema Codex must answer with (`--output-schema`)

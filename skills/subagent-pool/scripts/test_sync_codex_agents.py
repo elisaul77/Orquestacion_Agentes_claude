@@ -87,6 +87,10 @@ class SyncTest(unittest.TestCase):
         (self.dest / "review-agent.agent.toml").write_text('name = "review-agent"\n')
         self.assertEqual(s.main(args + ["--check"]), 1)
 
+    def test_council_agents_are_not_codex_roles(self):
+        (self.src / "council-risk.agent.md").write_text("---\nname: council-risk\ndescription: r\ntools: [SendMessage]\n---\nb\n")
+        self.assertNotIn("council-risk", [r[0] for r in s.plan([self.src], self.dest)])
+
     def test_only_filter(self):
         (self.src / "x.agent.md").write_text("---\nname: VidPlanner\ndescription: plans\n---\nbody\n")
         rows = s.plan([self.src], self.dest, {"VidPlanner"})
