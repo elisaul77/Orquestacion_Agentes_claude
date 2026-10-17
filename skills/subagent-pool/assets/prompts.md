@@ -1,4 +1,4 @@
-# Task Templates — Conductor v9.7
+# Task Templates — Conductor v9.9
 
 Copy, fill, send. Every prompt ends with the agent's return contract so the handoff is parseable.
 Write prompts as directives (what + why + files + constraints), not background essays.
@@ -15,6 +15,7 @@ Write prompts as directives (what + why + files + constraints), not background e
 8. codex-agent — debug (Docker only)
 9. codex-agent — browser (screenshot check)
 10. codex-agent — coordinate (fan-out inside Codex)
+11. Plan council (brief, spawn, round signals)
 
 ---
 
@@ -255,3 +256,42 @@ Governance: Approve-tier actions → BLOCKED, never performed.
 
 Then dispatch one `review-agent` per phase in ONE message (§3). `STATUS: BLOCKED` with stale roles → ask the user to
 run `sync_codex_agents.py` (it writes to ~/.codex/agents).
+
+---
+
+## 11. Plan council (brief, spawn, round signals)
+
+Protocol and limits: `assets/council.md`. Write the brief first, then spawn all members in ONE message.
+
+`plans/council/{task}/brief.md`:
+```
+# Council brief — {task}
+Task: {one line}            Tier: {M|L}   Operation: {type} — first move: {from §2}   Level: {duo|council}
+Project: {abs path}         CODEX: {on|off}
+Context: {stack · language · god nodes · graphify EXISTS/NOT_EXISTS}
+User decisions (invariants): {each one}
+Constraints / out of scope: {list}
+Members: {duo: architect, lateral | council: spec, architect, lateral, risk}   Council dir: plans/council/{task}
+Plan file (R3): plans/{task}-draft.md
+```
+
+Spawn (one per member of the level, same message; omit `model`):
+```
+Agent(subagent_type="council-{role}", name="{role}", run_in_background=true,
+      description="Council {role}: {task}", prompt="""
+You are '{role}' in a plan council. Brief: plans/council/{task}/brief.md — read it first, then the protocol at
+~/.claude/skills/subagent-pool/assets/council.md. Do R1 now (blind draft). Wait for the Conductor's R2 / R3 signals.
+Other members you may message: {the other names}.
+""")
+```
+
+Round signals (send only at a barrier; content never goes through the Conductor):
+```
+SendMessage(to="{role}", message="R2a: all drafts are in plans/council/{task}/. Send and log your objections per council.md, then say R2a done.")
+SendMessage(to="{role}", message="R2b: answer the objections addressed to you in debate.log, then say R2b done.")
+SendMessage(to="architect", message="R3: synthesize plans/{task}-draft.md and plans/council/{task}/decisions.md, return the contract.")
+```
+
+File-mode fallback (teams flag off): the same prompts through `Task` without `name`; R2a becomes
+"read the other drafts and append objections to debate.log", R2b one answer wave (see `council.md`).
+

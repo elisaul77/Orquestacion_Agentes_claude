@@ -9,7 +9,7 @@ Each generated file starts with `# generated-by: subagent-pool sync · source-sh
 hash with the source and lists stale/missing/foreign roles without writing (exit 1 if any; also when an --only
 name has no source agent). Files without the marker are
 never overwritten (they belong to someone else). Default src: ~/.claude/agents; codex-agent is skipped (it is the
-Claude-side bridge to Codex, not a Codex role).
+Claude-side bridge to Codex, not a Codex role), and so are council-* agents (they debate through Claude's SendMessage).
 """
 import argparse
 import hashlib
@@ -18,6 +18,7 @@ import sys
 from pathlib import Path
 
 SKIP = {"codex-agent"}
+SKIP_PREFIX = ("council-",)  # council members need Claude's SendMessage; Codex has no equivalent role tool
 MARK = "# generated-by: subagent-pool sync · source-sha256: "
 
 
@@ -115,7 +116,7 @@ def plan(srcs, dest, only=()):
                 name, sha, content = render(text)
             except ValueError:
                 continue
-            if name in SKIP or (only and name not in only):
+            if name in SKIP or name.startswith(SKIP_PREFIX) or (only and name not in only):
                 continue
             target = Path(dest) / f"{name}.agent.toml"
             if not target.exists():

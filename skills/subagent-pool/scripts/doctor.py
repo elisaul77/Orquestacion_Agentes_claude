@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Read-only health check of the subagent-pool install (v9.7). Changes nothing.
+"""Read-only health check of the subagent-pool install (v9.9). Changes nothing.
 
     python3 doctor.py [--repo PATH] [--remote HOST ...] [--json]
 
 Checks: installed skill version (and drift against --repo), the three core agents, optional codex-agent + codex CLI
 and whether its Codex roles (~/.codex/agents) match our agents,
-the cost hook in settings.json and whether the ledger is being written, the instincts store, and each --remote host
+the plan council (agents with SendMessage + the agent-teams flag), the cost hook in settings.json and whether the ledger is being written, the instincts store, and each --remote host
 over SSH (BatchMode, short timeout). Each failed check carries a suggested fix; nothing is applied.
 Exit code: 0 all OK, 1 if any check failed (warnings don't fail).
 """
@@ -22,6 +22,8 @@ from pathlib import Path
 
 HOME = Path(os.environ.get("POOL_HOME", Path.home()))
 CORE_AGENTS = ("planning-agent", "implement-agent", "review-agent")
+COUNCIL_AGENTS = ("council-spec", "council-architect", "council-lateral", "council-risk")
+TEAMS_FLAG = "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"
 # Keep the SSH probe from writing locally: no known_hosts updates, no control sockets, no local commands.
 SSH_RO = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=6", "-o", "StrictHostKeyChecking=yes", "-o", "UpdateHostKeys=no",
           "-o", "ControlMaster=no", "-o", "ControlPath=none", "-o", "PermitLocalCommand=no"]
@@ -30,6 +32,13 @@ SSH_RO = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=6", "-o", "StrictHostKeyC
 def version_of(skill_md):
     m = re.search(r'version:\s*"?([\d.]+)"?', Path(skill_md).read_text()) if Path(skill_md).exists() else None
     return m.group(1) if m else None
+
+
+def tools_of(agent_md):
+    """Tool names from the frontmatter `tools:` line (flow list or comma list); descriptions and body don't count."""
+    m = re.match(r"^---\n(.*?)\n---", Path(agent_md).read_text(), re.S)
+    t = re.search(r"(?m)^tools:\s*\[?([^\]\n]*)\]?\s*$", m.group(1)) if m else None
+    return {x.strip().strip("'\"") for x in t.group(1).split(",")} if t else set()
 
 
 def drift(a, b):
@@ -80,11 +89,23 @@ def run_checks(repo=None, remotes=(), now=None):
         res.append(check("codex roles in sync", not bad, ", ".join(bad) or f"{len(rows)} roles",
                          "python3 ~/.claude/skills/subagent-pool/scripts/sync_codex_agents.py"
                          " (foreign = Codex's own import: back it up and delete it first)", "warn"))
+    missing = [a for a in COUNCIL_AGENTS if not (claude / "agents" / f"{a}.agent.md").exists()]
+    no_msg = [a for a in COUNCIL_AGENTS if a not in missing
+              and "SendMessage" not in tools_of(claude / "agents" / f"{a}.agent.md")]
+    res.append(check("council agents", not missing and not no_msg,
+                     (f"missing {', '.join(missing)}" if missing else "") + (f" no SendMessage: {', '.join(no_msg)}" if no_msg else "")
+                     or "4 members with SendMessage",
+                     "copy agents/council-*.agent.md into ~/.claude/agents/ and restart (plan level council, §5b)", "warn"))
     settings = claude / "settings.json"
     try:
-        hooked = "cost_tracker" in json.dumps(json.loads(settings.read_text()).get("hooks", {}))
+        cfg = json.loads(settings.read_text())
     except (OSError, ValueError):
-        hooked = False
+        cfg = {}
+    hooked = "cost_tracker" in json.dumps(cfg.get("hooks", {}))
+    teams = str((cfg.get("env") or {}).get(TEAMS_FLAG, os.environ.get(TEAMS_FLAG, ""))) == "1"
+    res.append(check("agent-teams flag", teams, TEAMS_FLAG + ("=1" if teams else " not set"),
+                     f'add "env": {{"{TEAMS_FLAG}": "1"}} to settings.json; without it the council runs in file mode',
+                     "warn"))
     res.append(check("cost hook", hooked, str(settings), "see assets/hooks.md (optional)", "warn"))
     ledger = claude / "metrics" / "costs.jsonl"
     if hooked:

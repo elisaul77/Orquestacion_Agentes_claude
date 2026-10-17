@@ -5,7 +5,7 @@
 🌐 **Español** · [English](README.md)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-v9.8.0-blueviolet.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v9.9.0-blueviolet.svg)](CHANGELOG.md)
 [![Tests](https://img.shields.io/badge/tests-131%20passing-3fb950.svg)](#-tests)
 [![Claude Code](https://img.shields.io/badge/cerebro-Claude%20Code-8a63f0.svg)](https://claude.com/claude-code)
 [![Codex](https://img.shields.io/badge/Codex-opcional-412991.svg)](#codex-opcional)
@@ -20,6 +20,8 @@ Para tareas complejas de Claude Code (3 o más archivos, un módulo nuevo, un re
 ```
 tú ──> Conductor (planifica, nunca toca código)
          |
+         |--> consejo de plan (tier L): spec · architect · lateral · risk
+         |      borradores a ciegas ─> debaten entre ellos ─> plan + registro de decisiones
          |--> planning-agent ──> plans/*.md ──> (tu aprobación)
          |
          |--> implement-agent ──> review-agent ──> APPROVED | NEEDS_REVISION
@@ -55,11 +57,12 @@ for skill in subagent-pool arquitec-dev-ia graphify; do
   curl -sSL "$BASE/skills/${skill}/SKILL.md" -o ~/.claude/skills/${skill}/SKILL.md
 done
 mkdir -p ~/.claude/skills/subagent-pool/assets
-for f in prompts research interview-protocol agent-definitions; do
+for f in prompts research interview-protocol agent-definitions council; do
   curl -sSL "$BASE/skills/subagent-pool/assets/${f}.md" -o ~/.claude/skills/subagent-pool/assets/${f}.md
 done
 mkdir -p ~/.claude/agents
-for agent in planning-agent implement-agent review-agent AgentArchitect; do
+for agent in planning-agent implement-agent review-agent AgentArchitect \
+             council-spec council-architect council-lateral council-risk; do
   curl -sSL "$BASE/agents/${agent}.agent.md" -o ~/.claude/agents/${agent}.agent.md
 done
 ```
@@ -195,6 +198,7 @@ Orquestacion_Agentes_claude/
 │   ├── implement-agent.agent.md       # Implementa código y tests por fase
 │   ├── review-agent.agent.md          # Revisa y valida cada fase
 │   ├── AgentArchitect.agent.md        # Diseña equipos de agentes nuevos
+│   ├── council-*.agent.md             # Consejo de plan: spec, architect, lateral, risk
 │   └── optional/
 │       └── codex-agent.agent.md       # Puente opcional a OpenAI Codex
 └── skills/
@@ -242,6 +246,7 @@ graphify install            # registra el skill en Claude Code
 | [prompts.md](skills/subagent-pool/assets/prompts.md) | Plantillas de tarea y contratos de retorno |
 | [agent-definitions.md](skills/subagent-pool/assets/agent-definitions.md) | Roles, reglas de delegación y solución de problemas |
 | [interview-protocol.md](skills/subagent-pool/assets/interview-protocol.md) | Protocolo completo para diseñar equipos (AgentArchitect) |
+| [council.md](skills/subagent-pool/assets/council.md) | Consejo de plan: rondas, límites de mensajes, modo por archivos |
 | [research.md](skills/subagent-pool/assets/research.md) | Evidencia y fuentes de cada regla |
 | [codex-modes.md](skills/subagent-pool/assets/codex-modes.md) | Recetas de `debug` (Docker) y `browser` (Chrome de Flatpak) |
 | [skills-library.md](skills/subagent-pool/assets/skills-library.md) | Biblioteca de skills revisadas y revisión con gate |

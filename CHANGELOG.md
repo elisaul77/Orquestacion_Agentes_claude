@@ -1,5 +1,40 @@
 # Changelog
 
+## v9.9.0 — 2026-10-17 · Plan council: the plan is built by a team that debates
+
+The plan decides most of the outcome, so for tier L it is no longer one agent's job.
+
+Tested on Claude Code 2.1.302 with `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`:
+- Agents spawned with `Agent(name=…)` message each other directly with `SendMessage`, without the main session passing anything along. This worked headless and in an interactive session.
+- Agents whose `tools:` list leaves out `SendMessage` cannot send messages.
+- A member that shells out to `codex exec` brings Codex into the debate. In the test, Codex proposed a calendar-subscription share and the architect objected that a bearer URL can't be revoked per viewer.
+
+Changes:
+- **Plan level** is chosen together with the tier and the operation:
+  - `single`: planning-agent, as before.
+  - `duo`: architect + lateral.
+  - `council`: four members. Used for tier L, or any tier that touches security, a public API, data or money.
+- **Four council agents**, each with `SendMessage` in its tools:
+  - `council-spec`: testable acceptance criteria, edge cases, non-goals.
+  - `council-architect`: phases from the real code; it is also the synthesizer.
+  - `council-lateral`: four fixed questions (don't build it / half the parts / false assumption / inversion). It asks Codex first when `CODEX: on`.
+  - `council-risk`: what breaks, and how each claim gets proven.
+- **Rounds (`assets/council.md`):**
+  - R1: each member writes a blind draft.
+  - R2a/R2b: one debate round in two parts, at most one objection per draft and one reply per objection. `debate.log` is the source of truth, not the inbox, so messages that arrive late are never lost.
+  - R3: the architect writes `plans/{task}-draft.md` plus `decisions.md`, a decision record that lists every lateral idea and every open disagreement. `NEED_CLARIFICATION` goes back to the user, then R3 runs again.
+  - At duo level the architect also writes the acceptance criteria and the top risks.
+- **The Conductor is a clock, not a postman.** It only sends the round signals R2 and R3, and content never passes through it. When the teams flag is off, the same rounds run through files.
+- `SKILL.md` §5b, `prompts.md` §11, `allowed-tools` gains `Agent` and `SendMessage`.
+- `sync_codex_agents.py` skips the `council-*` agents, because they need Claude's SendMessage.
+- `doctor.py` warns when the council agents are missing or lack SendMessage in their frontmatter, and when the teams flag is unset.
+- Codex cross-review found 4 bugs before release, all fixed:
+  - R2 could close with replies still in flight.
+  - Duo synthesis required files that don't exist at that level.
+  - doctor matched `SendMessage` in descriptions instead of the `tools:` list.
+  - R3 had no path for `NEED_CLARIFICATION`.
+- Tests: `test_council.py`, plus doctor and sync tests (181 total).
+
 ## v9.8.0 — 2026-10-17 · Codex coordinate mode, Codex roles synced from our agents
 
 Tests run against Codex CLI 0.160:

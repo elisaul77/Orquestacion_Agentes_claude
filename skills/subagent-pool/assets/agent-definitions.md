@@ -37,6 +37,7 @@ flowchart LR
 | planning-agent | `planning-agent` | sonnet | Read, Glob, Grep, Bash (graphify + inspection), WebSearch, WebFetch, Write (plans/ only) | ❌ | `🤖 [planning-agent] Investigating...` |
 | implement-agent | `implement-agent` | sonnet | Read, Edit, Write, Glob, Grep, Bash | ✅ | `🤖 [implement-agent] Running Phase {N}...` |
 | review-agent | `review-agent` | sonnet | Read, Glob, Grep, Bash (read-only) | ❌ | `🤖 [review-agent] Reviewing Phase {N}...` |
+| council-spec · council-architect · council-lateral · council-risk | same | sonnet | Read, Write, Glob, Grep, Bash, **SendMessage** (+ WebSearch/WebFetch for architect) | council folder only · architect also writes `plans/{task}-draft.md` | `🧭` `🏛️` `🌀` `⚠️ [council-…]` |
 | AgentArchitect | `AgentArchitect` | **opus** | Read, Write, Glob, Grep, Bash | `plans/team-*.md` (design) · new `.claude/agents/*.agent.md` (generate, after approval, never overwrite) | `🏗️ [AgentArchitect] Designing team...` |
 
 > Optional `codex-agent` has no fixed model: `scripts/codex-models.py` resolves the Codex slug per role from `~/.codex/models_cache.json` (latest version per family, 14-day freshness; fallback = Codex default).

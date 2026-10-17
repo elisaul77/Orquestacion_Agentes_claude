@@ -106,5 +106,24 @@ class DoctorTest(unittest.TestCase):
         self.assertEqual(self.status(res, "remote nonexistent.invalid"), "fail")
 
 
+    def test_council_agents_and_teams_flag(self):
+        os.environ.pop(doctor.TEAMS_FLAG, None)
+        res = doctor.run_checks()
+        self.assertEqual(self.status(res, "council agents"), "warn")
+        self.assertEqual(self.status(res, "agent-teams flag"), "warn")
+        for a in doctor.COUNCIL_AGENTS:
+            (self.home / ".claude/agents" / f"{a}.agent.md").write_text(f"---\nname: {a}\ntools: [Read, SendMessage]\n---\nbody\n")
+        (self.home / ".claude/settings.json").write_text(json.dumps({"env": {doctor.TEAMS_FLAG: "1"}}))
+        res = doctor.run_checks()
+        self.assertEqual(self.status(res, "council agents"), "ok")
+        self.assertEqual(self.status(res, "agent-teams flag"), "ok")
+        # SendMessage mentioned only in the description or body does not count
+        (self.home / ".claude/agents/council-risk.agent.md").write_text(
+            "---\nname: council-risk\ndescription: debates with SendMessage\ntools: [Read, Write]\n---\nuse SendMessage\n")
+        res = doctor.run_checks()
+        self.assertEqual(self.status(res, "council agents"), "warn")
+        self.assertIn("council-risk", next(r for r in res if r["check"] == "council agents")["detail"])
+
+
 if __name__ == "__main__":
     unittest.main()
