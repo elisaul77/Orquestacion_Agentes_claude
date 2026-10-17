@@ -1,5 +1,27 @@
 # Changelog
 
+## v9.8.0 — 2026-10-17 · Codex coordinate mode, Codex roles synced from our agents
+
+Tests run against Codex CLI 0.160:
+- A `codex exec` session can spawn sub-agents (`collaboration.spawn_agent`), in parallel.
+- Sub-agents can use our custom roles and can nest.
+- A role file created mid-session is usable on the next `codex exec`, with no restart.
+- `agents.max_depth` / `agents.max_threads` had no effect (0 and 1 still spawned).
+- Instance names must be lowercase letters, digits and `_`.
+
+Changes:
+- **`codex-agent mode=coordinate`:** the Conductor hands Codex 2+ independent phases or a sub-domain. Codex fans out to its roles and returns one report with a new required `subagents` key, and `review-agent` (Claude) still reviews every phase. Limits (≤3 sub-agents, no nesting) are set in the brief and checked against `subagents`.
+- **`scripts/sync_codex_agents.py`** mirrors `*.agent.md` into `~/.codex/agents/*.agent.toml` (name, description, developer_instructions). It writes a hash marker and has a `--check` mode, never overwrites files it didn't generate, and skips `codex-agent`. The TOML is validated with `tomllib` on Python 3.13.
+- **`doctor.py`** warns when Codex roles drift from our agents. The first run found Codex's own 13-Oct import (review-agent v3.1) stale.
+- **AgentArchitect** `mode=generate` with `CODEX: on` also syncs the new roles, so a new team can run in Codex the same day while Claude waits for the restart (`CODEX_ROLES`).
+- Hardening from the Claude + Codex cross-review:
+  - TOML escapes every control character, both in strings and in multiline bodies.
+  - YAML block indicators `>+`, `|-` and `# comments` are parsed, keeping paragraph breaks and more-indented lines.
+  - `--check` fails on foreign files and on `--only` names that have no source agent.
+  - `doctor` flags missing roles even when `~/.codex/agents` doesn't exist.
+  - Coordinate mode checks that the schema has `subagents` before calling Codex.
+- Tests: `test_sync_codex_agents.py` plus doctor drift tests (176 total).
+
 ## v9.7.0 — 2026-10-17 · Evidence levels, criteria ledger, "not verified", trimmed output, doctor, mutation check, AgentArchitect v2
 
 Ideas from `morluto/rea` (evidence discipline), `DietrichGebert/ponytail` (say what wasn't checked) and `JuliusBrussee/caveman` (read less). Read, not installed.

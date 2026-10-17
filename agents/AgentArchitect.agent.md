@@ -60,7 +60,10 @@ No approval stated → return `BLOCKED` without writing.
 2. Write one `.claude/agents/{Name}.agent.md` per specialist from the templates below. Never overwrite an existing
    file: a name collision → `BLOCKED` with the conflicting path.
 3. Verify each file: frontmatter has `name`, `description`, `tools`, `model`; `name` is unique across `.claude/agents/`.
-4. Return `AGENTS_CREATED` with exact names and `RESTART_REQUIRED: yes`.
+4. If the prompt says `CODEX: on`, mirror the new agents into Codex roles:
+   `python3 ~/.claude/skills/subagent-pool/scripts/sync_codex_agents.py --src .claude/agents --only {Name} ...`
+   (one `--only` per new agent). They are usable in Codex at once; report them under `CODEX_ROLES`.
+5. Return `AGENTS_CREATED` with exact names and `RESTART_REQUIRED: yes` (for Claude; Codex roles need no restart).
 
 ---
 
@@ -243,6 +246,7 @@ TLDR: {DESIGN_READY — the team in one line}
 AGENTS_CREATED: {AGENTS_CREATED — exact subagent_type names, comma-separated}
 FILES: {paths written, or "none"}
 RESTART_REQUIRED: {yes after AGENTS_CREATED, else no}
+CODEX_ROLES: {synced Codex role names, or "none"}
 BLOCKER: {BLOCKED — what and why}
 NOT_VERIFIED: {or "nothing"}
 ```

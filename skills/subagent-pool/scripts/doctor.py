@@ -3,7 +3,8 @@
 
     python3 doctor.py [--repo PATH] [--remote HOST ...] [--json]
 
-Checks: installed skill version (and drift against --repo), the three core agents, optional codex-agent + codex CLI,
+Checks: installed skill version (and drift against --repo), the three core agents, optional codex-agent + codex CLI
+and whether its Codex roles (~/.codex/agents) match our agents,
 the cost hook in settings.json and whether the ledger is being written, the instincts store, and each --remote host
 over SSH (BatchMode, short timeout). Each failed check carries a suggested fix; nothing is applied.
 Exit code: 0 all OK, 1 if any check failed (warnings don't fail).
@@ -70,6 +71,15 @@ def run_checks(repo=None, remotes=(), now=None):
     res.append(check("codex (optional)", has_codex_agent and shutil.which("codex") is not None,
                      "agent + CLI" if has_codex_agent else "codex-agent not installed",
                      "optional: install codex CLI / codex-agent, the pool runs Claude-only without it", "warn"))
+    codex_roles = HOME / ".codex" / "agents"
+    if has_codex_agent:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import sync_codex_agents as sca
+        rows = sca.plan([claude / "agents"], codex_roles)
+        bad = [f"{n} ({a})" for n, a, _, _ in rows if a != "ok"]
+        res.append(check("codex roles in sync", not bad, ", ".join(bad) or f"{len(rows)} roles",
+                         "python3 ~/.claude/skills/subagent-pool/scripts/sync_codex_agents.py"
+                         " (foreign = Codex's own import: back it up and delete it first)", "warn"))
     settings = claude / "settings.json"
     try:
         hooked = "cost_tracker" in json.dumps(json.loads(settings.read_text()).get("hooks", {}))

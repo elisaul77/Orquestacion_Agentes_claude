@@ -89,7 +89,19 @@ class DoctorTest(unittest.TestCase):
         with mock.patch("doctor.shutil.which", return_value=None):
             self.assertEqual(self.status(doctor.run_checks(), "codex (optional)"), "warn")
 
-    def test_unreachable_remote_fails(self):
+    def test_codex_roles_drift_warns(self):
+        import sync_codex_agents as sca
+        c = self.home / ".claude/agents"
+        (c / "codex-agent.agent.md").write_text("---\nname: codex-agent\ndescription: x\n---\nb\n")
+        (c / "review-agent.agent.md").write_text("---\nname: review-agent\ndescription: r\n---\nbody\n")
+        roles = self.home / ".codex/agents"
+        self.assertEqual(self.status(doctor.run_checks(), "codex roles in sync"), "warn")  # dir absent
+        roles.mkdir(parents=True)
+        self.assertEqual(self.status(doctor.run_checks(), "codex roles in sync"), "warn")
+        sca.main(["--src", str(c), "--dest", str(roles)])
+        self.assertEqual(self.status(doctor.run_checks(), "codex roles in sync"), "ok")
+
+
         res = doctor.run_checks(remotes=["nonexistent.invalid"])
         self.assertEqual(self.status(res, "remote nonexistent.invalid"), "fail")
 
