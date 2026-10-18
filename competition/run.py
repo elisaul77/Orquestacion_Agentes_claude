@@ -52,7 +52,10 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
 KUNNA = Path(os.environ.get("KUNNA_REPO", "/home/elisaul77/Documentos/Docker/kunna"))
 IMAGE = os.environ.get("KUNNA_BENCH_IMAGE", "kunna-bench:1")
-ROUNDS = ("bug", "improve")
+ROUNDS = ("bug", "improve", "improve-orch")
+# Hidden test file each round is scored on (score.py HIDDEN_FILES key). improve-orch is the improve task
+# with an explicit orchestration request, so it is scored on the same hidden file as improve.
+HIDDEN_FOR_ROUND = {"bug": "bug", "improve": "improve", "improve-orch": "improve"}
 SEED = {"bug": HERE / "seed" / "bug.patch"}
 SNAPSHOT_PATHS = ("skills", "agents")
 EXCLUDED_DIRS = ("plans", ".claude", ".pytest_cache", "__pycache__")  # never in the judged diff

@@ -708,6 +708,46 @@ class CodexAndResultAccountingTest(unittest.TestCase):
         self.assertEqual(score.final_result([assistant(text("x"))]), {"present": False})
 
 
+class ImproveOrchRoundTest(unittest.TestCase):
+    ORCH_LINE = ("Orquesta esto con subagent-pool (procede sin project-context; "
+                 "el proyecto no tiene .claude/project-context.md):")
+
+    def plan(self, *argv):
+        return run.build_plan(run.parse_args(list(argv)))
+
+    def test_prompt_is_orchestration_line_then_byte_identical_improve_body(self):
+        orch = (HERE / "prompts" / "improve-orch.md").read_bytes()
+        improve = (HERE / "prompts" / "improve.md").read_bytes()
+        self.assertEqual(orch.split(b"\n", 2)[0].decode("utf-8"), self.ORCH_LINE)
+        self.assertEqual(orch.split(b"\n", 2)[1], b"")
+        self.assertEqual(orch.split(b"\n", 2)[2], improve)
+        self.assertEqual(orch, self.ORCH_LINE.encode("utf-8") + b"\n\n" + improve)
+
+    def test_round_is_accepted_and_scored_on_the_improve_hidden_file(self):
+        self.assertIn("improve-orch", run.ROUNDS)
+        self.assertEqual(run.HIDDEN_FOR_ROUND["improve-orch"], "improve")
+        self.assertEqual(run.HIDDEN_FOR_ROUND["improve"], "improve")
+        self.assertEqual(run.HIDDEN_FOR_ROUND["bug"], "bug")
+        self.assertIn(run.HIDDEN_FOR_ROUND["improve-orch"], score.HIDDEN_FILES)
+        self.assertEqual(set(run.HIDDEN_FOR_ROUND), set(run.ROUNDS))
+
+    def test_plan_uses_the_orch_prompt_and_no_seed(self):
+        p = self.plan("--system", "A", "--round", "improve-orch", "--run", "1", "--no-codex",
+                      "--claude-md", "--dry-run")
+        self.assertEqual(p["prompt"], (HERE / "prompts" / "improve-orch.md").read_text(encoding="utf-8"))
+        self.assertTrue(p["prompt"].startswith(self.ORCH_LINE + "\n\n"))
+        self.assertEqual(p["run_id"], "A-improve-orch-nocodex-cmd-1")
+        self.assertFalse(any("bug.patch" in c for c in p["kunna_cmds"]))
+
+    def test_cross_hidden_for_orch_round_is_the_bug_file(self):
+        base = {"hidden_bug::a": "passed", "hidden_improve::b": "passed"}
+        target = run.HIDDEN_FOR_ROUND["improve-orch"]
+        r = score.compare_to_baseline({"hidden_bug::a": "failed", "hidden_improve::b": "failed"},
+                                      base, target=target)
+        self.assertEqual(r["non_target_hidden"], "hidden_bug")
+        self.assertEqual(r["broken"], ["hidden_bug::a"])
+
+
 class TokenAccountingTest(unittest.TestCase):
     def test_sessions_are_summed_per_model_with_dedupe(self):
         msg = {"id": "m1", "model": "claude-test", "usage": {"input_tokens": 10, "output_tokens": 5,

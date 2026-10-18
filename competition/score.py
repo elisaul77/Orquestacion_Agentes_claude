@@ -362,7 +362,7 @@ def make_baseline(no_docker=False, force=False, kunna_ref="HEAD"):
 def run_checks(run_dir, meta, no_docker):
     """Hidden tests (both files) and regression for one run. Returns the score.json sections."""
     score_dir = run_dir / "score"
-    target = meta["round"]
+    target = bench_run.HIDDEN_FOR_ROUND[meta["round"]]
     tree, hidden_dir = prepare_tree(score_dir, run_dir / "kunna")
     if no_docker:
         return {"hidden": None, "regression": None}
