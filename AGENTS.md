@@ -76,7 +76,7 @@ flowchart LR
 
 | Skill | Trigger | Version |
 |-------|---------|---------|
-| `subagent-pool` | "delegate", "orchestrate", "conductor", "complex task" | 9.11 |
+| `subagent-pool` | "delegate", "orchestrate", "conductor", "complex task" | 9.12 |
 | `arquitec-dev-ia` | "create AGENTS.md", "document architecture", "structure for AI", "output style", "add rules", "prepare for orchestration" | 5.0 |
 | `graphify` | `/graphify` | — |
 
@@ -94,7 +94,7 @@ flowchart LR
 
 ---
 
-## Workflow v9.11
+## Workflow v9.12
 
 1. Conductor reads `.claude/project-context.md` (HALT and suggest `arquitec-dev-ia` if missing); offers to resume an unfinished `plans/*-state.md`
 2. Admission and triage: the mandatory first line for tier M/L is `Tier {S|M|L} · {operation} · {single|duo|council} · urgency {low|normal|high} · uncertainty {low|med|high} · risk {low|med|high} — {one-clause reason}`, e.g. `Tier M · fix · single · urgency normal · uncertainty high · risk low — cause unknown, auth module untouched`; tier S is `Tier S · fix — direct`; urgency never removes controls; the user can override it
@@ -103,6 +103,7 @@ flowchart LR
 5. The plan lands in `plans/{task}-draft.md` → ⏸️ **PAUSE** for approval
 6. Per phase: `implement-agent` → `review-agent` (contract-first + independent check); a NEEDS_REVISION routes by `FAILURE_ORIGIN` (implementation → implement-agent, max 2 loops; diagnosis → planning-agent; scope → re-triage); 3 re-routes per case in total, then the user decides
    - FAILED → consult the user first
+   - A NEEDS_REVISION finding is binding: the Conductor never drops, downgrades or defers it on its own; it re-delegates per FAILURE_ORIGIN or asks the user, who may accept it as a recorded risk
    - Approve-tier actions (delete, migrate, secrets, push/publish/deploy) → BLOCKED until the user approves
    - checkpoint `plans/{task}-state.md` (the case file); pause only on god nodes, approve-tier actions, FAILED or user request
 7. Close: VERIFIED, not DEPLOYED. The final report lists changed · verified · not done/risks · commit message; closing never authorizes publish or deploy

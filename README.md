@@ -5,8 +5,8 @@
 🌐 **English** · [Español](README.es.md)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-v9.11.0-blueviolet.svg)](CHANGELOG.md)
-[![Tests](https://img.shields.io/badge/tests-206%20passing-3fb950.svg)](#-tests)
+[![Version](https://img.shields.io/badge/version-v9.12.0-blueviolet.svg)](CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-228%20passing-3fb950.svg)](#-tests)
 [![Claude Code](https://img.shields.io/badge/brain-Claude%20Code-8a63f0.svg)](https://claude.com/claude-code)
 [![Codex](https://img.shields.io/badge/Codex-optional-412991.svg)](#optional-add-ons)
 
@@ -152,7 +152,7 @@ An interrupted task resumes from `plans/{task}-state.md`, and the Conductor offe
 | `planning-agent` | Scans the repo (graphify if present) and writes a phased plan | ❌ |
 | `council-spec` | Council: what "done" means, as testable criteria | ❌ |
 | `council-architect` | Council: phases over the real files; writes the final plan | ❌ |
-| `council-lateral` | Council: the non-obvious option (don't build it, half the parts, a false assumption) — asks Codex, or Opus without Codex | ❌ |
+| `council-lateral` | Council: the non-obvious option (don't build it, half the parts, a false assumption) — asks Codex, or Opus without Codex *(experimental — written and reviewed, not yet measured in real runs)* | ❌ |
 | `council-risk` | Council: what breaks, and how each claim will be proven | ❌ |
 | `implement-agent` | Implements one phase, test first | ✅ the only one |
 | `review-agent` | APPROVED / NEEDS_REVISION / FAILED, with evidence per criterion | ❌ |
@@ -175,7 +175,7 @@ Each agent's model is set in its own file (`model:`), and you decide it. The Con
 
 **2. Diagnosis with a falsifier.** `planning-agent`, in Diagnosis mode, returns facts, hypotheses, evidence, what is missing (project, specialist or user), the proposed intervention and a **falsifier**: the hypothesis plus the observation (a command and its expected result) that would disprove it. Two rounds without new evidence stop the loop.
 
-**3. Consult, or plan.** A **consult** is one specialist answering one bounded question (review-agent `mode=consult specialty=<x>`, or planning-agent for code facts). A **council** runs only when an **open important decision** remains after diagnosis.
+**3. Consult, or plan.** A **consult** is one specialist answering one bounded question (review-agent `mode=consult specialty=<x>`, or planning-agent for code facts) *(experimental — written and reviewed, not yet measured in real runs)*. A **council** runs only when an **open important decision** remains after diagnosis.
 
 | Plan level | When | Who |
 |---|---|---|
@@ -202,6 +202,8 @@ review ─► FAILURE_ORIGIN ─► implementation → implement-agent (max 2 lo
                          ─► scope          → re-triage
                          (3 re-routes per case in total, then you decide)
 ```
+
+*Routing by origin (`FAILURE_ORIGIN` and its re-routes): experimental — written and reviewed, not yet measured in real runs.* A finding in a NEEDS_REVISION is binding: the Conductor never drops, downgrades or defers it on its own. It re-delegates it or asks you, and you may accept it as a recorded risk.
 
 FAILED goes to you first. A checkpoint goes to `plans/{task}-state.md` after every approved phase.
 
@@ -268,6 +270,12 @@ Measurements on test tasks, from [`research.md`](skills/subagent-pool/assets/res
 
 The council's cost (about +4–6× a single plan) is still an estimate; see [What's missing](#%EF%B8%8F-whats-missing).
 
+### What was measured
+
+- **A/B bench** (`competition/`): 10 valid runs of 12 run dirs, equal outcomes between the versions. Every run is listed in [competition/RESULTS.md](competition/RESULTS.md). In one run v9.10 ignored a NEEDS_REVISION, which led to the binding-review rule (v9.12).
+- **Real use** (a Forja project and the Hospital case): the WARNINGS block, the no-git rule for the Conductor and the explicit-orchestration line (v9.12) come from there.
+- **Not measured yet:** FAILURE_ORIGIN routing, re-routes, consult and the lateral's second voice. They are experimental (labelled above).
+
 ---
 
 ## 🧪 Tests
@@ -276,7 +284,7 @@ The council's cost (about +4–6× a single plan) is still an estimate; see [Wha
 python3 -B -m unittest discover -s skills/subagent-pool/scripts
 ```
 
-**206 tests**, standard library only. Two are skipped on Python < 3.11 because they need `tomllib`.
+**228 tests**, standard library only. Two are skipped on Python < 3.11 because they need `tomllib`.
 
 | File | Tests | Covers |
 |---|---|---|
@@ -286,12 +294,12 @@ python3 -B -m unittest discover -s skills/subagent-pool/scripts
 | `test_trim_output.py` | 12 | Test-output trimming never drops a failure line (real unittest/pytest output) |
 | `test_cost_tracker.py` | 9 | Cost ledger: dedup of streamed ids, subagents, report |
 | `test_install.py` | 14 | Installer: dry run, settings merge without overwrite, backup, CLAUDE.md block, Codex add-on |
-| `test_doctor.py` | 9 | Install health check: drift, remotes, Codex roles, council, teams flag |
+| `test_doctor.py` | 10 | Install health check: drift, remotes, Codex roles, council, teams flag |
 | `test_sync_codex_agents.py` | 9 | Agent → Codex role sync: TOML escaping, YAML blocks, foreign files |
 | `test_instincts.py` | 4 | Per-project lessons store |
 | `test_mutate.py` | 4 | Mutation check runs in an isolated copy |
-| `test_council.py` | 4 | Council agents have `SendMessage`, and the protocol matches the skill |
-| `test_caseflow.py` | 10 | Case flow rules are written (structural only — not routing behavior) |
+| `test_council.py` | 5 | Council agents have `SendMessage`, and the protocol matches the skill |
+| `test_caseflow.py` | 30 | Case flow rules are written (structural only — not routing behavior) |
 
 `skill-review.sh` has no automated tests; its `--dry-run` prints every command without running it.
 
@@ -349,7 +357,7 @@ Orquestacion_Agentes_claude/
     │       ├── sync_codex_agents.py   # Agents → Codex roles
     │       ├── codex-models.py        # Latest Codex model per family
     │       ├── skills_lib.py · skill_prescan.py · skill-review.sh
-    │       ├── test_*.py              # 206 tests
+    │       ├── test_*.py              # 228 tests
     │       └── fixtures/
     ├── arquitec-dev-ia/               # AI context docs; writes project-context.md
     └── graphify/                      # Knowledge-graph skill
@@ -376,7 +384,7 @@ Orquestacion_Agentes_claude/
 
 ## 🗺️ What's missing
 
-- **Routing behavior is measured only by the A/B competition** (`competition/`, pending). The case-flow tests check that the rules are written, not that a model follows them.
+- **Routing is not measured yet.** The A/B bench ran 10 valid runs with equal outcomes ([competition/RESULTS.md](competition/RESULTS.md)), but FAILURE_ORIGIN routing, re-routes and consult are experimental: written and reviewed, not yet measured in real runs. The case-flow tests check that the rules are written, not that a model follows them.
 - **The council hasn't been measured on a real project yet.** We still need a run comparing a council plan with a single planner, and its real cost; +4–6× is an estimate.
 - **Agent teams are an experimental Claude Code flag** and may change. If they do, the council falls back to file mode.
 - **The container-2 reviewer hasn't run end to end** on a real skill.

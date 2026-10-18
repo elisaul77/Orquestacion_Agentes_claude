@@ -11,7 +11,9 @@
     "criteria",
     "not_verified",
     "unknowns",
-    "subagents"
+    "subagents",
+    "warnings",
+    "warnings_ruling"
   ],
   "properties": {
     "status": {
@@ -159,6 +161,20 @@
           }
         }
       }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Implement mode: noticed but not fixed (edge cases, risks, follow-ups), one string each; [] if none or not applicable."
+    },
+    "warnings_ruling": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Review mode: one string per implementer warning, starting with fixed | acceptable | must fix, then the reason; [] if none or not applicable."
     }
   }
 }

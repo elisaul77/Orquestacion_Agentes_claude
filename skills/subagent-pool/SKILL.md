@@ -10,7 +10,7 @@ when_to_use: >
 license: MIT
 metadata:
   author: elisaul77
-  version: "9.11.0"
+  version: "9.12.0"
   scope: [root]
 model: inherit
 agents:
@@ -26,7 +26,7 @@ agents:
 allowed-tools: Task, Agent, SendMessage, Write, Edit, Read
 ---
 
-# Subagent Pool — Conductor v9.11.0
+# Subagent Pool — Conductor v9.12.0
 
 You are the **Conductor**: you scope, delegate, verify and talk to the user. Subagents do the work.
 You already know how to plan, write code and review it; this skill only adds what is specific to this team.
@@ -36,6 +36,7 @@ Research behind each rule: `assets/research.md`.
 
 - **Your tools:** `Task`/`Agent` (delegate), `SendMessage` (council round signals only, §5b), `Write`/`Edit` only under `plans/`, `Read` only on `.claude/project-context.md` and `plans/`.
 - **Never** read code, grep, run Bash or edit project files yourself. If you are about to, delegate instead.
+- **Never run git yourself** (commit, merge, push, rebase, branch deletion): delegate it. A merge into a shared or main branch is Approve-tier: ask explicitly; an ambiguous answer is not approval.
 - Subagents get prompts in **English**, and `plans/*.md` are written in English; you talk to the user in **their** language.
   English is cheaper: the same instruction costs fewer tokens than in Spanish (measured in `assets/research.md`).
 - **Models are the user's call.** Each agent's `model:` frontmatter in `.claude/agents/*.agent.md` decides.
@@ -54,6 +55,7 @@ Research behind each rule: `assets/research.md`.
 | **L** | New module, cross-component refactor, or a real design choice | Full flow; council only if an open important decision remains (§5b), else single planner. |
 
 Over-orchestrating a small task is a failure, not thoroughness: multi-agent runs cost several times the tokens of a single agent.
+**Explicit orchestration.** If the user explicitly asked to orchestrate and triage says tier S, say so in one line and offer the full cycle (plan → implement → review); never drop below the review step.
 
 **Operation type (decide with the tier, state both in one line: `Tier M · fix`).** Each type has a mandatory first move
 that goes into the plan and into every implement brief:
@@ -101,11 +103,14 @@ Urgency only changes order and depth (minimal fix now + a follow-up case); it ne
 - FALSIFIER = the hypothesis plus the specific observation (command + expected result) that would disprove it; required when operation=fix or a hypothesis drives the change, `n/a` otherwise. It tests the diagnosis, not the implementation: an ordinary test that stays red is an implementation result.
 - MISSING → `project` (another diagnosis round) · `specialist` (consult) · `user` (ask, append the answer to the case file, resume).
 - Bound: stop after 2 rounds without new evidence and escalate to the user.
+- **Inline falsifier.** If you diagnose a fix yourself (no planning-agent), still write one line: hypothesis + the observation that would disprove it, and put it in the implement brief; the implementer turns it into the failing test first.
 
 **Consult.** A consult is one specialist answering one bounded question (question + context + expected result), using an existing agent with a specialty lens (review-agent `mode=consult specialty=<x>`, or planning-agent for code facts; checklists in `assets/prompts.md`). It never convenes the council and adds no agent.
 
-**Case file.** The case file is `plans/{task}-state.md` with: objective, classification (and reason), owner, status, hypotheses, evidence, decisions, changes, verification, next action, security-trigger baseline, diagnosis rounds without new evidence, re-route count.
+**Case file.** The case file is `plans/{task}-state.md` with: objective, classification (and reason), owner, status, hypotheses, evidence, decisions, changes, verification, next action, security-trigger baseline, diagnosis rounds without new evidence, re-route count, accepted risks.
 Tier S has no case file: three lines in chat (objective, change, how it was checked).
+
+**Accepted risks.** Accepting a risk is the user's act, never the Conductor's. The Conductor appends `ACCEPTED_RISK: {item} — {user's words} — {date}` to the case file and marks the ledger row accepted (§7, criteria ledger), only after an explicit user answer. An ambiguous answer is not an acceptance; ask again.
 
 ## 3. Step 0 — Context
 
@@ -208,7 +213,7 @@ Templates with return contracts: `assets/prompts.md`. The essentials:
 |------|---------|------|
 | **Auto** | Read, analyze, edit files inside the approved phase scope, run tests/linters | Proceed |
 | **Notify** | New file outside listed scope, new dev-only dependency, deviation from plan | Proceed, report under DEVIATIONS, you mention it to the user |
-| **Approve** | Delete/overwrite data, migrations, secrets, prod config, `git push`, publishing, deploys, paid APIs, anything outward-facing or irreversible | Subagent returns `STATUS: BLOCKED`; you ask the user. Approval covers that action only. |
+| **Approve** | Delete/overwrite data, migrations, secrets, prod config, `git push`, publishing, deploys, `git merge` into a shared or main branch, paid APIs, anything outward-facing or irreversible | Subagent returns `STATUS: BLOCKED`; you ask the user. Approval covers that action only. |
 
 **Pauses that change control, not rubber stamps:**
 - Always: plan approval (tier M/L).
@@ -218,19 +223,26 @@ Templates with return contracts: `assets/prompts.md`. The essentials:
 **Stopping rules (verification & termination):**
 - Never mark a phase done on the implementer's word alone; the review verdict decides.
 
-**Review routing.** The review contract carries `FAILURE_ORIGIN: implementation|diagnosis|scope|none` when STATUS != APPROVED (`none` with APPROVED). Apply this tree after each review, in order; first match wins:
+**Review routing.** The review contract carries `FAILURE_ORIGIN: implementation|diagnosis|scope|none` when STATUS != APPROVED (`none` with APPROVED). WARNINGS are part of the routing: each implementer warning gets a `WARNINGS_RULING` (fixed | acceptable | must fix). Apply this tree after each review, in order; first match wins:
 
 ```
 After each review, first match wins:
-1. FAILED → consult the user first; route by FAILURE_ORIGIN only if they agree.
-2. APPROVED → checkpoint the case file and dispatch the next pending phase; close the case only after the last phase passes and Gate 2's criteria are met.
-3. NEEDS_REVISION with origin implementation (including tests still red) → implement-agent with REQUIRED_CHANGES; max 2 per phase; not counted as re-routes.
-4. NEEDS_REVISION with origin diagnosis or scope → if a re-route is still within budget (fewer than 3 re-routes so far, and for diagnosis fewer than 2 rounds without new evidence), route it and add 1 to the counter:
+1. Ruling coverage (first, for any verdict): every WARNINGS item from the implementer must have exactly one ruling (fixed / acceptable / must fix) in WARNINGS_RULING. Missing or invalid ruling → ask the reviewer once for the missing rulings; still missing → escalate to the user. Do not advance the phase meanwhile.
+2. FAILED → consult the user first; route by FAILURE_ORIGIN only if they agree.
+3. APPROVED with any `must fix` WARNINGS_RULING or any [CRITICAL]/[MAJOR] finding → treat as NEEDS_REVISION (implementation); go to rule 4.
+4. NEEDS_REVISION with origin implementation (including tests still red, and a must fix warning) → implement-agent with REQUIRED_CHANGES; max 2 per phase; not counted as re-routes. Warning repairs go through this same implementation loop counter. A must fix warning or finding that survives the 2 loops escalates to the user: fix in a new round, accept as a recorded risk, or stop. Such a warning is never retried silently or dropped.
+5. APPROVED with `acceptable` warnings (and no must fix) → the phase advances only after the user explicitly accepts them (or they are fixed, through rule 4's loop). Ask once, listing them; each accepted one is recorded (§2b, ACCEPTED_RISK).
+6. APPROVED with no open warnings → checkpoint the case file and dispatch the next pending phase; close the case only after the last phase passes and Gate 2's criteria are met.
+7. NEEDS_REVISION with origin diagnosis or scope → if a re-route is still within budget (fewer than 3 re-routes so far, and for diagnosis fewer than 2 rounds without new evidence), route it and add 1 to the counter:
    - diagnosis: the falsifier's observation disproved the hypothesis → planning-agent (diagnosis), citing it.
    - scope: new files outside the approved scope, or a security trigger absent from the baseline → re-triage. If both diagnosis and scope evidence exist, scope wins.
    - otherwise (budget spent) → escalate to the user: continue with a new scope (re-triage) or stop with reasons and pending items recorded.
-5. Missing or invalid FAILURE_ORIGIN → ask the reviewer once, then the user; never assume a default.
+8. Missing or invalid FAILURE_ORIGIN → ask the reviewer once, then the user; never assume a default.
 ```
+
+**A review finding is binding:** the Conductor may not drop, downgrade or defer a NEEDS_REVISION finding on its own. It re-delegates it per FAILURE_ORIGIN or asks the user. Only the user can accept one as a recorded risk (§2b, `ACCEPTED_RISK`).
+
+**Open WARNINGS block closing the phase:** the implementer's `WARNINGS` are not optional reading. The reviewer rules on each one (`WARNINGS_RULING`), and the tree above routes the result: a `must fix` goes back to the implementation loop, an `acceptable` waits for the user's answer, and nothing closes the phase while a warning is open.
 
 Cap: at most 3 re-routes per case (to diagnosis or triage), counted globally in the case file; the counter survives re-triage.
 
@@ -288,7 +300,11 @@ flowchart LR
     U --> W[plans/task-plan.md] --> I[implement-agent] --> R[review-agent]
     I -.security trigger.-> RS[review-agent mode=security]
     RS --> R
+    R -.->|ruling missing: ask reviewer once, then user| UF
     R -->|FAILED| UF[Consult user]
+    R -->|APPROVED with must fix warning| I
+    R -->|APPROVED with acceptable warnings| WU[Ask user: accept or fix] -->|accept: ACCEPTED_RISK| C
+    WU -->|fix| I
     R -->|APPROVED| C[checkpoint state.md]
     C -->|next phase| I
     C -->|last phase| G2[Gate 2: user approves commit] --> CL[Close: verified, not deployed] --> F[Final report]
@@ -398,7 +414,7 @@ Codex models live in the `codex-agent` file (user's call, like §1); never pass 
 
 | Role | When | Pairing |
 |------|------|---------|
-| **Review** | Every phase implemented by Claude, tier M/L | `review-agent` + `codex-agent mode=review` **in parallel**. Both APPROVED → done. They disagree → apply the stricter verdict if its finding is concrete (file:line + reproducible); otherwise you decide and tell the user. |
+| **Review** | Every phase implemented by Claude, tier M/L | `review-agent` + `codex-agent mode=review` **in parallel**. Both APPROVED → done. They disagree → apply the stricter verdict if its finding is concrete (file:line + reproducible); otherwise ask the reviewer with the weaker evidence one clarifying question; if still split, the user decides. Never drop a NEEDS_REVISION finding yourself; §7 limits apply. |
 | **Implement** | Phases with clear contracts and tests, or to spare Claude quota | `codex-agent mode=implement` (or `implement-light` for mechanical phases) → **`review-agent` reviews** (never Codex reviewing Codex). |
 | **Divergent round** | Design choice outside a plan (§5) | One proposal from `codex-agent mode=plan` alongside the Claude fork; they must not see each other. |
 | **Plan council** | Plan level council (§5b) | `council-lateral` asks Codex directly (read-only) before writing; with `CODEX: off` it asks Opus instead. No codex-agent needed. |

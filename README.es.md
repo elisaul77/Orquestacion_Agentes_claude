@@ -5,8 +5,8 @@
 🌐 [English](README.md) · **Español**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-v9.11.0-blueviolet.svg)](CHANGELOG.md)
-[![Tests](https://img.shields.io/badge/tests-206%20passing-3fb950.svg)](#-tests)
+[![Version](https://img.shields.io/badge/version-v9.12.0-blueviolet.svg)](CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-228%20passing-3fb950.svg)](#-tests)
 [![Claude Code](https://img.shields.io/badge/brain-Claude%20Code-8a63f0.svg)](https://claude.com/claude-code)
 [![Codex](https://img.shields.io/badge/Codex-opcional-412991.svg)](#complementos-opcionales)
 
@@ -152,7 +152,7 @@ Si una tarea se interrumpe, se retoma desde `plans/{task}-state.md`; el Conducto
 | `planning-agent` | Explora el repo (con graphify si lo hay) y escribe un plan por fases | ❌ |
 | `council-spec` | Consejo: qué significa "listo", en criterios que se puedan probar | ❌ |
 | `council-architect` | Consejo: fases sobre los archivos reales; escribe el plan final | ❌ |
-| `council-lateral` | Consejo: la opción no obvia (no construirlo, la mitad de piezas, un supuesto falso) — consulta a Codex, o a Opus sin Codex | ❌ |
+| `council-lateral` | Consejo: la opción no obvia (no construirlo, la mitad de piezas, un supuesto falso) — consulta a Codex, o a Opus sin Codex *(experimental — escrito y revisado, aún no medido en ejecuciones reales)* | ❌ |
 | `council-risk` | Consejo: qué se rompe y cómo se demostrará cada afirmación | ❌ |
 | `implement-agent` | Implementa una fase, empezando por el test | ✅ el único |
 | `review-agent` | APPROVED / NEEDS_REVISION / FAILED, con evidencia para cada criterio | ❌ |
@@ -175,7 +175,7 @@ El modelo de cada agente se define en su propio archivo (`model:`) y lo decides 
 
 **2. Diagnóstico con falsador.** `planning-agent`, en modo Diagnóstico, devuelve hechos, hipótesis, evidencia, lo que falta (proyecto, especialista o usuario), la intervención propuesta y un **falsador**: la hipótesis más la observación (un comando y su resultado esperado) que la desmentiría. Dos rondas sin evidencia nueva detienen el bucle.
 
-**3. Consultar o planificar.** Una **consulta** es un especialista que responde a una pregunta acotada (review-agent `mode=consult specialty=<x>`, o planning-agent para hechos de código). El **consejo** solo se convoca cuando, tras el diagnóstico, queda abierta una decisión importante (open important decision).
+**3. Consultar o planificar.** Una **consulta** es un especialista que responde a una pregunta acotada (review-agent `mode=consult specialty=<x>`, o planning-agent para hechos de código) *(experimental — escrito y revisado, aún no medido en ejecuciones reales)*. El **consejo** solo se convoca cuando, tras el diagnóstico, queda abierta una decisión importante (open important decision).
 
 | Nivel de plan | Cuándo | Quién |
 |---|---|---|
@@ -202,6 +202,8 @@ review ─► FAILURE_ORIGIN ─► implementation → implement-agent (máx. 2 
                          ─► scope          → nuevo triage
                          (3 re-enrutamientos por caso en total, después decides tú)
 ```
+
+*Ruteo según el origen (`FAILURE_ORIGIN` y sus re-enrutamientos): experimental — escrito y revisado, aún no medido en ejecuciones reales.* Un hallazgo de un NEEDS_REVISION es vinculante: el Conductor nunca lo descarta, lo rebaja ni lo aplaza por su cuenta. Lo vuelve a delegar o te pregunta, y puedes aceptarlo como riesgo registrado.
 
 FAILED va primero a ti. Cada fase aprobada se guarda en `plans/{task}-state.md`.
 
@@ -268,6 +270,12 @@ Son mediciones sobre tareas de prueba, sacadas de [`research.md`](skills/subagen
 
 El coste del consejo (entre 4 y 6 veces el de un plan simple) todavía es una estimación; mira [Lo que falta](#%EF%B8%8F-lo-que-falta).
 
+### Qué se midió
+
+- **Banco A/B** (`competition/`): 10 ejecuciones válidas de 12 directorios de ejecución, resultados iguales entre versiones. Cada ejecución está listada en [competition/RESULTS.md](competition/RESULTS.md). En una, la v9.10 ignoró un NEEDS_REVISION, y de ahí salió la regla de revisión vinculante (v9.12).
+- **Uso real** (un proyecto de Forja y el caso del Hospital): el bloque de WARNINGS, la regla de no ejecutar git por parte del Conductor y la línea de orquestación explícita (v9.12) salen de ahí.
+- **Aún sin medir:** el enrutamiento por FAILURE_ORIGIN, los re-enrutamientos, la consulta y la segunda voz del lateral. Son experimentales (marcados arriba).
+
 ---
 
 ## 🧪 Tests
@@ -276,7 +284,7 @@ El coste del consejo (entre 4 y 6 veces el de un plan simple) todavía es una es
 python3 -B -m unittest discover -s skills/subagent-pool/scripts
 ```
 
-**206 tests**, solo con la biblioteca estándar. Dos se saltan en Python < 3.11 porque necesitan `tomllib`.
+**228 tests**, solo con la biblioteca estándar. Dos se saltan en Python < 3.11 porque necesitan `tomllib`.
 
 | Archivo | Tests | Qué cubre |
 |---|---|---|
@@ -286,12 +294,12 @@ python3 -B -m unittest discover -s skills/subagent-pool/scripts
 | `test_trim_output.py` | 12 | El recorte de la salida de tests nunca pierde una línea de fallo (con salida real de unittest y pytest) |
 | `test_cost_tracker.py` | 9 | Registro de costes: deduplicación de ids en streaming, subagentes, informe |
 | `test_install.py` | 14 | Instalador: dry run, fusión de settings sin sobrescribir, copia de seguridad, bloque de CLAUDE.md, complemento Codex |
-| `test_doctor.py` | 9 | Chequeo de instalación: desajustes, equipos remotos, roles de Codex, consejo, bandera de equipos |
+| `test_doctor.py` | 10 | Chequeo de instalación: desajustes, equipos remotos, roles de Codex, consejo, bandera de equipos |
 | `test_sync_codex_agents.py` | 9 | Sincronización de agentes a roles de Codex: escapado TOML, bloques YAML, archivos ajenos |
 | `test_instincts.py` | 4 | Almacén de lecciones por proyecto |
 | `test_mutate.py` | 4 | La prueba de mutación corre en una copia aislada |
-| `test_council.py` | 4 | Los agentes del consejo tienen `SendMessage` y el protocolo coincide con la skill |
-| `test_caseflow.py` | 10 | Las reglas del flujo de casos están escritas (solo estructura, no comportamiento de enrutamiento) |
+| `test_council.py` | 5 | Los agentes del consejo tienen `SendMessage` y el protocolo coincide con la skill |
+| `test_caseflow.py` | 30 | Las reglas del flujo de casos están escritas (solo estructura, no comportamiento de enrutamiento) |
 
 `skill-review.sh` no tiene tests automáticos; su `--dry-run` imprime todos los comandos sin ejecutarlos.
 
@@ -349,7 +357,7 @@ Orquestacion_Agentes_claude/
     │       ├── sync_codex_agents.py   # Agentes → roles de Codex
     │       ├── codex-models.py        # Modelo de Codex más reciente por familia
     │       ├── skills_lib.py · skill_prescan.py · skill-review.sh
-    │       ├── test_*.py              # 206 tests
+    │       ├── test_*.py              # 228 tests
     │       └── fixtures/
     ├── arquitec-dev-ia/               # Documentación de contexto para IA; escribe project-context.md
     └── graphify/                      # Skill de grafo de conocimiento
@@ -376,7 +384,7 @@ Orquestacion_Agentes_claude/
 
 ## 🗺️ Lo que falta
 
-- **El enrutamiento solo se mide con la competición A/B** (`competition/`, pendiente). Los tests del flujo de casos comprueban que las reglas están escritas, no que un modelo las siga.
+- **El enrutamiento aún no se mide.** El banco A/B hizo 10 ejecuciones válidas con resultados iguales ([competition/RESULTS.md](competition/RESULTS.md)), pero el enrutamiento por FAILURE_ORIGIN, los re-enrutamientos y la consulta son experimentales: escritos y revisados, aún no medidos en ejecuciones reales. Los tests del flujo de casos comprueban que las reglas están escritas, no que un modelo las siga.
 - **El consejo aún no se ha medido en un proyecto real.** Falta comparar un plan del consejo con el de un solo planner y medir su coste real; lo de 4 a 6 veces es una estimación.
 - **Los equipos de agentes son una bandera experimental de Claude Code** y pueden cambiar. Si cambian, el consejo pasa al modo por archivos.
 - **El revisor del contenedor 2 no se ha ejecutado de principio a fin** con una skill real.

@@ -1,6 +1,21 @@
 # Changelog
 
-## v9.11.0 — 2026-10-17 · Case flow: admission, four-axis triage, diagnosis, review routing
+## v9.12.0 — 2026-10-18 · Binding reviews, warnings, no git by the Conductor
+
+This release also ships the v9.11.0 case flow (below), which was never published. The changes come from the A/B bench in `competition/` and from two real conversations (a Forja project and the Hospital case). The animated flow is in `docs/proposals/flujo-v9-12.html`.
+
+- **M1 Binding review.** A NEEDS_REVISION finding can't be dropped, downgraded or deferred by the Conductor on its own. It is re-delegated per `FAILURE_ORIGIN`, or the user accepts it as a recorded risk. The bench showed v9.10 ignoring one.
+- **M2 Warnings.** implement-agent returns `WARNINGS:` (noticed but not fixed). review-agent rules on each one (`WARNINGS_RULING`: fixed | acceptable | must fix). The decision tree (SKILL §7) routes them: an APPROVED with a `must fix` becomes NEEDS_REVISION; an `acceptable` waits for the user, who accepts it or sends it back to the fix loop. Warning repairs share the 2-loop limit per phase, and a `must fix` that survives escalates to the user. An accepted risk is written to the case file as `ACCEPTED_RISK: {item} — {user's words} — {date}`, only after an explicit answer. The Codex verdict schema gains `warnings` and `warnings_ruling`.
+- **M3 No git from the Conductor.** Commit, merge, push, rebase and branch deletion are delegated. A merge into a shared or main branch is Approve-tier, and an ambiguous answer is not approval.
+- **M4 Inline falsifier.** When the Conductor diagnoses a fix without planning-agent, it still writes the hypothesis and the observation that would disprove it; the implementer turns it into the failing test first.
+- **M5 Explicit orchestration.** If the user asks to orchestrate and triage says tier S, the Conductor says so in one line and offers the full cycle. It never drops below the review step.
+- **M6 Doctor flags stale copies.** doctor reports old copies of the skill, such as `~/.agents` left at v9.5.
+- **M7 Experimental labels.** FAILURE_ORIGIN routing and re-routes, consult mode and the lateral's second voice are labelled "experimental — written and reviewed, not yet measured in real runs". The READMEs gain a "What was measured" note.
+- **M8 Bench scorer fixes** (`competition/score.py`). No false positive for the council; reads `VERDICT: APPROVED` lines; handles multiple final result records instead of taking the last one. Token usage is summed across the result records; cost stays the max, since it is cumulative.
+- **The A/B bench (`competition/`)** is in the repo: 10 valid runs of 12 run dirs, equal outcomes between versions. Every run is listed in `competition/RESULTS.md`, with B's pins per round. Routing is still not measured in real runs.
+- Tests: 228 in total, 2 skipped. `test_caseflow.py` has 30, of which 15 are new for v9.12 (M1–M5, M7, and M8–M16 for the review fixes). `competition/test_bench.py` has 98 (the scorer's usage sum, and the RESULTS.md checks: every run dir has a row, the valid count matches the docs). They are structural: they prove the rules are written, not that a model routes correctly.
+
+## v9.11.0 — unreleased, folded into v9.12.0 · Case flow: admission, four-axis triage, diagnosis, review routing
 
 The Conductor now works a task as a case: it triages on four axes, diagnoses before it plans, and routes each failed review by where the failure came from.
 

@@ -6,6 +6,7 @@
 import contextlib
 import io
 import json
+import re
 import signal
 import subprocess
 import sys
@@ -941,6 +942,106 @@ class PinV911Test(unittest.TestCase):
         text_b = subprocess.run(run.git("show", f"{B_PIN}:skills/subagent-pool/SKILL.md"),
                                 capture_output=True, text=True, check=True).stdout
         self.assertEqual(run.VERSION_RE.search(text_b).group(1), "9.11.0")
+
+
+class ScorerFixes912Test(unittest.TestCase):
+    """v9.12 scorer fixes: council means a council spawn; verdicts accept VERDICT:; result records aggregate."""
+
+    def test_send_message_to_an_implementer_is_not_a_council(self):
+        recs = [assistant(tool("Agent", subagent_type="implement-agent"), tool("SendMessage", to="implement-agent"))]
+        self.assertFalse(score.transcript_facts(recs)["council_convened"])
+
+    def test_council_spawn_by_agent_or_task_counts_and_team_create_counts(self):
+        self.assertTrue(score.transcript_facts([assistant(tool("Agent", subagent_type="council-risk"))])["council_convened"])
+        self.assertTrue(score.transcript_facts([assistant(tool("Task", subagent_type="council-spec"))])["council_convened"])
+        self.assertTrue(score.transcript_facts([assistant(tool("TeamCreate", team_name="plan"))])["council_convened"])
+
+    def test_review_verdict_accepts_verdict_prefix_and_markdown_variants(self):
+        def use(uid):
+            return {"type": "tool_use", "id": uid, "name": "Agent", "input": {"subagent_type": "review-agent"}}
+
+        def verdict(body):
+            recs = [{"type": "assistant", "message": {"content": [use("r1")]}},
+                    {"type": "user", "message": {"content": [
+                        {"type": "tool_result", "tool_use_id": "r1", "content": body}]}}]
+            return score.review_facts(recs)["verdicts"][0]["status"]
+
+        self.assertEqual(verdict("Checks ran.\nVERDICT: APPROVED\nFAILURE_ORIGIN: none\n"), "APPROVED")
+        self.assertEqual(verdict("**VERDICT: NEEDS_REVISION**\n"), "NEEDS_REVISION")
+        self.assertEqual(verdict("## VERDICT: FAILED\n"), "FAILED")
+        self.assertEqual(verdict("STATUS: **APPROVED**\n"), "APPROVED")
+        self.assertEqual(verdict("**STATUS:** APPROVED\n"), "APPROVED")
+        self.assertEqual(verdict("VERDICT: APPROVED | NEEDS_REVISION | FAILED\n"), "missing")  # template line
+        self.assertEqual(verdict("no verdict line here\n"), "missing")
+
+    def test_multiple_result_records_aggregate(self):
+        recs = [
+            {"type": "result", "total_cost_usd": 0.2, "usage": {"input_tokens": 5}, "num_turns": 1, "is_error": False},
+            {"type": "result", "total_cost_usd": 0.7, "usage": {"input_tokens": 9}, "num_turns": 2, "is_error": False},
+        ]
+        r = score.final_result(recs)
+        self.assertEqual(r["result_records"], 2)
+        self.assertEqual(r["num_turns"], 3)  # summed across records
+        self.assertEqual(r["total_cost_usd"], 0.7)  # cumulative: the record with the max cost
+        self.assertEqual(r["usage"]["input_tokens"], 14)  # usage is summed across records (5 + 9)
+
+    def test_single_result_record_keeps_its_values(self):
+        r = score.final_result([{"type": "result", "total_cost_usd": 0.5, "num_turns": 4}])
+        self.assertEqual((r["result_records"], r["num_turns"], r["total_cost_usd"]), (1, 4, 0.5))
+
+    def test_multi_result_usage_is_summed_across_records(self):
+        # Multi-result shape seen in real runs: each record reports its own output tokens (4281 + 55 + 2059).
+        recs = [
+            {"type": "result", "total_cost_usd": 0.1, "usage": {"input_tokens": 3, "output_tokens": 4281}, "num_turns": 1},
+            {"type": "result", "total_cost_usd": 0.2, "usage": {"input_tokens": 1, "output_tokens": 55}, "num_turns": 1},
+            {"type": "result", "total_cost_usd": 0.3, "usage": {"input_tokens": 2, "output_tokens": 2059}, "num_turns": 1},
+        ]
+        r = score.final_result(recs)
+        self.assertEqual(r["usage"]["output_tokens"], 6395)
+        self.assertEqual(r["usage"]["input_tokens"], 6)
+        self.assertEqual(r["total_cost_usd"], 0.3)  # cumulative cost stays the max, never summed
+
+
+class ResultsDocTest(unittest.TestCase):
+    """competition/RESULTS.md is the evidence table: every run dir has a row, and the docs cite its valid count."""
+    RESULTS = HERE / "RESULTS.md"
+    RUNS = HERE / "runs"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.rows = []
+        for line in cls.RESULTS.read_text(encoding="utf-8").splitlines():
+            if line.startswith("| `"):
+                cls.rows.append([cell.strip() for cell in line.strip().strip("|").split("|")])
+        cls.valid = sum(1 for cells in cls.rows if cells[6].lower().startswith("valid"))
+
+    # runs/ is gitignored local evidence (kuNNA copies, transcripts): these two need a local bench, the docs check does not.
+    @unittest.skipUnless((HERE / "runs").is_dir(), "competition/runs is local evidence, not in git")
+    def test_every_run_dir_has_exactly_one_row(self):
+        dirs = sorted(p.name for p in self.RUNS.iterdir() if p.is_dir() and not p.name.startswith("_"))
+        listed = [cells[0].strip("`") for cells in self.rows]
+        self.assertEqual(sorted(set(dirs) - set(listed)), [], "run dirs with no row in RESULTS.md")
+        self.assertEqual(sorted(set(listed) - set(dirs)), [], "RESULTS.md rows with no run dir")
+        self.assertEqual(len(listed), len(set(listed)), "a run dir has two rows")
+
+    @unittest.skipUnless((HERE / "runs").is_dir(), "competition/runs is local evidence, not in git")
+    def test_valid_rows_are_exactly_the_scored_runs(self):
+        for cells in self.rows:
+            scored = (self.RUNS / cells[0].strip("`") / "score.json").is_file()
+            self.assertEqual(cells[6].lower().startswith("valid"), scored, f"{cells[0]}: validity vs score.json")
+
+    def test_docs_cite_the_valid_count_and_link_results(self):
+        docs = {
+            "README.md": (REPO_ROOT / "README.md", r"(\d+) valid runs"),
+            "README.es.md": (REPO_ROOT / "README.es.md", r"(\d+) ejecuciones válidas"),
+            "CHANGELOG.md": (REPO_ROOT / "CHANGELOG.md", r"(\d+) valid runs"),
+        }
+        for name, (path, pattern) in docs.items():
+            text = path.read_text(encoding="utf-8")
+            found = [int(n) for n in re.findall(pattern, text)]
+            self.assertTrue(found, f"{name} must cite the valid-run count")
+            self.assertEqual(set(found), {self.valid}, f"{name} cites {found}, RESULTS.md has {self.valid} valid rows")
+            self.assertIn("competition/RESULTS.md", text, f"{name} must link competition/RESULTS.md")
 
 
 if __name__ == "__main__":

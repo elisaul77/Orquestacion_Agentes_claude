@@ -85,6 +85,7 @@ Phase {N}: {title}   (plan: plans/{task}-plan.md)
 
 Objective: {one sentence}
 Operation: {feature | fix | tweak | refactor} — first move: {e.g. "fix: write the failing test first and show it failing"}
+Hypothesis / falsifier: {required when the Conductor diagnosed the fix itself (SKILL §2b, inline falsifier): hypothesis + the observation that would disprove it; the implementer writes the failing test from it first; otherwise "n/a"}
 Rationale: {why — the criterion to self-correct with}
 Contracts/Invariants: {falsifiable guarantees; breaking one → report under DEVIATIONS}
 Acceptance criteria: {bullets}
@@ -105,6 +106,7 @@ TESTS: {N/M passing, or "none run" + why}
 DEVIATIONS: {or "none"}
 CONFIDENCE: {verified | partially verified | unverified} — one line why
 UNKNOWNS: {open questions you hit, or "none"}
+WARNINGS: {anything noticed but not fixed — edge cases, risks, follow-ups — or "none"}
 NOT_VERIFIED: {what you skipped or couldn't check, or "nothing"}
 NEXT: {remaining, or "complete"}
 """)
@@ -127,6 +129,7 @@ Deviations reported: {list or "none"}
 Conventions: lang={language}, stack={stack}
 Security: {apply OWASP | N/A — no external input}
 Open ledger rows to rule on: {criterion list from the state file}
+WARNINGS to rule on: {the implementer's WARNINGS list, or "none"}
 Case file: plans/{task}-state.md (security-trigger baseline listed there)
 Falsifier (diagnosis, from the case file, or n/a): {hypothesis + command + expected result, or "n/a"}
 
@@ -137,6 +140,7 @@ FINDINGS: file:line — issue  ([INVARIANT] / [CRITICAL] / [MAJOR] / [TEST-INTEG
 CRITERIA: {#} {criterion} — [OBSERVED|DERIVED|INFERRED|UNKNOWN] {proof: command → result}
 INDEPENDENT_CHECK: {what you ran yourself beyond the implementer's tests → result}
 REQUIRED_CHANGES: {specific + actionable, or "none"}
+WARNINGS_RULING: {one line per WARNINGS item: fixed | acceptable | must fix, or "none"}
 DEVIATION_VERDICT: {per deviation, or "none reported"}
 UNKNOWNS: {or "none"}
 NOT_VERIFIED: {or "nothing"}

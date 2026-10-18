@@ -163,6 +163,174 @@ class CaseFlowTest(unittest.TestCase):
         self.assertTrue(lines_with(self.skill, "classification", "triage"),
                         "the case file classification field must take the triage line")
 
+    # ---- v9.12.0 (STRUCTURAL: these prove the rules are written; routing behavior is measured in competition/) ----
+
+    @staticmethod
+    def _section(text, start, end):
+        """Text from the heading `start` up to (not including) the heading `end`."""
+        head = text.index(start)
+        return text[head: text.index(end, head)]
+
+    WARNINGS_CONTRACT = 'WARNINGS: {anything noticed but not fixed — edge cases, risks, follow-ups — or "none"}'
+
+    # M1 (v9.12 binding review): the Conductor can't drop a NEEDS_REVISION finding on its own.
+    def test_M1_review_finding_is_binding(self):
+        self.assertIn("A review finding is binding", self.skill)
+        self.assertIn("may not drop, downgrade or defer a NEEDS_REVISION finding on its own", self.skill)
+        self.assertIn("recorded risk", self.skill)
+        self.assertIn("A NEEDS_REVISION finding is binding", self.agents_md)
+
+    # M2 (v9.12 warnings): WARNINGS in the implement contract (agent, prompts, AgentArchitect template),
+    # an open-WARNINGS rule in SKILL §7, and a ruling on every item in the review contract.
+    def test_M2_warnings_in_implement_contract_and_review(self):
+        implement = read(AGENTS_DIR / "implement-agent.agent.md")
+        architect = read(AGENTS_DIR / "AgentArchitect.agent.md")
+        prompts_impl = self._section(self.prompts, "## 2. implement-agent", "## 3. review-agent")
+        self.assertIn(self.WARNINGS_CONTRACT, implement)
+        self.assertIn(self.WARNINGS_CONTRACT, prompts_impl)
+        self.assertIn(self.WARNINGS_CONTRACT, architect, "AgentArchitect Implementer template must carry WARNINGS")
+        self.assertIn("Open WARNINGS block closing the phase", self.skill)
+        self.assertIn("must rule on every WARNINGS item", self.review)
+        self.assertIn("WARNINGS_RULING:", self.review)
+        self.assertIn("WARNINGS_RULING:", self._section(self.prompts, "## 3. review-agent", "## 3b."))
+
+    # M3 (v9.12 no git by the Conductor): delegate all git; a merge is Approve-tier and an ambiguous yes is no.
+    def test_M3_conductor_never_runs_git_and_merge_is_approve(self):
+        self.assertIn("Never run git yourself", self.skill)
+        self.assertIn("an ambiguous answer is not approval", self.skill)
+        approve = lines_with(self.skill, "| **approve**")
+        self.assertTrue(approve, "SKILL.md must keep the Approve row")
+        self.assertTrue(any("`git merge`" in ln for ln in approve), "the Approve row must name `git merge`")
+
+    # M4 (v9.12 inline falsifier): a self-diagnosed fix still states a hypothesis and what would disprove it.
+    def test_M4_inline_falsifier_for_self_diagnosis(self):
+        self.assertIn("If you diagnose a fix yourself (no planning-agent), still write one line", self.skill)
+        self.assertIn("the implementer turns it into the failing test first", self.skill)
+        prompts_impl = self._section(self.prompts, "## 2. implement-agent", "## 3. review-agent")
+        self.assertIn("Hypothesis / falsifier:", prompts_impl)
+
+    # M5 (v9.12 explicit orchestration): a tier S triage on an explicit "orchestrate" is said out loud.
+    def test_M5_explicit_orchestration_is_said_not_dropped(self):
+        self.assertIn("If the user explicitly asked to orchestrate and triage says tier S", self.skill)
+        self.assertIn("never drop below the review step", self.skill)
+
+    # M7 (v9.12 experimental labels): unmeasured parts are labelled in both READMEs; a measured note exists.
+    def test_M7_readme_experimental_labels_and_measured_note(self):
+        labels = (
+            ("README.md", self.readme, "experimental — written and reviewed, not yet measured in real runs",
+             "### What was measured"),
+            ("README.es.md", self.readme_es, "experimental — escrito y revisado, aún no medido en ejecuciones reales",
+             "### Qué se midió"),
+        )
+        for name, text, label, heading in labels:
+            self.assertGreaterEqual(text.count(label), 3,
+                                    f"{name} must label FAILURE_ORIGIN routing, consult and the lateral's second voice")
+            self.assertIn(heading, text, f"{name} must carry a short measured note")
+
+
+    # ---- v9.12.0 revision 1 (review fixes: warnings inside the decision tree, accepted risks, schema, reviewer template)
+
+    @staticmethod
+    def _schema_strict_problems(node, path="$"):
+        """Every object with `properties` must list every property in `required`, and forbid extras (OpenAI strict mode)."""
+        problems = []
+        if isinstance(node, dict):
+            if "properties" in node:
+                if node.get("additionalProperties") is not False:
+                    problems.append(f"{path}: additionalProperties must be false")
+                missing = set(node["properties"]) - set(node.get("required", []))
+                if missing:
+                    problems.append(f"{path}: not in required: {sorted(missing)}")
+                for key, sub in node["properties"].items():
+                    problems += CaseFlowTest._schema_strict_problems(sub, f"{path}.{key}")
+            if "items" in node:
+                problems += CaseFlowTest._schema_strict_problems(node["items"], f"{path}[]")
+        return problems
+
+    # M8 (rev1 item 1): the decision tree itself routes WARNINGS before an APPROVED phase advances.
+    def test_M8_warnings_inside_decision_tree(self):
+        tree = self._section(self.skill, "**Review routing.**", "Cap: at most 3 re-routes")
+        self.assertIn("APPROVED with any `must fix`", tree)
+        self.assertIn("treat as NEEDS_REVISION (implementation)", tree)
+        self.assertIn("APPROVED with `acceptable` warnings", tree)
+        self.assertIn("explicitly accepts them", tree)
+        self.assertIn("same implementation loop counter", tree)
+        self.assertIn("escalates to the user", tree)
+        self.assertIn("never retried silently or dropped", tree)
+        self.assertIn("Open WARNINGS block closing the phase", self.skill)
+        self.assertIn("must fix", self._section(self.skill, "**Open WARNINGS block", "Cap: at most 3"))
+
+    # M9 (rev1 item 2): accepted risks are a case-file field, written only after an explicit user answer.
+    def test_M9_accepted_risks_field_and_line(self):
+        self.assertTrue(lines_with(self.skill, "case file", "accepted risks"),
+                        "the one-line case-file field list must carry `accepted risks`")
+        self.assertIn("ACCEPTED_RISK: {item} — {user's words} — {date}", self.skill)
+        self.assertIn("marks the ledger row accepted", self.skill)
+        self.assertIn("only after an explicit user answer", self.skill)
+
+    # M10 (rev1 item 3): reviewer disagreement is settled by a clarifying question, never a unilateral call.
+    def test_M10_reviewer_disagreement_has_no_unilateral_decision(self):
+        section = self._section(self.skill, "## 10b.", "## 11.")
+        self.assertNotIn("you decide", section.lower())
+        self.assertIn("ask the reviewer with the weaker evidence one clarifying question", section)
+        self.assertIn("if still split, the user decides", section)
+        self.assertIn("Never drop a NEEDS_REVISION finding yourself", section)
+
+    # M11 (rev1 item 4): the Codex verdict schema requires warnings and warnings_ruling; strict mode holds.
+    def test_M11_codex_schema_requires_warnings_keys(self):
+        import json
+        schema = json.loads(read(SKILL / "assets" / "codex-verdict.schema.json"))
+        for key in ("warnings", "warnings_ruling"):
+            self.assertIn(key, schema["properties"], f"schema must define {key}")
+            self.assertEqual(schema["properties"][key]["type"], "array")
+            self.assertEqual(schema["properties"][key]["items"], {"type": "string"})
+            self.assertIn(key, schema["required"], f"schema must require {key}")
+        self.assertEqual(self._schema_strict_problems(schema), [])
+
+    # M12 (rev1 item 4): the codex relay brief and return contract carry WARNINGS and WARNINGS_RULING.
+    def test_M12_codex_agent_relays_warnings(self):
+        codex = read(AGENTS_DIR / "optional" / "codex-agent.agent.md")
+        self.assertIn("`warnings`", codex, "the brief must tell Codex to fill or [] warnings")
+        self.assertIn("`warnings_ruling`", codex)
+        self.assertTrue(lines_with(codex, "warnings: <"), "return contract needs a WARNINGS: line")
+        self.assertIn("WARNINGS_RULING: <", codex)
+
+    # M13 (rev1 item 5): the AgentArchitect Reviewer template rules on every warning.
+    def test_M13_architect_reviewer_template_rules_warnings(self):
+        architect = read(AGENTS_DIR / "AgentArchitect.agent.md")
+        reviewer = self._section(architect, "**Reviewer:**", "## Return contract")
+        self.assertIn("WARNINGS item", reviewer)
+        self.assertIn("fixed / acceptable / must fix", reviewer)
+        self.assertIn("a must fix makes the verdict at least NEEDS_REVISION", reviewer)
+        self.assertIn("WARNINGS_RULING:", reviewer)
+
+    # M14 (rev1 item 6): the review verdict table names the must-fix rule.
+    def test_M14_review_table_must_fix_row(self):
+        self.assertTrue(lines_with(self.review, "|", "must fix", "at least", "NEEDS_REVISION"),
+                        "review-agent verdict table needs the row: must fix WARNINGS ruling => at least NEEDS_REVISION")
+
+    # M15 (rev1 item 7): the implement brief makes the falsifier line required when the Conductor diagnosed the fix.
+    def test_M15_falsifier_line_required_for_conductor_diagnosis(self):
+        prompts_impl = self._section(self.prompts, "## 2. implement-agent", "## 3. review-agent")
+        self.assertTrue(lines_with(prompts_impl, "hypothesis / falsifier:", "required when the conductor diagnosed"),
+                        "prompts.md §2 must make the falsifier line required when the Conductor diagnosed the fix")
+        self.assertIn('otherwise "n/a"', prompts_impl)
+
+    # M16 (rev2): every implementer WARNINGS item needs exactly one ruling, checked before any verdict rule.
+    def test_M16_ruling_coverage_is_first_in_decision_tree(self):
+        tree = self._section(self.skill, "**Review routing.**", "Cap: at most 3 re-routes")
+        self.assertIn("Ruling coverage", tree)
+        self.assertIn("every WARNINGS item from the implementer must have exactly one ruling", tree)
+        self.assertIn("ask the reviewer once for the missing rulings", tree)
+        self.assertIn("still missing → escalate to the user", tree)
+        self.assertIn("Do not advance the phase meanwhile", tree)
+        self.assertLess(tree.index("Ruling coverage"), tree.index("APPROVED with any `must fix`"),
+                        "the ruling-coverage check must come before the APPROVED rule (first match wins)")
+        self.assertLess(tree.index("Ruling coverage"), tree.index("FAILED → consult the user"),
+                        "the ruling-coverage check applies to any verdict, FAILED included")
+        self.assertTrue(lines_with(self.review, "WARNINGS_RULING", "empty", "only when WARNINGS is \"none\""),
+                        "review-agent must state that an empty WARNINGS_RULING is valid only when WARNINGS is none")
+
 
 if __name__ == "__main__":
     unittest.main()

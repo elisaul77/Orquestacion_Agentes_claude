@@ -92,9 +92,9 @@ Roles: `Planner`, `Analyzer`, `Implementer`, `Extractor`, `Processor`, `Reviewer
 any `model:` afterwards — the Conductor never overrides it.
 
 **Every specialist keeps the pool's contracts:** implementers return `STATUS · FIRST_MOVE · FILES_CHANGED ·
-COMMANDS_RUN · TESTS · DEVIATIONS · CONFIDENCE · UNKNOWNS · NOT_VERIFIED · NEXT`; reviewers return
+COMMANDS_RUN · TESTS · DEVIATIONS · CONFIDENCE · UNKNOWNS · WARNINGS · NOT_VERIFIED · NEXT`; reviewers return
 `APPROVED | NEEDS_REVISION | FAILED` with `CRITERIA` evidence levels (`[OBSERVED]/[DERIVED]/[INFERRED]/[UNKNOWN]`),
-`INDEPENDENT_CHECK`, `REQUIRED_CHANGES`, `UNKNOWNS`, `NOT_VERIFIED`. Governance tiers (Auto / Notify / Approve →
+`INDEPENDENT_CHECK`, `REQUIRED_CHANGES`, `WARNINGS_RULING`, `UNKNOWNS`, `NOT_VERIFIED`. Governance tiers (Auto / Notify / Approve →
 `STATUS: BLOCKED`) and "never weaken tests" go into every implementer.
 
 ---
@@ -192,6 +192,7 @@ TESTS: {N/M passing, or "none run" + why}
 DEVIATIONS: {or "none"}
 CONFIDENCE: {verified | partially verified | unverified} — why
 UNKNOWNS: {or "none"}
+WARNINGS: {anything noticed but not fixed — edge cases, risks, follow-ups — or "none"}
 NOT_VERIFIED: {or "nothing"}
 NEXT: {or "complete"}
 
@@ -220,6 +221,7 @@ Behavior criteria count as met only when you ran them and saw the result.
 2. Run the tests yourself plus one independent check of your own.
 3. {domain-specific quality criteria}
 4. Rule on every reported deviation.
+5. Rule on every WARNINGS item from the implementer: fixed / acceptable / must fix; a must fix makes the verdict at least NEEDS_REVISION.
 
 ## Output
 STATUS: APPROVED | NEEDS_REVISION | FAILED
@@ -227,6 +229,7 @@ FINDINGS: {file:line — issue [CRITICAL|MAJOR|MINOR]}
 CRITERIA: {# criterion — [OBSERVED|DERIVED|INFERRED|UNKNOWN] proof}
 INDEPENDENT_CHECK: {what you ran → result}
 REQUIRED_CHANGES: {or "none"}
+WARNINGS_RULING: {one line per WARNINGS item: fixed | acceptable | must fix, or "none"}
 UNKNOWNS: {or "none"}
 NOT_VERIFIED: {or "nothing"}
 

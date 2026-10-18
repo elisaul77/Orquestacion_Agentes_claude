@@ -27,6 +27,7 @@ Both run Claude Code and Codex CLI in identical containers against a fresh copy 
 | `seed/proof/` | **proof only**: `prove_bug2.py` runs the three states in the bench image; `test_bug2_visible.py` is the visible symptom check |
 | `hidden/` | acceptance tests. **All** hidden files run in every run; the target round's file is the headline, and `score.REGRESSION_CROSS` says which other hidden files count as regression (`bug2-orch`: `bug` and `improve`) |
 | `test_bench.py` | stdlib unit tests for the helpers (`python3 competition/test_bench.py`) |
+| `RESULTS.md` | evidence table: every run dir with round, system, pins, codex, claude-md, validity (and why), real and hidden result, regressions, cost, skill, council. The valid count here is the one the READMEs and CHANGELOG cite |
 
 ## Setup (once)
 

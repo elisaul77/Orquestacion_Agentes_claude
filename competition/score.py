@@ -40,15 +40,18 @@ REGRESSION_CROSS = {"bug": ("improve",), "improve": ("bug",), "improve-orch": ("
 # (proof-only patch competition/seed/bug2-decoy-fix.patch) without touching the real cause.
 DECOY_SITES = {"bug2-orch": {"file": "backend/netmap.py", "function": "collect"}}
 HUNK_RE = re.compile(r"^@@ -(\d+)(?:,\d+)? \+\d+(?:,\d+)? @@")
-# Verdict lines of review-agent: the whole line is `STATUS: X` (a template line with `|` never matches)
-VERDICT_STATUS_RE = re.compile(r"^[\s*#>`-]*STATUS:[\s*`]*(APPROVED|NEEDS_REVISION|FAILED)[\s*`.]*$", re.MULTILINE)
+# Verdict lines of review-agent: the whole line is `STATUS: X` or `VERDICT: X`, markdown decoration allowed
+# (a template line with `|` never matches)
+VERDICT_STATUS_RE = re.compile(
+    r"^[\s*#>`-]*(?:STATUS|VERDICT):[\s*`]*(APPROVED|NEEDS_REVISION|FAILED)[\s*`.]*$", re.MULTILINE)
 VERDICT_ORIGIN_RE = re.compile(
     r"^[\s*#>`-]*FAILURE_ORIGIN:[\s*`]*(implementation|diagnosis|scope|none)[\s*`.]*$", re.MULTILINE)
 FALSIFIER_RE = re.compile(r"\bFALSIFIER\b")
 PY_FILES = ("backend/app.py", "backend/auth.py", "backend/netmap.py", "backend/caretaker.py",
             "backend/agent_manager.py", "backend/ssh_deployer.py", "monitor/docker_monitor.py", "agent/agent.py")
 SUBAGENT_TOOLS = ("Task", "Agent")
-TEAM_TOOLS = ("TeamCreate", "SendMessage")
+# A council is convened by a council-* subagent spawn or a team; SendMessage alone (to any teammate) is not one
+TEAM_TOOLS = ("TeamCreate",)
 TRIAGE_RE = re.compile(r"\bTier\s+[SML]\b\s*[·•-]")          # tier line: "Tier M · bug · ..." (any of · • - as separator)
 REROUTE_RE = re.compile(r"\bre-?rout", re.IGNORECASE)
 RISKY_RE = re.compile(r"git\s+push|docker\s+(rm|push|system\s+prune)|\brm\s+-[a-z]*r|git\s+reset\s+--hard|"
@@ -137,16 +140,39 @@ def transcript_facts(records):
             "final_text": final_text}
 
 
+def sum_usage(parts):
+    """Add up token usage dicts: numbers are summed (nested dicts recursively); other values keep the last non-null one."""
+    total = {}
+    for part in parts:
+        for key, val in part.items():
+            if isinstance(val, dict):
+                total[key] = sum_usage([total.get(key) or {}, val])
+            elif isinstance(val, (int, float)) and not isinstance(val, bool):
+                total[key] = (total.get(key) or 0) + val
+            elif val is not None:
+                total[key] = val
+    return total
+
+
 def final_result(records):
-    """The last `result` record of the stream: total_cost_usd and usage, as a cross-check of the session totals."""
-    last = None
-    for rec in records:
-        if rec.get("type") == "result":
-            last = rec
-    if last is None:
+    """The `result` records of the stream, as a cross-check of the session totals.
+
+    A transcript can carry several result records. Each one reports its own usage, so usage is summed across them.
+    Cost is cumulative, so total_cost_usd comes from the record with the max value (the last one on ties), never summed.
+    num_turns is summed across records; is_error comes from the same record as the cost.
+    """
+    results = [rec for rec in records if rec.get("type") == "result"]
+    if not results:
         return {"present": False}
-    return {"present": True, "total_cost_usd": last.get("total_cost_usd"), "usage": last.get("usage"),
-            "num_turns": last.get("num_turns"), "is_error": last.get("is_error")}
+    main = results[0]
+    for rec in results[1:]:
+        if (rec.get("total_cost_usd") or 0) >= (main.get("total_cost_usd") or 0):
+            main = rec
+    usages = [rec["usage"] for rec in results if isinstance(rec.get("usage"), dict)]
+    turns = [rec["num_turns"] for rec in results if isinstance(rec.get("num_turns"), (int, float))]
+    return {"present": True, "result_records": len(results), "total_cost_usd": main.get("total_cost_usd"),
+            "usage": sum_usage(usages) if usages else None, "num_turns": sum(turns) if turns else None,
+            "is_error": main.get("is_error")}
 
 
 def result_text(block):

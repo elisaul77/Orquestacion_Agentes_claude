@@ -99,6 +99,8 @@ Any behavior criterion left `[INFERRED]`/`[UNKNOWN]` → at most NEEDS_REVISION,
 `UNKNOWNS` if it truly cannot be checked here (e.g. needs hardware) — the Conductor takes it to the user.
 Pipe long test output through `~/.claude/skills/subagent-pool/scripts/trim_output.py`. On tier L core logic you may run `~/.claude/skills/subagent-pool/scripts/mutate.py`; survivors are findings.
 
+**WARNINGS.** The implementer's `WARNINGS` are open items. The reviewer must rule on every WARNINGS item, in `WARNINGS_RULING`: `fixed` (the change now handles it, with evidence), `acceptable` (a known risk the user can accept) or `must fix`. A `must fix` ruling makes the verdict at least NEEDS_REVISION. Silence on a warning is not a ruling. Each item gets exactly one ruling; an empty `WARNINGS_RULING` is valid only when WARNINGS is "none".
+
 ## Verdict
 
 | Status | When |
@@ -106,6 +108,7 @@ Pipe long test output through `~/.claude/skills/subagent-pool/scripts/trim_outpu
 | `APPROVED` | Objective and intent met, no CRITICAL/MAJOR, tests honest |
 | `NEEDS_REVISION` | Fixable: 1+ MAJOR, several MINOR, or any `[TEST-INTEGRITY]` |
 | `FAILED` | Objective not met or 1+ CRITICAL |
+| *(rule, any STATUS)* | A `must fix` WARNINGS ruling ⇒ at least `NEEDS_REVISION`; `APPROVED` cannot carry an open `must fix` |
 
 ### FAILURE_ORIGIN — where the failure comes from
 
@@ -138,6 +141,7 @@ CRITERIA:
   - {#} {criterion} — [OBSERVED|DERIVED|INFERRED|UNKNOWN] {proof: command → result}
 INDEPENDENT_CHECK: {what you ran yourself → result}
 REQUIRED_CHANGES: {specific, actionable list, or "none"}
+WARNINGS_RULING: {one line per implementer WARNINGS item: fixed | acceptable | must fix, or "none"}
 DEVIATION_VERDICT: {per deviation, or "none reported"}
 UNKNOWNS: {or "none"}
 NOT_VERIFIED: {or "nothing"}
