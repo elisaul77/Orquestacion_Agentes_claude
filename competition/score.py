@@ -14,6 +14,7 @@ A run is only compared with a baseline built from the same kuNNA commit (kunna_s
 Token counts reuse the repo's cost_tracker.usage_by_model (from the run's own skillrepo snapshot).
 """
 import argparse
+import ast
 import datetime as dt
 import importlib.util
 import json
@@ -31,7 +32,19 @@ import run as bench_run  # same directory, stdlib only: pins, sandbox flags, cre
 HERE = Path(__file__).resolve().parent
 IMAGE = os.environ.get("KUNNA_BENCH_IMAGE", "kunna-bench:1")
 HIDDEN_DIR = HERE / "hidden"
-HIDDEN_FILES = {"bug": "test_bug_hidden.py", "improve": "test_improve_hidden.py"}
+HIDDEN_FILES = {"bug": "test_bug_hidden.py", "improve": "test_improve_hidden.py", "bug2": "test_bug2_hidden.py"}
+# Hidden files that count as regression for a round (its own hidden file is the headline, never regression).
+# bug and improve keep the cross-check they always had; bug2-orch checks the other two hidden files.
+REGRESSION_CROSS = {"bug": ("improve",), "improve": ("bug",), "improve-orch": ("bug",), "bug2-orch": ("bug", "improve")}
+# The decoy of bug2-orch: the function a reasonable engineer reads first. A fix there can hide the symptom
+# (proof-only patch competition/seed/bug2-decoy-fix.patch) without touching the real cause.
+DECOY_SITES = {"bug2-orch": {"file": "backend/netmap.py", "function": "collect"}}
+HUNK_RE = re.compile(r"^@@ -(\d+)(?:,\d+)? \+\d+(?:,\d+)? @@")
+# Verdict lines of review-agent: the whole line is `STATUS: X` (a template line with `|` never matches)
+VERDICT_STATUS_RE = re.compile(r"^[\s*#>`-]*STATUS:[\s*`]*(APPROVED|NEEDS_REVISION|FAILED)[\s*`.]*$", re.MULTILINE)
+VERDICT_ORIGIN_RE = re.compile(
+    r"^[\s*#>`-]*FAILURE_ORIGIN:[\s*`]*(implementation|diagnosis|scope|none)[\s*`.]*$", re.MULTILINE)
+FALSIFIER_RE = re.compile(r"\bFALSIFIER\b")
 PY_FILES = ("backend/app.py", "backend/auth.py", "backend/netmap.py", "backend/caretaker.py",
             "backend/agent_manager.py", "backend/ssh_deployer.py", "monitor/docker_monitor.py", "agent/agent.py")
 SUBAGENT_TOOLS = ("Task", "Agent")
@@ -136,6 +149,128 @@ def final_result(records):
             "num_turns": last.get("num_turns"), "is_error": last.get("is_error")}
 
 
+def result_text(block):
+    """Text of a tool_result block (its content is a string or a list of text blocks)."""
+    content = block.get("content")
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "\n".join(str(b.get("text", "")) for b in content if isinstance(b, dict))
+    return ""
+
+
+def review_facts(records):
+    """Review verdicts, re-diagnosis and FALSIFIER from the stream (pure function, unit-tested).
+
+    A verdict is the tool_result of a review-agent dispatch: the last STATUS line and the last FAILURE_ORIGIN line.
+    A re-diagnosis is a planning-agent dispatched by the MAIN agent after a verdict that is not APPROVED.
+    FALSIFIER: the word appears in assistant text, in a dispatch input or in a tool result (any agent level).
+    """
+    review_ids, timeline, verdicts, falsifier = set(), [], [], 0
+    for rec in records:
+        msg = rec.get("message")
+        if not isinstance(msg, dict) or not isinstance(msg.get("content"), list):
+            continue
+        main = not rec.get("parent_tool_use_id")
+        for block in msg["content"]:
+            if not isinstance(block, dict):
+                continue
+            kind = block.get("type")
+            if kind == "tool_use":
+                name, inp = block.get("name", ""), block.get("input") or {}
+                falsifier += len(FALSIFIER_RE.findall(json.dumps(inp, ensure_ascii=False)))
+                if name in SUBAGENT_TOOLS:
+                    stype = str(inp.get("subagent_type") or "general")
+                    if stype == "review-agent":
+                        review_ids.add(block.get("id"))
+                    if main:
+                        timeline.append(("dispatch", stype))
+            elif kind == "text":
+                falsifier += len(FALSIFIER_RE.findall(block.get("text", "")))
+            elif kind == "tool_result":
+                text = result_text(block)
+                falsifier += len(FALSIFIER_RE.findall(text))
+                if block.get("tool_use_id") in review_ids:
+                    status = VERDICT_STATUS_RE.findall(text)
+                    origin = VERDICT_ORIGIN_RE.findall(text)
+                    verdict = {"status": status[-1] if status else "missing",
+                               "failure_origin": origin[-1] if origin else "missing"}
+                    verdicts.append(verdict)
+                    timeline.append(("verdict", verdict["status"]))
+                    review_ids.discard(block.get("tool_use_id"))
+    failed_seen, redispatch = False, 0
+    for kind, value in timeline:
+        if kind == "verdict" and value != "APPROVED":
+            failed_seen = True
+        elif kind == "dispatch" and value == "planning-agent" and failed_seen:
+            redispatch += 1
+    origins = Counter(v["failure_origin"] for v in verdicts)
+    return {"verdicts": verdicts, "failure_origins": dict(origins),
+            "needs_revision_loops": sum(1 for v in verdicts if v["status"] == "NEEDS_REVISION"),
+            "failed_reviews": sum(1 for v in verdicts if v["status"] in ("NEEDS_REVISION", "FAILED")),
+            "redispatch_after_failed_review": redispatch,
+            "falsifier_mentions": falsifier, "falsifier_appeared": falsifier > 0}
+
+
+def function_span(source, name):
+    """(first line, last line) of a module-level function in source, or None."""
+    for node in ast.parse(source).body:
+        if isinstance(node, ast.FunctionDef) and node.name == name:
+            return node.lineno, node.end_lineno
+    return None
+
+
+def diff_touches_span(diff_text, path, start, end):
+    """True when the diff of `path` removes a base line in [start, end] or inserts before one of them.
+
+    Hunk positions are counted on the base (old) side; a context line advances both sides, so only old numbers matter.
+    """
+    in_file, in_hunk, old, prev = False, False, 0, ""
+    for line in diff_text.splitlines():
+        if line.startswith("diff --git "):
+            in_file, in_hunk, prev = line.endswith(f" b/{path}"), False, ""
+            continue
+        if not in_file:
+            continue
+        m = HUNK_RE.match(line)
+        if m:
+            old, in_hunk, prev = int(m.group(1)), True, ""
+            continue
+        if not in_hunk:
+            continue
+        if line.startswith("-"):
+            if start <= old <= end:
+                return True
+            old += 1
+        elif line.startswith("+"):
+            # an insertion right after removals replaces the last removed line; otherwise it lands before line `old`
+            anchor = old - 1 if prev == "-" else old
+            if start <= anchor <= end:
+                return True
+        elif line.startswith(" ") or line == "":
+            old += 1
+        prev = line[:1]
+    return False
+
+
+def decoy_check(run_dir, meta, diff_text):
+    """Whether the judged diff changes the decoy function of this round (None for rounds without a decoy)."""
+    site = DECOY_SITES.get(meta["round"])
+    if site is None:
+        return None
+    base_sha, kunna = meta.get("base_sha"), run_dir / "kunna"
+    if not base_sha or not kunna.is_dir():
+        return {"file": site["file"], "function": site["function"], "touched": None,
+                "reason": "run dir has no kunna copy or base commit"}
+    base_src = subprocess.run(bench_run.git("show", f"{base_sha}:{site['file']}", cwd=kunna),
+                              check=True, capture_output=True, text=True).stdout
+    span = function_span(base_src, site["function"])
+    if span is None:
+        raise SystemExit(f"decoy function {site['function']} not found in {site['file']} at {base_sha}")
+    return {"file": site["file"], "function": site["function"], "lines": list(span),
+            "touched": diff_touches_span(diff_text, site["file"], *span)}
+
+
 def diff_stats(diff_text):
     files = sum(1 for l in diff_text.splitlines() if l.startswith("diff --git "))
     ins = sum(1 for l in diff_text.splitlines() if l.startswith("+") and not l.startswith("+++"))
@@ -221,7 +356,7 @@ for f in /work/frontend/__tests__/*.test.js; do
   jest --config "$ESM" --watchman=false --json --outputFile="/bench/score/js_$n.json" "$f" > "/bench/score/js_$n.log" 2>&1
   echo "js_$n $?" >> $R
 done
-for name in bug improve; do
+for name in bug improve bug2; do
   python3 -m pytest -q -p no:cacheprovider --junit-xml="/bench/score/hidden_$name.xml" "/hidden/test_${name}_hidden.py" > "/bench/score/hidden_$name.log" 2>&1
   echo "hidden_$name $?" >> $R
 done
@@ -283,20 +418,37 @@ def regression_statuses(score_dir):
     return status
 
 
-def in_scope(check_id, target):
+def hidden_name(check_id):
+    """'bug2' for 'hidden_bug2', 'hidden_bug2::test'; None for checks that are not a hidden file."""
+    if not check_id.startswith("hidden_"):
+        return None
+    return check_id[len("hidden_"):].split("::", 1)[0]
+
+
+def cross_hidden(target, cross=None):
+    """The hidden files counted as regression: `cross` when given, else every hidden file but the target."""
+    return [n for n in sorted(HIDDEN_FILES) if n != target and (cross is None or n in cross)]
+
+
+def in_scope(check_id, target, cross=None):
     """The target round's hidden file is the headline, not part of the regression set."""
     if target is None:
         return True
-    return not (check_id == f"hidden_{target}" or check_id.startswith(f"hidden_{target}::"))
+    name = hidden_name(check_id)
+    if name is None:
+        return True
+    if name == target:
+        return False
+    return name in cross_hidden(target, cross)
 
 
-def compare_to_baseline(run_status, base_status, target=None):
+def compare_to_baseline(run_status, base_status, target=None, cross=None):
     """Regression = a check that passes on untouched kuNNA and does not pass in this run."""
-    passing = sorted(k for k, v in base_status.items() if v == "passed" and in_scope(k, target))
+    passing = sorted(k for k, v in base_status.items() if v == "passed" and in_scope(k, target, cross))
     broken = [k for k in passing if run_status.get(k) != "passed"]
     return {"baseline_passing": len(passing), "still_passing": len(passing) - len(broken),
             "broken": broken, "ok": not broken,
-            "non_target_hidden": None if target is None else f"hidden_{'improve' if target == 'bug' else 'bug'}"}
+            "non_target_hidden": None if target is None else [f"hidden_{n}" for n in cross_hidden(target, cross)]}
 
 
 def hidden_result(score_dir, name):
@@ -372,7 +524,8 @@ def run_checks(run_dir, meta, no_docker):
     baseline = json.loads(base_file.read_text(encoding="utf-8"))
     require_same_kunna(baseline, meta)
     run_container_checks(score_dir, tree, hidden_dir, os.getuid(), os.getgid())
-    regression = compare_to_baseline(regression_statuses(score_dir), baseline["checks"], target=target)
+    regression = compare_to_baseline(regression_statuses(score_dir), baseline["checks"], target=target,
+                                     cross=REGRESSION_CROSS.get(meta["round"]))
     return {"hidden": hidden_result(score_dir, target), "regression": regression}
 
 
@@ -385,6 +538,9 @@ def score_run(run_dir, no_docker=False):
     diff = (run_dir / "final.diff").read_text(encoding="utf-8") if (run_dir / "final.diff").is_file() else ""
     checks = run_checks(run_dir, meta, no_docker)
     tokens = token_usage(run_dir)
+    review = review_facts(records)
+    decoy = decoy_check(run_dir, meta, diff)
+    real_fixed = checks["hidden"]["ok"] if (meta["round"] == "bug2-orch" and checks["hidden"]) else None
     result = {
         "run_id": meta["run_id"], "system": meta["system"], "round": meta["round"], "run": meta["run"],
         "codex": meta.get("codex", True),  # runs before the --no-codex flag always had Codex
@@ -406,9 +562,15 @@ def score_run(run_dir, no_docker=False):
         "subagents": facts["subagents"], "review_rounds": facts["review_rounds"],
         "reroute_mentions": facts["reroute_mentions"], "risky_actions": facts["risky_actions"],
         "diff": diff_stats(diff),
+        "review": review,
+        "decoy": decoy,
+        "decoy_touched": decoy["touched"] if decoy else None,
+        "real_fixed": real_fixed,
         "hidden": checks["hidden"], "regression": checks["regression"], "skipped_checks": no_docker,
         "notes": ("reroute_mentions is a B-only concept: a text heuristic, kept out of the headline table; "
-                  "risky_actions match Bash commands; codex_tokens counts only rollouts that carry token_count"),
+                  "risky_actions match Bash commands; codex_tokens counts only rollouts that carry token_count; "
+                  "decoy_touched = the judged diff changes the decoy function (a fix inside it, even a real one, counts); "
+                  "real_fixed = the bug2 hidden file passes (bug2-orch only)"),
     }
     (run_dir / "score.json").write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return result

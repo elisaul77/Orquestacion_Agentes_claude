@@ -1,0 +1,15 @@
+diff --git a/backend/netmap.py b/backend/netmap.py
+index 8a7675e..0d140e5 100644
+--- a/backend/netmap.py
++++ b/backend/netmap.py
+@@ -110,8 +110,8 @@ def _host_ips():
+ 
+ 
+ def _addresses(net):
+-    """(ip, gateway) pairs the container reports in its network settings."""
+-    return [(net.get("IPAddress"), net.get("Gateway"))]
++    """(ip, gateway) for every network the container is attached to: the address is per network."""
++    return [(n.get("IPAddress"), n.get("Gateway")) for n in (net.get("Networks") or {}).values()]
+ 
+ 
+ def collect(docker_client):

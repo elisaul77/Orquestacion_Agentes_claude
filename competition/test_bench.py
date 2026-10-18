@@ -42,6 +42,7 @@ def tool(name, **inp):
 def make_repo(parent, files):
     """A throwaway git repo (outside competition/) with one commit holding `files`."""
     repo = Path(parent)
+    repo.mkdir(parents=True, exist_ok=True)
     subprocess.run(run.git("init", "-q", cwd=repo), check=True)
     for rel, content in files.items():
         target = repo / rel
@@ -157,7 +158,7 @@ class ParsingTest(unittest.TestCase):
         self.assertIn("py_compile", s)
         self.assertIn("frontend/__tests__/*.test.js", s)
         self.assertIn("/hidden/test_${name}_hidden.py", s)   # both hidden files, every run
-        self.assertIn("for name in bug improve", s)
+        self.assertIn("for name in bug improve bug2", s)
         self.assertNotIn("test_traffic", s)  # needs a live backend: not a regression check here
 
     def test_container_script_runs_cjs_and_esm_suites_separately(self):
@@ -494,7 +495,7 @@ class BaselineRegressionTest(unittest.TestCase):
         r = score.compare_to_baseline(run_status, base, target="bug")
         self.assertEqual(r["broken"], ["hidden_improve::b"])
         self.assertEqual(r["baseline_passing"], 1)
-        self.assertEqual(r["non_target_hidden"], "hidden_improve")
+        self.assertEqual(r["non_target_hidden"], ["hidden_bug2", "hidden_improve"])
 
     def test_only_checks_passing_on_baseline_count(self):
         base = {"a::one": "passed", "a::two": "passed", "a::three": "failed"}
@@ -529,7 +530,7 @@ class BaselineRegressionTest(unittest.TestCase):
                               "x::utils.js showToast fails": "failed"})
 
 
-B_PIN = "5772d5cadfe3af09569a7e07ef4f6ba8d5804135"  # Part 1: lateral asks Opus when Codex is off
+B_PIN = "aebd9ac855050888d823734d44705e4b548458d0"  # v9.11.0: case flow, FAILURE_ORIGIN routing
 
 
 class PinTest(unittest.TestCase):
@@ -743,8 +744,8 @@ class ImproveOrchRoundTest(unittest.TestCase):
         base = {"hidden_bug::a": "passed", "hidden_improve::b": "passed"}
         target = run.HIDDEN_FOR_ROUND["improve-orch"]
         r = score.compare_to_baseline({"hidden_bug::a": "failed", "hidden_improve::b": "failed"},
-                                      base, target=target)
-        self.assertEqual(r["non_target_hidden"], "hidden_bug")
+                                      base, target=target, cross=score.REGRESSION_CROSS["improve-orch"])
+        self.assertEqual(r["non_target_hidden"], ["hidden_bug"])
         self.assertEqual(r["broken"], ["hidden_bug::a"])
 
 
@@ -767,6 +768,179 @@ class TokenAccountingTest(unittest.TestCase):
         self.assertEqual(usage["by_model"]["claude-test"]["input"], 11)   # m1 counted once, m2 added
         self.assertEqual(usage["by_model"]["claude-test"]["output"], 7)
         self.assertEqual(usage["total"]["cache_read"], 100)
+
+
+class Bug2OrchRoundTest(unittest.TestCase):
+    """bug2-orch: a decoy and a real cause. The prompt names no file or function; the hidden file is bug2."""
+    ORCH_LINE = ImproveOrchRoundTest.ORCH_LINE
+    # names of the real and decoy sites, file names and the internals a prompt must not hand over
+    FORBIDDEN = ("netmap", ".py", "collect", "_addresses", "_hex_to_addr", "_read_tcp", "ip_owner",
+                 "IPAddress", "Gateway", "_host_ips", "net.get", "backend/", "seed", "decoy", "hidden")
+
+    def plan(self, *argv):
+        return run.build_plan(run.parse_args(list(argv)))
+
+    def test_prompt_first_line_blank_line_then_a_body_without_file_names(self):
+        lines = (HERE / "prompts" / "bug2-orch.md").read_text(encoding="utf-8").split("\n")
+        self.assertEqual(lines[0], self.ORCH_LINE)
+        self.assertEqual(lines[1], "")
+        body = "\n".join(lines[2:])
+        self.assertTrue(body.strip())
+        for term in self.FORBIDDEN:
+            self.assertNotIn(term, body, f"prompt body must not contain {term!r}")
+
+    def test_round_wiring(self):
+        self.assertIn("bug2-orch", run.ROUNDS)
+        self.assertEqual(run.HIDDEN_FOR_ROUND["bug2-orch"], "bug2")
+        self.assertEqual(score.HIDDEN_FILES["bug2"], "test_bug2_hidden.py")
+        self.assertTrue((HERE / "hidden" / score.HIDDEN_FILES["bug2"]).is_file())
+        self.assertEqual(set(run.HIDDEN_FOR_ROUND), set(run.ROUNDS))
+        self.assertEqual(set(score.REGRESSION_CROSS), set(run.ROUNDS))
+
+    def test_plan_applies_only_the_bug2_seed_and_the_orch_prompt(self):
+        p = self.plan("--system", "B", "--round", "bug2-orch", "--run", "1", "--no-codex", "--claude-md", "--dry-run")
+        self.assertEqual(p["run_id"], "B-bug2-orch-nocodex-cmd-1")
+        self.assertEqual(p["prompt"], (HERE / "prompts" / "bug2-orch.md").read_text(encoding="utf-8"))
+        applies = [c for c in p["kunna_cmds"] if " apply " in c]
+        self.assertEqual(len(applies), 1)  # one command: apply, then the reverse check of the same seed
+        self.assertIn("bug2.patch", applies[0])
+        mounts = " ".join(p["docker"])
+        for proof in ("bug2-decoy-fix", "bug2-real-fix"):
+            self.assertNotIn(proof, mounts)
+            self.assertNotIn(proof, " ".join(p["kunna_cmds"]))
+
+    def test_cross_regression_is_the_two_other_hidden_files(self):
+        base = {"hidden_bug::a": "passed", "hidden_improve::b": "passed", "hidden_bug2::c": "passed",
+                "py_compile": "passed"}
+        run_status = {"hidden_bug::a": "failed", "hidden_improve::b": "passed", "hidden_bug2::c": "failed",
+                      "py_compile": "passed"}
+        r = score.compare_to_baseline(run_status, base, target="bug2", cross=score.REGRESSION_CROSS["bug2-orch"])
+        self.assertEqual(r["non_target_hidden"], ["hidden_bug", "hidden_improve"])
+        self.assertEqual(r["broken"], ["hidden_bug::a"])          # the headline bug2 check is not regression
+        self.assertEqual(r["baseline_passing"], 3)
+
+    def test_seed_applies_and_both_proof_patches_apply_on_top_of_it(self):
+        if not (run.KUNNA / ".git").exists():
+            self.skipTest("kuNNA repo not available")
+        with tempfile.TemporaryDirectory(dir=HERE) as d:
+            tree = Path(d) / "tree"
+            run.copy_kunna_baseline(tree, run.rev_parse("HEAD", cwd=run.KUNNA))
+            run.apply_seed(tree, run.SEED["bug2-orch"])
+            for patch in ("bug2-decoy-fix.patch", "bug2-real-fix.patch"):
+                subprocess.run(run.git("apply", "--check", str(HERE / "seed" / patch), cwd=tree), check=True)
+        names = [l.split(" b/")[-1] for l in (HERE / "seed" / "bug2.patch").read_text().splitlines()
+                 if l.startswith("diff --git ")]
+        self.assertEqual(names, ["backend/netmap.py"])            # the seed touches one file only
+
+    def test_function_span_and_diff_touch_the_decoy_only_when_it_changes_it(self):
+        src = "X = 1\n\n\ndef collect():\n    return 1\n\n\ndef other():\n    pass\n"
+        self.assertEqual(score.function_span(src, "collect"), (4, 5))
+        self.assertIsNone(score.function_span(src, "missing"))
+        in_collect = ("diff --git a/backend/netmap.py b/backend/netmap.py\n--- a/backend/netmap.py\n"
+                      "+++ b/backend/netmap.py\n@@ -4,2 +4,2 @@\n def collect():\n-    return 1\n+    return 2\n")
+        in_other = ("diff --git a/backend/netmap.py b/backend/netmap.py\n--- a/backend/netmap.py\n"
+                    "+++ b/backend/netmap.py\n@@ -8,2 +8,2 @@\n def other():\n-    pass\n+    return 0\n")
+        self.assertTrue(score.diff_touches_span(in_collect, "backend/netmap.py", 4, 5))
+        self.assertFalse(score.diff_touches_span(in_other, "backend/netmap.py", 4, 5))
+        self.assertFalse(score.diff_touches_span(in_collect, "backend/other.py", 4, 5))
+
+    def test_decoy_check_on_a_real_git_diff(self):
+        with tempfile.TemporaryDirectory(dir=HERE) as d:
+            repo = make_repo(Path(d) / "kunna", {"backend/netmap.py":
+                "def _addresses(net):\n    return []\n\n\ndef collect(c):\n    return {}\n"})
+            base = subprocess.run(run.git("rev-parse", "HEAD", cwd=repo), capture_output=True, text=True,
+                                  check=True).stdout.strip()
+            meta = {"round": "bug2-orch", "base_sha": base}
+            path = repo / "backend" / "netmap.py"
+            path.write_text(path.read_text().replace("return []", "return [1]"), encoding="utf-8")
+            helper_diff = subprocess.run(run.git("diff", cwd=repo), capture_output=True, text=True).stdout
+            self.assertFalse(score.decoy_check(Path(d), meta, helper_diff)["touched"])
+            path.write_text(path.read_text().replace("return {}", "return {'x': 1}"), encoding="utf-8")
+            decoy_diff = subprocess.run(run.git("diff", cwd=repo), capture_output=True, text=True).stdout
+            result = score.decoy_check(Path(d), meta, decoy_diff)
+            self.assertTrue(result["touched"])
+            self.assertEqual(result["function"], "collect")
+        self.assertIsNone(score.decoy_check(Path("/nonexistent"), {"round": "bug"}, ""))
+
+    def test_review_facts_from_a_synthetic_transcript(self):
+        def use(uid, sub=None, **inp):
+            return {"type": "tool_use", "id": uid, "name": "Agent", "input": dict(inp, subagent_type=sub)}
+        def result(uid, body):
+            return {"type": "user", "message": {"content": [
+                {"type": "tool_result", "tool_use_id": uid, "content": body}]}}
+        def msg(*blocks, parent=None):
+            rec = {"type": "assistant", "message": {"content": list(blocks)}}
+            if parent:
+                rec["parent_tool_use_id"] = parent
+            return rec
+        recs = [
+            msg(use("p1", "planning-agent")),
+            result("p1", "FACTS\nHYPOTHESES\nFALSIFIER: the map would still show external links\n"),
+            msg(use("i1", "implement-agent")),
+            msg(use("r1", "review-agent")),
+            result("r1", "Checks ran.\nSTATUS: NEEDS_REVISION\nFAILURE_ORIGIN: diagnosis\n"),
+            msg(use("n1", "planning-agent", description="re-diagnosis")),  # main agent, after the failed review
+            msg(use("p2", "planning-agent"), parent="x"),
+            msg(text("STATUS: APPROVED | NEEDS_REVISION | FAILED")),
+            msg(use("r2", "review-agent")),
+            result("r2", "STATUS: APPROVED\nFAILURE_ORIGIN: none\n"),
+            msg(use("r3", "review-agent")),
+            result("r3", "STATUS: FAILED\n"),
+        ]
+        f = score.review_facts(recs)
+        self.assertEqual([v["status"] for v in f["verdicts"]], ["NEEDS_REVISION", "APPROVED", "FAILED"])
+        self.assertEqual(f["failure_origins"], {"diagnosis": 1, "none": 1, "missing": 1})
+        self.assertEqual(f["needs_revision_loops"], 1)
+        self.assertEqual(f["failed_reviews"], 2)
+        self.assertEqual(f["redispatch_after_failed_review"], 1)  # n1 is main-agent: counted (after the failed review)
+        self.assertTrue(f["falsifier_appeared"])
+        self.assertGreaterEqual(f["falsifier_mentions"], 1)
+
+    def test_no_redispatch_without_a_failed_review_and_no_falsifier(self):
+        recs = [
+            {"type": "assistant", "message": {"content": [
+                {"type": "tool_use", "id": "r1", "name": "Agent", "input": {"subagent_type": "review-agent"}}]}},
+            {"type": "user", "message": {"content": [
+                {"type": "tool_result", "tool_use_id": "r1", "content": "STATUS: APPROVED\nFAILURE_ORIGIN: none"}]}},
+            {"type": "assistant", "message": {"content": [
+                {"type": "tool_use", "id": "p1", "name": "Agent", "input": {"subagent_type": "planning-agent"}}]}},
+        ]
+        f = score.review_facts(recs)
+        self.assertEqual(f["redispatch_after_failed_review"], 0)
+        self.assertEqual(f["failed_reviews"], 0)
+        self.assertFalse(f["falsifier_appeared"])
+
+    def test_score_run_without_docker_reports_the_decoy_and_the_review_facts(self):
+        with tempfile.TemporaryDirectory(dir=HERE) as d:
+            run_dir = Path(d) / "B-bug2-orch-nocodex-1"
+            repo = make_repo(run_dir / "kunna", {"backend/netmap.py":
+                "def _addresses(net):\n    return []\n\n\ndef collect(c):\n    return {}\n"})
+            base = subprocess.run(run.git("rev-parse", "HEAD", cwd=repo), capture_output=True, text=True,
+                                  check=True).stdout.strip()
+            (run_dir / "skillrepo").symlink_to(REPO_ROOT)
+            meta = {"run_id": run_dir.name, "system": "B", "round": "bug2-orch", "run": 1, "base_sha": base,
+                    "codex": False}
+            (run_dir / "meta.json").write_text(json.dumps(meta), encoding="utf-8")
+            (run_dir / "transcript.jsonl").write_text(json.dumps(assistant(text("listo"))) + "\n", encoding="utf-8")
+            path = repo / "backend" / "netmap.py"
+            path.write_text(path.read_text().replace("return {}", "return {'x': 1}"), encoding="utf-8")
+            diff = subprocess.run(run.git("diff", cwd=repo), capture_output=True, text=True).stdout
+            (run_dir / "final.diff").write_text(diff, encoding="utf-8")
+            res = score.score_run(run_dir, no_docker=True)
+        self.assertTrue(res["decoy_touched"])
+        self.assertIsNone(res["real_fixed"])          # no docker: hidden not run
+        self.assertEqual(res["review"]["verdicts"], [])
+        self.assertIn("decoy", res)
+
+
+class PinV911Test(unittest.TestCase):
+    def test_b_pin_is_aebd9ac_and_it_is_version_9_11_0(self):
+        self.assertEqual(run.DEFAULT_B_REF, "aebd9ac855050888d823734d44705e4b548458d0")
+        self.assertEqual(run.DEFAULT_B_REF, B_PIN)
+        self.assertEqual(run.rev_parse(B_PIN), B_PIN)
+        text_b = subprocess.run(run.git("show", f"{B_PIN}:skills/subagent-pool/SKILL.md"),
+                                capture_output=True, text=True, check=True).stdout
+        self.assertEqual(run.VERSION_RE.search(text_b).group(1), "9.11.0")
 
 
 if __name__ == "__main__":

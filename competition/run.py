@@ -4,7 +4,7 @@
     python3 competition/run.py --system A|B --round bug|improve --run N [--dry-run] [--model M] [--no-codex]
 
   A = subagent-pool from git `master`          (--a-ref, default master)
-  B = subagent-pool from git `5772d5c` (v9.11.0 case flow + lateral Opus when Codex is off)   (--b-ref, default 5772d5c)
+  B = subagent-pool from git `aebd9ac` (v9.11.0: case flow, FAILURE_ORIGIN routing, consult discriminator)   (--b-ref, default aebd9ac)
       --b-source commit   (default) git archive of --b-ref
       --b-source worktree explicit only; refuses if skills/ or agents/ have uncommitted changes
   Both run in the same image (competition/Dockerfile) with the same prompt (prompts/<round>.md).
@@ -16,7 +16,7 @@ kunna_sha) are written to meta.json and used for every later step.
 
 Per run, under competition/runs/<system>-<round>-<N>/:
   skillrepo/        read-only snapshot of skills/ and agents/ (mounted at /skillrepo)
-  kunna/            fresh kuNNA copy (git archive <kunna_sha>), git initialised, seed applied for round bug
+  kunna/            fresh kuNNA copy (git archive <kunna_sha>), git initialised, seed applied for rounds bug and bug2-orch
   out/              install.log, stderr.log
   transcript.jsonl  stream-json from `claude -p`
   sessions/         Claude session JSONL copied out of the temp HOME (token accounting)
@@ -52,15 +52,16 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
 KUNNA = Path(os.environ.get("KUNNA_REPO", "/home/elisaul77/Documentos/Docker/kunna"))
 IMAGE = os.environ.get("KUNNA_BENCH_IMAGE", "kunna-bench:1")
-ROUNDS = ("bug", "improve", "improve-orch")
+ROUNDS = ("bug", "improve", "improve-orch", "bug2-orch")
 # Hidden test file each round is scored on (score.py HIDDEN_FILES key). improve-orch is the improve task
 # with an explicit orchestration request, so it is scored on the same hidden file as improve.
-HIDDEN_FOR_ROUND = {"bug": "bug", "improve": "improve", "improve-orch": "improve"}
-SEED = {"bug": HERE / "seed" / "bug.patch"}
+# bug2-orch: decoy vs real cause (connection map); its hidden file is test_bug2_hidden.py
+HIDDEN_FOR_ROUND = {"bug": "bug", "improve": "improve", "improve-orch": "improve", "bug2-orch": "bug2"}
+SEED = {"bug": HERE / "seed" / "bug.patch", "bug2-orch": HERE / "seed" / "bug2.patch"}
 SNAPSHOT_PATHS = ("skills", "agents")
 EXCLUDED_DIRS = ("plans", ".claude", ".pytest_cache", "__pycache__")  # never in the judged diff
 DEFAULT_A_REF = "master"
-DEFAULT_B_REF = "5772d5cadfe3af09569a7e07ef4f6ba8d5804135"  # Part 1: lateral asks Opus when Codex is off
+DEFAULT_B_REF = "aebd9ac855050888d823734d44705e4b548458d0"  # v9.11.0 (SKILL.md), case flow
 DEFAULT_KUNNA_REF = "HEAD"
 DEFAULT_TIMEOUT_MIN = 45
 DEFAULT_MAX_TURNS = 400       # counts main-agent assistant messages only (no parent_tool_use_id)
