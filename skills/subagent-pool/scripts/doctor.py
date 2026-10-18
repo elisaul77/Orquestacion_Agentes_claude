@@ -5,7 +5,7 @@
 
 Checks: installed skill version (and drift against --repo), the three core agents, optional codex-agent + codex CLI
 and whether its Codex roles (~/.codex/agents) match our agents,
-the plan council (agents with SendMessage + the agent-teams flag), the cost hook in settings.json and whether the ledger is being written, the instincts store, and each --remote host
+the plan council (agents with SendMessage + the agent-teams flag), the cost hook in settings.json and whether the ledger is being written, the instincts store, stale copies of the skill outside ~/.claude (OTHER_COPIES), and each --remote host
 over SSH (BatchMode, short timeout). Each failed check carries a suggested fix; nothing is applied.
 Exit code: 0 all OK, 1 if any check failed (warnings don't fail).
 """
@@ -24,6 +24,8 @@ HOME = Path(os.environ.get("POOL_HOME", Path.home()))
 CORE_AGENTS = ("planning-agent", "implement-agent", "review-agent")
 COUNCIL_AGENTS = ("council-spec", "council-architect", "council-lateral", "council-risk")
 TEAMS_FLAG = "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"
+# Other installed copies of the skill (relative to HOME). A copy older than the installed one is a warning.
+OTHER_COPIES = (".agents/skills/subagent-pool/SKILL.md", ".codex/skills/subagent-pool/SKILL.md")
 # Keep the SSH probe from writing locally: no known_hosts updates, no control sockets, no local commands.
 SSH_RO = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=6", "-o", "StrictHostKeyChecking=yes", "-o", "UpdateHostKeys=no",
           "-o", "ControlMaster=no", "-o", "ControlPath=none", "-o", "PermitLocalCommand=no"]
@@ -39,6 +41,10 @@ def tools_of(agent_md):
     m = re.match(r"^---\n(.*?)\n---", Path(agent_md).read_text(), re.S)
     t = re.search(r"(?m)^tools:\s*\[?([^\]\n]*)\]?\s*$", m.group(1)) if m else None
     return {x.strip().strip("'\"") for x in t.group(1).split(",")} if t else set()
+
+
+def _vtuple(v):
+    return tuple(int(x) for x in re.findall(r"\d+", v))
 
 
 def drift(a, b):
@@ -63,6 +69,17 @@ def run_checks(repo=None, remotes=(), now=None):
     ver = version_of(skill / "SKILL.md")
     res.append(check("skill installed", ver is not None, f"v{ver}" if ver else str(skill),
                      "copy skills/subagent-pool from the repo into ~/.claude/skills/"))
+    for rel in OTHER_COPIES:
+        copy = HOME / rel
+        if ver is None or not copy.exists():
+            continue
+        label = f"~/{Path(rel).parts[0]}"
+        old = version_of(copy)
+        stale = old is None or _vtuple(old) < _vtuple(ver)
+        detail = f"{label}: v{old} (installed v{ver})" if old else f"{label}: version unknown (installed v{ver})"
+        res.append(check(f"stale skill copy {label}", not stale, detail,
+                         f"update it from the repo (rsync -a --exclude __pycache__ {repo or '<repo>'}/skills/subagent-pool/"
+                         f" {copy.parent}/) after a backup, or remove it if unused", "warn"))
     if repo and ver:
         rskill = Path(repo) / "skills" / "subagent-pool"
         diff = drift(rskill, skill) if rskill.is_dir() else ["<repo not found>"]

@@ -1,0 +1,5 @@
+# Bench outputs: run dirs hold kuNNA copies, transcripts and the blind key; never commit them
+runs/
+blind/
+__pycache__/
+*.pyc

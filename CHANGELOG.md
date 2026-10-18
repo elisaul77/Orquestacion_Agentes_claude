@@ -1,5 +1,43 @@
 # Changelog
 
+## v9.12.0 — 2026-10-18 · Binding reviews, warnings, no git by the Conductor
+
+This release also ships the v9.11.0 case flow (below), which was never published. The changes come from the A/B bench in `competition/` and from two real conversations (a Forja project and the Hospital case). The animated flow is in `docs/proposals/flujo-v9-12.html`.
+
+- **M1 Binding review.** A NEEDS_REVISION finding can't be dropped, downgraded or deferred by the Conductor on its own. It is re-delegated per `FAILURE_ORIGIN`, or the user accepts it as a recorded risk. The bench showed v9.10 ignoring one.
+- **M2 Warnings.** implement-agent returns `WARNINGS:` (noticed but not fixed). review-agent rules on each one (`WARNINGS_RULING`: fixed | acceptable | must fix). The decision tree (SKILL §7) routes them: an APPROVED with a `must fix` becomes NEEDS_REVISION; an `acceptable` waits for the user, who accepts it or sends it back to the fix loop. Warning repairs share the 2-loop limit per phase, and a `must fix` that survives escalates to the user. An accepted risk is written to the case file as `ACCEPTED_RISK: {item} — {user's words} — {date}`, only after an explicit answer. The Codex verdict schema gains `warnings` and `warnings_ruling`.
+- **M3 No git from the Conductor.** Commit, merge, push, rebase and branch deletion are delegated. A merge into a shared or main branch is Approve-tier, and an ambiguous answer is not approval.
+- **M4 Inline falsifier.** When the Conductor diagnoses a fix without planning-agent, it still writes the hypothesis and the observation that would disprove it; the implementer turns it into the failing test first.
+- **M5 Explicit orchestration.** If the user asks to orchestrate and triage says tier S, the Conductor says so in one line and offers the full cycle. It never drops below the review step.
+- **M6 Doctor flags stale copies.** doctor reports old copies of the skill, such as `~/.agents` left at v9.5.
+- **M7 Experimental labels.** FAILURE_ORIGIN routing and re-routes, consult mode and the lateral's second voice are labelled "experimental — written and reviewed, not yet measured in real runs". The READMEs gain a "What was measured" note.
+- **M8 Bench scorer fixes** (`competition/score.py`). No false positive for the council; reads `VERDICT: APPROVED` lines; handles multiple final result records instead of taking the last one. Token usage is summed across the result records; cost stays the max, since it is cumulative.
+- **The A/B bench (`competition/`)** is in the repo: 10 valid runs of 12 run dirs, equal outcomes between versions. Every run is listed in `competition/RESULTS.md`, with B's pins per round. Routing is still not measured in real runs.
+- Tests: 228 in total, 2 skipped. `test_caseflow.py` has 30, of which 15 are new for v9.12 (M1–M5, M7, and M8–M16 for the review fixes). `competition/test_bench.py` has 98 (the scorer's usage sum, and the RESULTS.md checks: every run dir has a row, the valid count matches the docs). They are structural: they prove the rules are written, not that a model routes correctly.
+
+## v9.11.0 — unreleased, folded into v9.12.0 · Case flow: admission, four-axis triage, diagnosis, review routing
+
+The Conductor now works a task as a case: it triages on four axes, diagnoses before it plans, and routes each failed review by where the failure came from.
+
+- **The council only for an open important decision.** Security, public API, data and money no longer convene the council automatically. They raise the risk axis instead (tier floor M, specialist review). Tier L with no open important decision gets a single planner.
+- **Admission and four-axis triage.** One line: `Tier · operation · plan level · urgency · uncertainty · risk`. Urgency sets priority and never removes controls. Re-triage happens when the diagnosis changes the scope or the risk.
+- **Diagnosis block with a falsifier.** planning-agent returns facts, hypotheses, evidence, what is missing, the proposed intervention and a falsifier: the observation that would disprove the hypothesis. Two rounds without new evidence stop the loop.
+- **Review routing by `FAILURE_ORIGIN`.** The review contract adds `implementation | diagnosis | scope | none`. One ordered decision tree routes each NEEDS_REVISION; a missing origin is asked once, then goes to the user. One global cap of 3 re-routes per case, kept across re-triage.
+- **Consult and specialty review.** A consult is one specialist and one bounded question. `mode=<specialty>` (verdict, with a checklist per specialty) vs `mode=consult specialty=<x>` (no verdict), so a specialist can't rubber-stamp.
+- **Case file in `plans/{task}-state.md`:** objective, classification, owner, status, hypotheses, evidence, decisions, changes, verification, next action, plus the counters. Tier S has none.
+- **Close means verified, not deployed.** Closing never authorizes a publish or a deploy. The Approve row is unchanged.
+- **Council run on issue #17** built the case-flow plan.
+- **The council's lateral member asks Opus when Codex is off.** With `CODEX: off`, `council-lateral` asks Opus through the Claude CLI (no tools, read-only) before it writes its own draft, so a council without Codex still gets a second voice.
+- **Reviews found and fixed before release:**
+  - Phase 1: tests that could pass without checking the rule. Tightened.
+  - Phase 2: overlapping plan levels; a case that could close before its last phase; a falsifier that tested the implementation instead of the hypothesis; a budget check that blocked approved phases.
+- Tests: 211 in total, 2 skipped (a Python 3.11 gate in `test_sync_codex_agents.py`). `test_caseflow.py` has 14 (10, plus 4 for the Codex fixes). The new tests are structural: they prove the rules are written, not that a model routes correctly.
+- **Routing behavior is NOT VERIFIED.** Only the A/B competition (`competition/`, pending) measures whether a model follows the case flow. Until it runs, the routing is written, not measured.
+- **Fixes after the Codex review:**
+  - A consult and a specialty review no longer look alike. A consult is `mode=consult specialty=<x>`; review-agent answers it with ANSWER · EVIDENCE · CONFIDENCE · UNKNOWNS, no STATUS, never escalates to the council.
+  - review-agent no longer sends every NEEDS_REVISION to implement-agent. Routing follows `FAILURE_ORIGIN` (SKILL §7); the revision template covers the implementation origin only, and diagnosis and scope go to their own routes.
+  - **The triage line was never printed.** The A/B pilot showed neither run posted it. It is now a mandatory first output for tier M/L (`Tier {S|M|L} · {operation} · {single|duo|council} · urgency … · uncertainty … · risk … — reason`), the first step of the flow in SKILL §8, and the case file `classification` field.
+
 ## v9.10.0 — 2026-10-17 · Installer and INSTALL.md for agents
 
 An agent asked to "install this repo" can now leave Claude Code set up the way the author runs it.

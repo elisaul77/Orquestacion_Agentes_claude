@@ -44,8 +44,13 @@ Read the prompt to detect which mode you're in:
 | "Investigate and draft a plan" | **Full** | Complete workflow: scan + graphify + phases |
 | Single question / `graphify query` / `graphify path` | **Query** | Answer directly using graphify, skip workspace scan and plan |
 | "Update graph" / "re-run graphify" | **Update** | Run `graphify . --update --no-viz`, return summary |
+| "Diagnose" / "Diagnosis brief" | **Diagnosis** | Investigate the failure with evidence; no plan; return the Diagnosis block (§ Output: Diagnosis) |
 
 In **Query mode**: run the graphify command, answer concisely, return to Conductor. No plan needed.
+
+In **Diagnosis mode**: the Conductor needs an understanding it can act on, not a plan. Facts first, then hypotheses, each tested
+against evidence you actually gathered. Enough evidence means you can justify the understanding and propose an intervention;
+it does not mean the fix is validated. The FALSIFIER names the observation that would disprove your leading hypothesis.
 
 ---
 
@@ -255,6 +260,45 @@ Your response must follow this **exact** structure:
 
 🤖 [planning-agent] Done. Returning control to Conductor.
 ```
+
+---
+
+## Output: Diagnosis
+
+Used in **Diagnosis mode** only. Return this block (or write it to the file the brief names). No phases, no plan.
+
+```markdown
+🤖 [planning-agent] Investigating...
+
+## Diagnosis: {Symptom Title}
+
+**TL;DR:** {what is known, what is proposed, 1-3 sentences}
+
+### FACTS
+- {observed or read fact} — [OBSERVED|DERIVED] {command → result, or file:line}
+
+### HYPOTHESES
+1. H1: {cause} — {why it fits the facts}
+
+### EVIDENCE
+- H1 · {command → result} · supports | weakens
+
+### MISSING (project|specialist|user)
+- {what is still unknown} — project | specialist | user   (project → another diagnosis round; specialist → consult; user → ask)
+
+### PROPOSED_INTERVENTION
+- {smallest change that addresses the leading hypothesis} — files: {path ✓exists | path ⊕create}
+
+### FALSIFIER
+- hypothesis: H1
+- observation: {command} → expected if H1 is true: {result}; disproves H1 if: {result}
+- or `n/a` (only when operation is not fix and no hypothesis drives the change)
+```
+
+Rules:
+- FACTS carry a proof tag. A fact without a proof goes to HYPOTHESES, not FACTS.
+- The FALSIFIER is required when operation=fix or a hypothesis drives the change. It tests the diagnosis, not the implementation.
+- Never propose a fix as validated. The Conductor validates it through implement-agent and review-agent.
 
 ---
 

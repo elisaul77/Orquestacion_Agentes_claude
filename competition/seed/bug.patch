@@ -1,0 +1,13 @@
+diff --git a/backend/netmap.py b/backend/netmap.py
+index 1434e72..f58c14a 100644
+--- a/backend/netmap.py
++++ b/backend/netmap.py
+@@ -36,7 +36,7 @@ def _hex_to_addr(hex_addr: str):
+     ip_hex, port_hex = hex_addr.split(":")
+     port = int(port_hex, 16)
+     if len(ip_hex) == 8:
+-        ip = socket.inet_ntoa(struct.pack("<I", int(ip_hex, 16)))
++        ip = socket.inet_ntoa(struct.pack(">I", int(ip_hex, 16)))
+     else:
+         raw = bytes.fromhex(ip_hex)
+         # /proc stores IPv6 as four little-endian 32-bit words

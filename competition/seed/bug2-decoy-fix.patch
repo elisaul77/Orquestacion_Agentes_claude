@@ -1,0 +1,22 @@
+diff --git a/backend/netmap.py b/backend/netmap.py
+index 8a7675e..6175701 100644
+--- a/backend/netmap.py
++++ b/backend/netmap.py
+@@ -179,7 +179,7 @@ def collect(docker_client):
+                 if rip in host_ips:
+                     from_host[name] += 1
+                 else:
+-                    counts[(EXTERNAL, name)] += 1
++                    continue  # a peer we cannot name is not drawn
+                 continue
+             if rip in ip_owner:
+                 target = ip_owner[rip]
+@@ -190,7 +190,7 @@ def collect(docker_client):
+                 else:
+                     via_host[target] += 1
+             else:
+-                target = EXTERNAL
++                continue  # a peer we cannot name is not drawn
+             if target != name:
+                 counts[(name, target)] += 1
+ 

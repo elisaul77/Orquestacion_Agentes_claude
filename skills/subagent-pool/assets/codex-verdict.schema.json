@@ -3,6 +3,7 @@
   "additionalProperties": false,
   "required": [
     "status",
+    "failure_origin",
     "summary",
     "findings",
     "files_changed",
@@ -10,7 +11,9 @@
     "criteria",
     "not_verified",
     "unknowns",
-    "subagents"
+    "subagents",
+    "warnings",
+    "warnings_ruling"
   ],
   "properties": {
     "status": {
@@ -22,6 +25,16 @@
         "DONE",
         "BLOCKED"
       ]
+    },
+    "failure_origin": {
+      "type": "string",
+      "enum": [
+        "implementation",
+        "diagnosis",
+        "scope",
+        "none"
+      ],
+      "description": "Review mode: implementation | diagnosis | scope when status is NEEDS_REVISION or FAILED; none when APPROVED or in other modes."
     },
     "summary": {
       "type": "string"
@@ -148,6 +161,20 @@
           }
         }
       }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Implement mode: noticed but not fixed (edge cases, risks, follow-ups), one string each; [] if none or not applicable."
+    },
+    "warnings_ruling": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Review mode: one string per implementer warning, starting with fixed | acceptable | must fix, then the reason; [] if none or not applicable."
     }
   }
 }

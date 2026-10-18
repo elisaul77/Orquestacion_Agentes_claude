@@ -57,6 +57,7 @@ TESTS: {N/M passing, or "none run" + why}
 DEVIATIONS: {what differed from the plan and why, or "none"}
 CONFIDENCE: {verified | partially verified | unverified} — one line why
 UNKNOWNS: {open questions you hit, or "none"}
+WARNINGS: {anything noticed but not fixed — edge cases, risks, follow-ups — or "none"}
 NOT_VERIFIED: {what you skipped or couldn't check, or "nothing"}
 NEXT: {what remains, or "complete"}
 

@@ -1,0 +1,33 @@
+diff --git a/backend/netmap.py b/backend/netmap.py
+index 1434e72..8a7675e 100644
+--- a/backend/netmap.py
++++ b/backend/netmap.py
+@@ -109,6 +109,11 @@ def _host_ips():
+     return ips
+ 
+ 
++def _addresses(net):
++    """(ip, gateway) pairs the container reports in its network settings."""
++    return [(net.get("IPAddress"), net.get("Gateway"))]
++
++
+ def collect(docker_client):
+     """Return {"edges": [...], "listening": {name: [ports]}} for running containers."""
+     if _cache["data"] is not None and time.time() - _cache["at"] < CACHE_TTL:
+@@ -129,11 +134,11 @@ def collect(docker_client):
+         net = c.attrs.get("NetworkSettings", {})
+         if c.attrs.get("HostConfig", {}).get("NetworkMode") == "host":
+             host_mode.add(name)
+-        for n in (net.get("Networks") or {}).values():
+-            if n.get("IPAddress"):
+-                ip_owner[n["IPAddress"]] = name
+-            if n.get("Gateway"):
+-                host_ips.add(n["Gateway"])
++        for ip, gateway in _addresses(net):
++            if ip:
++                ip_owner[ip] = name
++            if gateway:
++                host_ips.add(gateway)
+         for bindings in (net.get("Ports") or {}).values():
+             for b in bindings or []:
+                 if b.get("HostPort"):

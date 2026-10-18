@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flujo subagent-pool v9.12</title>
+<style>
+:root{--bg:#0f1117;--panel:#171a23;--ink:#e7e9ee;--mut:#9aa3b2;--line:#323848;--node:#1f2431;--acc:#f59e0b;--ok:#22c55e;--bad:#ef4444;--new:#a78bfa;--exp:#38bdf8;--user:#f472b6}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#f6f7fb;--panel:#fff;--ink:#1b1f2a;--mut:#5b6474;--line:#cfd5e1;--node:#eef1f7}}
+:root[data-theme="light"]{--bg:#f6f7fb;--panel:#fff;--ink:#1b1f2a;--mut:#5b6474;--line:#cfd5e1;--node:#eef1f7}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{padding:20px 16px 8px;max-width:1400px;margin:auto}
+h1{margin:0 0 4px;font-size:22px}
+.sub{color:var(--mut)}
+.wrap{max-width:1400px;margin:auto;padding:8px 16px 40px;display:grid;grid-template-columns:300px 1fr;gap:16px}
+@media (max-width:900px){.wrap{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+.scen button{display:block;width:100%;text-align:left;margin:4px 0;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--node);color:var(--ink);cursor:pointer;font:inherit;font-size:14px}
+.scen button.on{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc) inset}
+.scen button .tag{font-size:11px;padding:1px 6px;border-radius:99px;margin-left:6px;vertical-align:1px}
+.tag.new{background:color-mix(in srgb,var(--new) 25%,transparent);color:var(--new)}
+.tag.exp{background:color-mix(in srgb,var(--exp) 25%,transparent);color:var(--exp)}
+.ctrl{display:flex;gap:8px;margin:8px 0;flex-wrap:wrap}
+.ctrl button{padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--node);color:var(--ink);cursor:pointer;font:inherit}
+svg{width:100%;height:auto;display:block}
+.edge{stroke:var(--line);stroke-width:2;fill:none}
+.edge.hot{stroke:var(--acc);stroke-width:3}
+.nd rect{fill:var(--node);stroke:var(--line);stroke-width:1.5;rx:10}
+.nd.new rect{stroke:var(--new);stroke-dasharray:5 3}
+.nd.exp rect{stroke:var(--exp)}
+.nd.user rect{stroke:var(--user)}
+.nd.hot rect{stroke:var(--acc);stroke-width:3;fill:color-mix(in srgb,var(--acc) 18%,var(--node))}
+.nd text{fill:var(--ink);font-size:13px;text-anchor:middle;dominant-baseline:middle}
+.nd .s{fill:var(--mut);font-size:10.5px}
+#tok{fill:var(--acc);filter:drop-shadow(0 0 6px var(--acc))}
+#cap{min-height:64px;font-size:15px}
+#log{max-height:220px;overflow:auto;font-size:13px;color:var(--mut);margin:0;padding-left:18px}
+#log li.cur{color:var(--ink);font-weight:600}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mut);margin-top:8px}
+.legend i{display:inline-block;width:14px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;border:2px solid}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mut);font-weight:600}
+.pill{font-size:11px;padding:1px 7px;border-radius:99px;white-space:nowrap}
+.p-obs{background:color-mix(in srgb,var(--ok) 22%,transparent);color:var(--ok)}
+.p-new{background:color-mix(in srgb,var(--new) 22%,transparent);color:var(--new)}
+.p-exp{background:color-mix(in srgb,var(--exp) 22%,transparent);color:var(--exp)}
+.p-keep{background:color-mix(in srgb,var(--mut) 22%,transparent);color:var(--mut)}
+section{max-width:1400px;margin:auto;padding:0 16px 24px}
+h2{font-size:18px;margin:18px 0 8px}
+code{font-size:12.5px;background:var(--node);padding:1px 5px;border-radius:5px}
+.tw{overflow-x:auto}
+</style>
+</head>
+<body>
+<header>
+  <h1>subagent-pool v9.12: cómo funcionaría todo</h1>
+  <div class="sub">La v9.11 (flujo de casos) más las mejoras que salieron de la competición A/B y de las dos conversaciones reales (Hospital cartoon y Forja). Elige un caso y pulsa ▶ para ver el recorrido.</div>
+</header>
+
+<div class="wrap">
+  <div>
+    <div class="card scen" id="scen"></div>
+  </div>
+  <div>
+    <div class="card">
+      <div class="ctrl">
+        <button id="play">▶ Reproducir</button><button id="step">⏭ Paso</button><button id="reset">⟲ Reiniciar</button>
+        <label style="display:flex;align-items:center;gap:6px;color:var(--mut)">velocidad <input id="spd" type="range" min="0.5" max="3" step="0.25" value="1"></label>
+      </div>
+      <div id="cap">Elige un caso de la lista.</div>
+      <svg id="g" viewBox="0 0 1200 920" role="img" aria-label="Diagrama del flujo de casos"></svg>
+      <div class="legend">
+        <span><i style="border-color:var(--line)"></i>ya en v9.11</span>
+        <span><i style="border-color:var(--new);border-style:dashed"></i>mejora nueva (v9.12)</span>
+        <span><i style="border-color:var(--exp)"></i>experimental (escrito, sin medir)</span>
+        <span><i style="border-color:var(--user)"></i>decide el usuario</span>
+      </div>
+    </div>
+    <div class="card" style="margin-top:12px"><b>Pasos</b><ol id="log"></ol></div>
+  </div>
+</div>
+
+<section>
+<h2>Listado completo de mejoras</h2>
+<div class="card tw">
+<table>
+<thead><tr><th>#</th><th>Mejora</th><th>Por qué (evidencia)</th><th>Dónde queda</th><th>Estado</th></tr></thead>
+<tbody>
+<tr><td>M1</td><td><b>Revisión vinculante:</b> el Conductor no puede descartar un hallazgo de NEEDS_REVISION; o lo re-delega o pregunta al usuario</td><td>Competición: la v9.10 ignoró un NEEDS_REVISION</td><td><code>SKILL.md §7</code> árbol de decisión · <code>review-agent</code></td><td><span class="pill p-new">nueva</span></td></tr>
+<tr><td>M2</td><td><b>Avisos obligatorios:</b> el informe del implementador gana <code>WARNINGS:</code> (lo que vio y no arregló). Cada aviso se resuelve o se acepta con el usuario antes de cerrar la fase</td><td>Forja: "el agente ya lo había advertido, pero no lo corregimos a tiempo"</td><td><code>implement-agent</code> contrato · <code>SKILL.md §7</code> · <code>prompts.md §2</code></td><td><span class="pill p-new">nueva</span></td></tr>
+<tr><td>M3</td><td><b>El Conductor nunca ejecuta git:</b> merge, commit y push se delegan; el merge pide aprobación explícita</td><td>Forja: el Conductor hizo <code>git merge</code> con un "voy a aprobarlo yo" ambiguo</td><td><code>SKILL.md §1</code> límites · <code>§7</code> tabla Approve</td><td><span class="pill p-new">nueva</span></td></tr>
+<tr><td>M4</td><td><b>Falsificador también en diagnóstico propio:</b> si el Conductor deduce la causa de un fix sin el planner, escribe hipótesis y observación que la refutaría (1 línea) y la pasa al brief</td><td>Forja: fix diagnosticado "de memoria", sin test que fallara primero</td><td><code>SKILL.md §2b</code> · <code>prompts.md §2</code></td><td><span class="pill p-new">nueva</span></td></tr>
+<tr><td>M5</td><td><b>"Orquesta" explícito no baja en silencio:</b> si el usuario pide orquestar y sale tier S, el Conductor lo dice en una línea y ofrece el ciclo completo</td><td>Forja: "quiero que orquestemos" → tier S directo al implementador</td><td><code>SKILL.md §2</code></td><td><span class="pill p-new">nueva</span></td></tr>
+<tr><td>M6</td><td><b>doctor detecta copias viejas</b> de la skill (p. ej. <code>~/.agents</code> en v9.5)</td><td>Hoy: copia de Codex atrasada 6 versiones</td><td><code>scripts/doctor.py</code> + test</td><td><span class="pill p-new">nueva</span></td></tr>
+<tr><td>M7</td><td><b>Etiquetar como experimental</b> lo que no se ha medido: FAILURE_ORIGIN, desvíos, interconsulta, lateral con Opus</td><td>Competición: nunca se activaron</td><td><code>README</code> EN/ES · <code>CHANGELOG</code></td><td><span class="pill p-new">nueva</span></td></tr>
+<tr><td>M8</td><td><b>Arreglar el puntuador</b>: falso positivo de council, no lee "VERDICT: APPROVED", toma el último de dos registros finales</td><td>Detectado en bug2-orch</td><td><code>competition/score.py</code> + tests</td><td><span class="pill p-new">nueva</span></td></tr>
+<tr><td>M9</td><td><b>Banco como herramienta de regresión</b>: entra a <code>master</code>; próxima ronda tier M multi-archivo con n≥3</td><td>Las rondas acotadas no separan versiones</td><td><code>competition/</code></td><td><span class="pill p-new">nueva</span></td></tr>
+<tr><td>K1</td><td>Triage en 4 ejes (urgencia · esfuerzo · incertidumbre · riesgo) con línea obligatoria; forma corta en tier S</td><td>Hospital: primera vez que salió completa · Forja: forma corta correcta</td><td><code>SKILL.md §2b</code></td><td><span class="pill p-obs">v9.11 · visto funcionar</span></td></tr>
+<tr><td>K2</td><td>Council solo con decisión importante abierta; seguridad/API/datos suben el riesgo (revisión especializada)</td><td>Competición: nadie convocó council sin motivo</td><td><code>SKILL.md §2</code></td><td><span class="pill p-obs">v9.11 · visto funcionar</span></td></tr>
+<tr><td>K3</td><td>Tier L sin decisión abierta → un solo planner</td><td>Hospital: lo aplicó</td><td><code>SKILL.md §2</code></td><td><span class="pill p-obs">v9.11 · visto funcionar</span></td></tr>
+<tr><td>K4</td><td>Diagnóstico con hechos · hipótesis · evidencia · falsificador (fix)</td><td>Competición: B lo usó sin coste extra</td><td><code>planning-agent</code> · <code>prompts.md §1</code></td><td><span class="pill p-obs">v9.11 · visto funcionar</span></td></tr>
+<tr><td>K5</td><td>NEEDS_REVISION de implementación vuelve al implementador con cambios exactos</td><td>Forja: lo hizo bien</td><td><code>SKILL.md §7</code></td><td><span class="pill p-obs">v9.11 · visto funcionar</span></td></tr>
+<tr><td>E1</td><td>FAILURE_ORIGIN → rutas a diagnóstico / re-triage; máx. 3 desvíos por caso</td><td>Nunca se activó</td><td><code>SKILL.md §7</code> · <code>review-agent</code></td><td><span class="pill p-exp">experimental</span></td></tr>
+<tr><td>E2</td><td>Interconsulta <code>mode=consult</code>: 1 especialista, 1 pregunta, sin veredicto</td><td>Nunca se usó</td><td><code>review-agent §3c</code> · <code>prompts.md §12</code></td><td><span class="pill p-exp">experimental</span></td></tr>
+<tr><td>E3</td><td>Lateral del council pregunta a Codex, u Opus si no hay Codex</td><td>No hubo council</td><td><code>council-lateral</code></td><td><span class="pill p-exp">experimental</span></td></tr>
+<tr><td>K6</td><td>Cerrar = VERIFICADO, no DESPLEGADO; publicar sigue en Approve</td><td>Regla de seguridad</td><td><code>SKILL.md §7</code></td><td><span class="pill p-keep">v9.11</span></td></tr>
+</tbody></table>
+</div>
+</section>
+
+<script>
+const N={
+ U:[600,40,"Usuario","petición · decisiones","user"],
+ ADM:[600,125,"Admisión","objetivo · éxito · restricciones",""],
+ TRI:[600,210,"Triage","urgencia · esfuerzo · incertidumbre · riesgo",""],
+ ORQ:[230,125,"Aviso «orquesta» en tier S","M5: lo dice y ofrece ciclo completo","new"],
+ S:[230,210,"Tier S","implementador directo o +1 revisión",""],
+ DX:[600,305,"Diagnóstico","planning-agent o Conductor (M4)",""],
+ EV:[880,305,"Evidencia","hechos · hipótesis · FALSIFICADOR",""],
+ GAP:[880,400,"¿Qué falta?","proyecto · especialista · usuario",""],
+ CONS:[1090,400,"Interconsulta","mode=consult · 1 pregunta","exp"],
+ ASK:[1090,305,"Preguntar al usuario","respuesta → expediente","user"],
+ DEC:[600,400,"¿Decisión importante abierta?","2+ alternativas, cara de revertir",""],
+ COU:[330,400,"Council","spec · architect · lateral · risk",""],
+ UDEC:[330,490,"Decide el usuario","sobre la recomendación","user"],
+ PLAN:[600,490,"Plan + aprobación","alcance · verificación · recuperación","user"],
+ IMP:[600,585,"Implementador","una fase · test primero",""],
+ WARN:[880,585,"¿Avisos sin resolver?","M2: WARNINGS → resolver o aceptar","new"],
+ REV:[600,680,"Revisión","general + especialidad si hay riesgo",""],
+ TREE:[600,775,"Árbol de decisión","M1: el hallazgo obliga · FAILURE_ORIGIN","new"],
+ CHK:[880,775,"Checkpoint","expediente → siguiente fase",""],
+ G2:[880,860,"Gate 2","el usuario aprueba el commit","user"],
+ CL:[600,860,"Cierre","VERIFICADO ≠ desplegado",""],
+ APR:[1090,860,"Merge / push / deploy","M3: lo delega, pide aprobación","new"],
+ ESC:[330,775,"Escalar al usuario","nuevo alcance o detener","user"],
+ STOP:[330,860,"Caso detenido","motivo + pendientes",""]
+};
+const E=[["U","ADM"],["ADM","TRI"],["TRI","S"],["TRI","ORQ"],["ORQ","S"],["TRI","DX"],["DX","EV"],["EV","GAP"],["GAP","DX"],["GAP","CONS"],["CONS","DX"],["GAP","ASK"],["ASK","DX"],["EV","DEC"],["DEC","COU"],["COU","UDEC"],["UDEC","PLAN"],["DEC","PLAN"],["PLAN","IMP"],["IMP","WARN"],["WARN","IMP"],["IMP","REV"],["REV","TREE"],["TREE","IMP"],["TREE","DX"],["TREE","TRI"],["TREE","CHK"],["CHK","IMP"],["CHK","G2"],["G2","CL"],["CL","APR"],["TREE","ESC"],["ESC","TRI"],["ESC","STOP"],["S","IMP"],["S","CL"],["DX","ESC"]];
+const C=(steps)=>steps.map(s=>Array.isArray(s)?s:[s,""]);
+const SC=[
+ ["Cambio trivial","",C([["U","«cambia el texto del botón»"],["ADM","objetivo claro, nada que preguntar"],["TRI","Tier S · tweak — direct"],["S","lo hace directo: 1–2 archivos"],["CL","cierre en 3 líneas, sin expediente"]])],
+ ["Pide «orquesta» y sale tier S","new",C([["U","«quiero que orquestemos…»"],["ADM",""],["TRI","sale Tier S"],["ORQ","M5: «es tier S; lo hago con implementador + revisión. ¿Prefieres el ciclo completo?»"],["S","el usuario acepta lo corto"],["IMP",""],["REV","la revisión no se salta"],["TREE","APPROVED"],["CL","cerrado"]])],
+ ["Bug de causa desconocida","",C([["U","«el mapa marca todo como Internet»"],["ADM",""],["TRI","Tier M · fix · single · uncertainty high"],["DX","planning-agent diagnostica"],["EV","hipótesis + FALSIFICADOR (qué la refutaría)"],["DEC","no hay alternativas abiertas"],["PLAN","test que falla primero; usuario aprueba"],["IMP","test rojo → arreglo → verde"],["REV",""],["TREE","APPROVED"],["CHK","única fase"],["G2","usuario aprueba commit"],["CL","verificado, no desplegado"]])],
+ ["Fix diagnosticado por el Conductor","new",C([["U","«la indicación no se guardó»"],["ADM",""],["TRI","Tier S · fix"],["DX","M4: el Conductor deduce la causa…"],["EV","…pero escribe hipótesis + falsificador de 1 línea"],["S",""],["IMP","brief con la hipótesis; test que falla primero"],["REV",""],["TREE","APPROVED"],["CL",""]])],
+ ["Cambio pequeño y sensible","",C([["U","«bloquear el login tras 10 fallos»"],["ADM",""],["TRI","Tier M · tweak · single · risk high (seguridad → riesgo, NO council)"],["DX",""],["EV",""],["DEC","no hay decisión abierta"],["PLAN",""],["IMP",""],["REV","revisión general + mode=security en paralelo"],["TREE","gana el veredicto más estricto: APPROVED"],["CHK",""],["G2",""],["CL",""]])],
+ ["Decisión de arquitectura","",C([["U","«¿cola propia o la de Moonraker?»"],["ADM",""],["TRI","Tier L · feature · council"],["DX",""],["EV",""],["DEC","sí: 2+ alternativas caras de revertir"],["COU","borradores a ciegas → debate → síntesis"],["UDEC","el usuario elige sobre decisions.md"],["PLAN",""],["IMP",""],["REV",""],["TREE",""],["CHK",""],["G2",""],["CL",""]])],
+ ["Revisión: defecto de implementación","",C([["PLAN",""],["IMP",""],["REV","NEEDS_REVISION"],["TREE","FAILURE_ORIGIN: implementation (M1: no se puede ignorar)"],["IMP","vuelta 1 con REQUIRED_CHANGES (máx. 2, no cuenta como desvío)"],["REV",""],["TREE","APPROVED"],["CHK",""],["G2",""],["CL",""]])],
+ ["Revisión: hipótesis equivocada","exp",C([["PLAN",""],["IMP",""],["REV","el falsificador refuta la hipótesis"],["TREE","FAILURE_ORIGIN: diagnosis · desvío 1/3"],["DX","vuelve al diagnóstico citando el falsificador"],["EV","nueva hipótesis"],["DEC",""],["PLAN","plan ajustado"],["IMP",""],["REV",""],["TREE","APPROVED"],["CHK",""],["G2",""],["CL",""]])],
+ ["Revisión: cambió el alcance","exp",C([["IMP","tocó archivos fuera del alcance"],["REV",""],["TREE","FAILURE_ORIGIN: scope (gana a diagnosis) · desvío 1/3"],["TRI","re-triage: el riesgo sube"],["DX",""],["EV",""],["DEC",""],["PLAN",""],["IMP",""],["REV",""],["TREE","APPROVED"],["CL",""]])],
+ ["Implementador deja un aviso","new",C([["PLAN",""],["IMP","«WARNINGS: con varios trazos la pieza puede faltar»"],["WARN","M2: aviso abierto → no se cierra la fase"],["IMP","se corrige ahora (o el usuario lo acepta como riesgo)"],["WARN","sin avisos abiertos"],["REV",""],["TREE","APPROVED"],["CHK",""],["G2",""],["CL",""]])],
+ ["Falta un dato que solo sabe el usuario","",C([["U",""],["ADM",""],["TRI",""],["DX",""],["EV","no basta para justificar la intervención"],["GAP","falta: usuario"],["ASK","«¿la cola es por impresora o global?»"],["DX","respuesta en el expediente; se reanuda"],["EV",""],["DEC",""],["PLAN",""],["IMP",""],["REV",""],["TREE",""],["CL",""]])],
+ ["Interconsulta a un especialista","exp",C([["DX",""],["EV",""],["GAP","falta: especialista"],["CONS","review-agent mode=consult specialty=data: 1 pregunta, sin veredicto"],["DX","respuesta como evidencia"],["EV",""],["DEC",""],["PLAN",""]])],
+ ["Investigación sin avance","",C([["DX","ronda 1"],["EV","sin evidencia nueva"],["GAP","falta: proyecto"],["DX","ronda 2"],["EV","sin evidencia nueva"],["ESC","2 rondas sin avance → escalar"],["STOP","el usuario detiene: motivo y pendientes registrados"]])],
+ ["Desvíos agotados","exp",C([["REV","NEEDS_REVISION"],["TREE","diagnosis, pero ya van 3 desvíos"],["ESC","presupuesto agotado → escalar"],["TRI","el usuario elige continuar con nuevo alcance"],["DX",""]])],
+ ["Revisión FAILED","",C([["IMP",""],["REV","FAILED"],["TREE","FAILED → primero el usuario"],["ESC","el usuario decide"],["STOP","se detiene (o re-triage si acepta seguir)"]])],
+ ["Caso de varias fases","",C([["PLAN","3 fases aprobadas"],["IMP","fase 1"],["REV",""],["TREE","APPROVED"],["CHK","checkpoint, NO se cierra"],["IMP","fase 2"],["REV",""],["TREE","APPROVED"],["CHK",""],["IMP","fase 3"],["REV",""],["TREE","APPROVED"],["CHK","última fase"],["G2","usuario aprueba commit"],["CL","ahora sí se cierra"]])],
+ ["Merge / push / despliegue","new",C([["CL","caso cerrado: verificado"],["APR","M3: el Conductor no ejecuta git; delega y pide aprobación explícita"],["U","«sí, fusiona» (o «no todavía»)"]])]
+];
+const svg=document.getElementById('g'),NS="http://www.w3.org/2000/svg";
+const el=(t,a,p=svg)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);p.appendChild(e);return e};
+const W=214,H=50,edgeEl={},nodeEl={};
+const pt=(a,b)=>{const[x1,y1]=N[a],[x2,y2]=N[b];return[x1,y1,x2,y2]};
+for(const[a,b]of E){const[x1,y1,x2,y2]=pt(a,b);edgeEl[a+">"+b]=el('line',{x1,y1,x2,y2,class:'edge'})}
+for(const k in N){const[x,y,t,s,c]=N[k];const g=el('g',{class:'nd '+c});el('rect',{x:x-W/2,y:y-H/2,width:W,height:H},g);el('text',{x,y:y-8},g).textContent=t;el('text',{x,y:y+11,class:'s'},g).textContent=s;nodeEl[k]=g}
+const tok=el('circle',{id:'tok',r:9,cx:-50,cy:-50});
+const scen=document.getElementById('scen'),cap=document.getElementById('cap'),log=document.getElementById('log');
+let cur=null,i=0,timer=null,anim=null;
+SC.forEach((s,k)=>{const b=document.createElement('button');b.innerHTML=s[0]+(s[1]?`<span class="tag ${s[1]}">${s[1]=='new'?'nuevo':'experimental'}</span>`:'');b.onclick=()=>select(k,b);scen.appendChild(b)});
+function clear(){Object.values(nodeEl).forEach(n=>n.classList.remove('hot'));Object.values(edgeEl).forEach(e=>e.classList.remove('hot'))}
+function select(k,b){stop();[...scen.children].forEach(x=>x.classList.remove('on'));b.classList.add('on');cur=SC[k][2];i=0;clear();log.innerHTML='';cur.forEach(([n,c])=>{const li=document.createElement('li');li.textContent=N[n][2]+(c?' — '+c:'');log.appendChild(li)});cap.textContent=SC[k][0]+': pulsa ▶';const[x,y]=N[cur[0][0]];tok.setAttribute('cx',x);tok.setAttribute('cy',y)}
+function show(j){const[n,c]=cur[j];nodeEl[n].classList.add('hot');cap.innerHTML=`<b>${N[n][2]}</b>${c?' — '+c:''}`;[...log.children].forEach((li,q)=>li.classList.toggle('cur',q==j))}
+function move(a,b,done){const[x1,y1]=N[a],[x2,y2]=N[b];const e=edgeEl[a+">"+b];if(e)e.classList.add('hot');const d=600/ +document.getElementById('spd').value;const t0=performance.now();cancelAnimationFrame(anim);const f=t=>{const p=Math.min(1,(t-t0)/d);const q=p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;tok.setAttribute('cx',x1+(x2-x1)*q);tok.setAttribute('cy',y1+(y2-y1)*q);if(p<1)anim=requestAnimationFrame(f);else done()};anim=requestAnimationFrame(f)}
+function next(cb){if(!cur||i>=cur.length){stop();return}if(i==0){show(0);i=1;cb&&cb();return}const a=cur[i-1][0],b=cur[i][0];const j=i;i++;move(a,b,()=>{show(j);cb&&cb()})}
+function play(){if(!cur)return;if(i>=cur.length){i=0;clear()}document.getElementById('play').textContent='⏸ Pausa';const loop=()=>{timer=setTimeout(()=>next(()=>{if(timer!==null&&i<cur.length)loop();else stop()}),700/ +document.getElementById('spd').value)};loop()}
+function stop(){clearTimeout(timer);timer=null;document.getElementById('play').textContent='▶ Reproducir'}
+document.getElementById('play').onclick=()=>timer?stop():play();
+document.getElementById('step').onclick=()=>{stop();next()};
+document.getElementById('reset').onclick=()=>{stop();if(cur){i=0;clear();const[x,y]=N[cur[0][0]];tok.setAttribute('cx',x);tok.setAttribute('cy',y);[...log.children].forEach(li=>li.classList.remove('cur'));cap.textContent='Reiniciado: pulsa ▶'}};
+scen.children[0].click();
+</script>
+</body>
+</html>

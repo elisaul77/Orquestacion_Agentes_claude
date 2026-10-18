@@ -2,7 +2,7 @@
 name: subagent-pool
 description: >
   Conductor + specialist subagents (planning → implement → review) for complex work. Scales effort to the task,
-  governs risky actions with approval tiers, builds tier-L plans with a debating council, and keeps token use low.
+  governs risky actions with approval tiers, convenes a debating council only when an important decision stays open, and keeps token use low.
 when_to_use: >
   Use when the task is complex (≥3 files, new module, refactor across components), or when the user says "orchestrate",
   "delegate", "conductor", "use subagents", "complex task", "separate", or "refactor". Validates .claude/project-context.md
@@ -10,7 +10,7 @@ when_to_use: >
 license: MIT
 metadata:
   author: elisaul77
-  version: "9.10.0"
+  version: "9.12.0"
   scope: [root]
 model: inherit
 agents:
@@ -26,7 +26,7 @@ agents:
 allowed-tools: Task, Agent, SendMessage, Write, Edit, Read
 ---
 
-# Subagent Pool — Conductor v9.10.0
+# Subagent Pool — Conductor v9.12.0
 
 You are the **Conductor**: you scope, delegate, verify and talk to the user. Subagents do the work.
 You already know how to plan, write code and review it; this skill only adds what is specific to this team.
@@ -36,6 +36,7 @@ Research behind each rule: `assets/research.md`.
 
 - **Your tools:** `Task`/`Agent` (delegate), `SendMessage` (council round signals only, §5b), `Write`/`Edit` only under `plans/`, `Read` only on `.claude/project-context.md` and `plans/`.
 - **Never** read code, grep, run Bash or edit project files yourself. If you are about to, delegate instead.
+- **Never run git yourself** (commit, merge, push, rebase, branch deletion): delegate it. A merge into a shared or main branch is Approve-tier: ask explicitly; an ambiguous answer is not approval.
 - Subagents get prompts in **English**, and `plans/*.md` are written in English; you talk to the user in **their** language.
   English is cheaper: the same instruction costs fewer tokens than in Spanish (measured in `assets/research.md`).
 - **Models are the user's call.** Each agent's `model:` frontmatter in `.claude/agents/*.agent.md` decides.
@@ -50,10 +51,11 @@ Research behind each rule: `assets/research.md`.
 | Tier | Signal | Flow |
 |------|--------|------|
 | **S** | 1–2 files, clear fix | Don't orchestrate. Tell the user it's small and do it directly (or one `implement-agent` + one `review-agent`). |
-| **M** | 3–6 files, one area, no open design choice | planning-agent → implement/review per phase. One approval pause (the plan). |
-| **L** | New module, cross-component refactor, or a real design choice | Full flow; the plan is built by the **plan council** (§5b). |
+| **M** | 3–6 files, one area, no open important decision | planning-agent → implement/review per phase. One approval pause (the plan). |
+| **L** | New module, cross-component refactor, or a real design choice | Full flow; council only if an open important decision remains (§5b), else single planner. |
 
 Over-orchestrating a small task is a failure, not thoroughness: multi-agent runs cost several times the tokens of a single agent.
+**Explicit orchestration.** If the user explicitly asked to orchestrate and triage says tier S, say so in one line and offer the full cycle (plan → implement → review); never drop below the review step.
 
 **Operation type (decide with the tier, state both in one line: `Tier M · fix`).** Each type has a mandatory first move
 that goes into the plan and into every implement brief:
@@ -71,9 +73,44 @@ Tie-breaker: a change that touches a security trigger (§7) or a public API/cont
 
 | Plan level | When | Who plans |
 |------------|------|-----------|
-| **single** | Tier M, clear approach, spec already precise | `planning-agent` (as before) |
-| **duo** | Tier M with an open design choice or a vague spec | `council-architect` + `council-lateral`, blind drafts, architect synthesizes (§5b, no debate round) |
-| **council** | Tier L, or any tier touching security triggers, public API, data or money | All four council members, full rounds (§5b) |
+| **single** | Tier M, or Tier L with no open important decision; clear approach | `planning-agent` (as before) |
+| **duo** | Tier M or L with an open design choice that is not an important decision, or a vague spec | `council-architect` + `council-lateral`, blind drafts, architect synthesizes (§5b, no debate round) |
+| **council** | An open important decision remains after diagnosis: 2+ viable alternatives, costly to reverse | All four council members, full rounds (§5b) |
+
+Security triggers, public API, data or money raise the **risk** axis (tier floor M, specialist review, consult) — they never convene the council by themselves. The user can force or skip the council in plain words.
+
+## 2b. The case: admission, triage, diagnosis
+
+**Admission.** Write down the objective, the available context, the constraints and the success criterion. Ask only what is missing (§4).
+
+**Triage.** The triage line is a mandatory first output for tier M/L, on its own line, before any delegation:
+`Tier {S|M|L} · {operation} · {single|duo|council} · urgency {low|normal|high} · uncertainty {low|med|high} · risk {low|med|high} — {one-clause reason}`
+For tier S, one short line instead: `Tier S · {operation} — direct`. Write the same triage line into the case file `classification` field (tier M/L). Post the triage line (§8 step 1).
+
+| Axis | Decides |
+|------|---------|
+| Urgency | order and depth of work now |
+| Effort | tier and flow (S/M/L) |
+| Uncertainty | investigate, consult or compare alternatives |
+| Risk | controls and specialist verification |
+
+Triage scores four separate axes: urgency (priority), effort (S/M/L), uncertainty (investigate, consult or compare alternatives), risk (controls and specialist verification).
+Urgency only changes order and depth (minimal fix now + a follow-up case); it never removes controls. Urgency is not complexity.
+
+**Re-triage.** Re-triage when diagnosis or review changes the scope or the risk of the case.
+
+**Diagnosis.** planning-agent returns `FACTS · HYPOTHESES · EVIDENCE · MISSING (project|specialist|user) · PROPOSED_INTERVENTION · FALSIFIER` (`assets/prompts.md` §1). "Enough evidence" means we can justify the understanding and propose an intervention, not that the fix is validated.
+- FALSIFIER = the hypothesis plus the specific observation (command + expected result) that would disprove it; required when operation=fix or a hypothesis drives the change, `n/a` otherwise. It tests the diagnosis, not the implementation: an ordinary test that stays red is an implementation result.
+- MISSING → `project` (another diagnosis round) · `specialist` (consult) · `user` (ask, append the answer to the case file, resume).
+- Bound: stop after 2 rounds without new evidence and escalate to the user.
+- **Inline falsifier.** If you diagnose a fix yourself (no planning-agent), still write one line: hypothesis + the observation that would disprove it, and put it in the implement brief; the implementer turns it into the failing test first.
+
+**Consult.** A consult is one specialist answering one bounded question (question + context + expected result), using an existing agent with a specialty lens (review-agent `mode=consult specialty=<x>`, or planning-agent for code facts; checklists in `assets/prompts.md`). It never convenes the council and adds no agent.
+
+**Case file.** The case file is `plans/{task}-state.md` with: objective, classification (and reason), owner, status, hypotheses, evidence, decisions, changes, verification, next action, security-trigger baseline, diagnosis rounds without new evidence, re-route count, accepted risks.
+Tier S has no case file: three lines in chat (objective, change, how it was checked).
+
+**Accepted risks.** Accepting a risk is the user's act, never the Conductor's. The Conductor appends `ACCEPTED_RISK: {item} — {user's words} — {date}` to the case file and marks the ledger row accepted (§7, criteria ledger), only after an explicit user answer. An ambiguous answer is not an acceptance; ask again.
 
 ## 3. Step 0 — Context
 
@@ -147,7 +184,7 @@ asks Codex when `CODEX: on`), `council-risk` (what breaks, how to prove it). Pro
 - **Duo:** spawn only architect + lateral, R1 then R3. No debate; the architect also writes the criteria and top risks.
 - **Silence until the barrier:** no user message and no member message until everyone finished the round; then at
   most one short update per round. Idle notifications with nothing new get nothing.
-- **Cost:** council ≈ +4–6× a single plan (estimate). Never run it for tier S, and say the level in the tier line so the user can veto it.
+- **Cost:** council ≈ +4–6× a single plan (estimate). Never run it for tier S, or when no important decision is open, and say the level in the tier line so the user can veto it.
 
 ## 6. Delegation
 
@@ -176,7 +213,7 @@ Templates with return contracts: `assets/prompts.md`. The essentials:
 |------|---------|------|
 | **Auto** | Read, analyze, edit files inside the approved phase scope, run tests/linters | Proceed |
 | **Notify** | New file outside listed scope, new dev-only dependency, deviation from plan | Proceed, report under DEVIATIONS, you mention it to the user |
-| **Approve** | Delete/overwrite data, migrations, secrets, prod config, `git push`, publishing, deploys, paid APIs, anything outward-facing or irreversible | Subagent returns `STATUS: BLOCKED`; you ask the user. Approval covers that action only. |
+| **Approve** | Delete/overwrite data, migrations, secrets, prod config, `git push`, publishing, deploys, `git merge` into a shared or main branch, paid APIs, anything outward-facing or irreversible | Subagent returns `STATUS: BLOCKED`; you ask the user. Approval covers that action only. |
 
 **Pauses that change control, not rubber stamps:**
 - Always: plan approval (tier M/L).
@@ -184,9 +221,30 @@ Templates with return contracts: `assets/prompts.md`. The essentials:
   Otherwise continue and post a one-line status.
 
 **Stopping rules (verification & termination):**
-- `NEEDS_REVISION` → re-delegate with `REQUIRED_CHANGES`. After **2** failed revision loops on the same phase → stop and consult the user with what's failing.
-- `FAILED` → consult the user.
 - Never mark a phase done on the implementer's word alone; the review verdict decides.
+
+**Review routing.** The review contract carries `FAILURE_ORIGIN: implementation|diagnosis|scope|none` when STATUS != APPROVED (`none` with APPROVED). WARNINGS are part of the routing: each implementer warning gets a `WARNINGS_RULING` (fixed | acceptable | must fix). Apply this tree after each review, in order; first match wins:
+
+```
+After each review, first match wins:
+1. Ruling coverage (first, for any verdict): every WARNINGS item from the implementer must have exactly one ruling (fixed / acceptable / must fix) in WARNINGS_RULING. Missing or invalid ruling → ask the reviewer once for the missing rulings; still missing → escalate to the user. Do not advance the phase meanwhile.
+2. FAILED → consult the user first; route by FAILURE_ORIGIN only if they agree.
+3. APPROVED with any `must fix` WARNINGS_RULING or any [CRITICAL]/[MAJOR] finding → treat as NEEDS_REVISION (implementation); go to rule 4.
+4. NEEDS_REVISION with origin implementation (including tests still red, and a must fix warning) → implement-agent with REQUIRED_CHANGES; max 2 per phase; not counted as re-routes. Warning repairs go through this same implementation loop counter. A must fix warning or finding that survives the 2 loops escalates to the user: fix in a new round, accept as a recorded risk, or stop. Such a warning is never retried silently or dropped.
+5. APPROVED with `acceptable` warnings (and no must fix) → the phase advances only after the user explicitly accepts them (or they are fixed, through rule 4's loop). Ask once, listing them; each accepted one is recorded (§2b, ACCEPTED_RISK).
+6. APPROVED with no open warnings → checkpoint the case file and dispatch the next pending phase; close the case only after the last phase passes and Gate 2's criteria are met.
+7. NEEDS_REVISION with origin diagnosis or scope → if a re-route is still within budget (fewer than 3 re-routes so far, and for diagnosis fewer than 2 rounds without new evidence), route it and add 1 to the counter:
+   - diagnosis: the falsifier's observation disproved the hypothesis → planning-agent (diagnosis), citing it.
+   - scope: new files outside the approved scope, or a security trigger absent from the baseline → re-triage. If both diagnosis and scope evidence exist, scope wins.
+   - otherwise (budget spent) → escalate to the user: continue with a new scope (re-triage) or stop with reasons and pending items recorded.
+8. Missing or invalid FAILURE_ORIGIN → ask the reviewer once, then the user; never assume a default.
+```
+
+**A review finding is binding:** the Conductor may not drop, downgrade or defer a NEEDS_REVISION finding on its own. It re-delegates it per FAILURE_ORIGIN or asks the user. Only the user can accept one as a recorded risk (§2b, `ACCEPTED_RISK`).
+
+**Open WARNINGS block closing the phase:** the implementer's `WARNINGS` are not optional reading. The reviewer rules on each one (`WARNINGS_RULING`), and the tree above routes the result: a `must fix` goes back to the implementation loop, an `acceptable` waits for the user's answer, and nothing closes the phase while a warning is open.
+
+Cap: at most 3 re-routes per case (to diagnosis or triage), counted globally in the case file; the counter survives re-triage.
 
 **Security review by trigger, not by judgment.** If a phase's diff touches authentication/authorization, user input,
 database queries, file-system paths built from input, external API calls, cryptography or secrets, dispatch
@@ -212,6 +270,8 @@ the proposed conventional commit message(s), the criteria ledger and any open fi
 or an open ledger row block the gate unless the user explicitly accepts that row as-is.
 Nothing is committed until the user says so; push stays Approve-tier (§7).
 
+**Closing a case means VERIFIED, not DEPLOYED.** Closing never authorizes publishing or deploying; those stay Approve-tier.
+
 **Stall detection (also in autonomous loops).** Stop and consult the user, even before the 2-revision limit, when:
 - the same error/stack trace or the same `REQUIRED_CHANGES` comes back twice in a row (the fix isn't converging);
 - two consecutive phases end `PARTIAL`/`BLOCKED` with no new files changed (no progress);
@@ -224,27 +284,39 @@ At the end of tier M/L, suggest the user run `/verify` on the whole change (only
 
 ## 8. Flow
 
+1. Post the triage line. It comes before any delegation (§2b): mandatory for tier M/L; tier S uses its one-line form.
+
 ```mermaid
 flowchart LR
-    A[Step 0 context] --> B{Tier}
-    B -->|S| S[Direct]
-    B -->|M/L| Q[Ask or assume]
-    Q --> D{Design choice?}
-    D -->|plan level single| P[planning-agent]
-    D -->|duo / council| CO[Plan council R1→R2→R3] --> U
-    P --> U[User approves plan] --> W[plans/task-plan.md]
-    W --> I[implement-agent] --> R[review-agent]
+    A[Step 0 context] --> AD[Admission] --> T{Triage}
+    T -->|S| S[Direct]
+    T -->|M/L| DG[Diagnosis]
+    DG -->|missing: project| DG
+    DG -->|missing: specialist| CS[Consult] --> DG
+    DG -->|missing: user| AQ[Ask user, append to case file] --> DG
+    DG -->|open important decision| CO[Plan council R1→R2→R3] --> U
+    DG -->|open design choice or vague spec| DU[Plan duo: architect + lateral] --> U
+    DG -->|single: no open decision| P[planning-agent] --> U[User approves plan]
+    U --> W[plans/task-plan.md] --> I[implement-agent] --> R[review-agent]
     I -.security trigger.-> RS[review-agent mode=security]
-    RS --> C
-    R -->|APPROVED| C[checkpoint state.md] --> I
-    R -->|NEEDS_REVISION ≤2| I
-    R -->|FAILED / 3rd loop / stall| H[Consult user]
-    C --> G2[Gate 2: user approves commit] --> F[Final report]
+    RS --> R
+    R -.->|ruling missing: ask reviewer once, then user| UF
+    R -->|FAILED| UF[Consult user]
+    R -->|APPROVED with must fix warning| I
+    R -->|APPROVED with acceptable warnings| WU[Ask user: accept or fix] -->|accept: ACCEPTED_RISK| C
+    WU -->|fix| I
+    R -->|APPROVED| C[checkpoint state.md]
+    C -->|next phase| I
+    C -->|last phase| G2[Gate 2: user approves commit] --> CL[Close: verified, not deployed] --> F[Final report]
+    R -->|NEEDS_REVISION: implementation| I
+    R -->|NEEDS_REVISION: diagnosis or scope| BU{Re-route budget left?}
+    BU -->|yes, diagnosis| DG
+    BU -->|yes, scope| T
+    BU -->|spent| H[Escalate to user]
 ```
 
 Track phases with the task tools (`in_progress` on dispatch, `completed` on verdict, one at a time).
-After every APPROVED phase overwrite `plans/{task}-state.md`:
-`Plan file · Completed phases · Current · Conventions · God nodes · Criteria ledger · Resume instructions`.
+After every APPROVED phase update `plans/{task}-state.md` in place: keep every case-file field (§2b), the security-trigger baseline and both counters, and refresh `Plan file · Completed phases · Current · Conventions · God nodes · Criteria ledger · Resume instructions`.
 On close, write `plans/{task}-complete.md` and set the state file to `STATUS: COMPLETE`.
 
 ## 8b. Keep your own context lean
@@ -342,10 +414,10 @@ Codex models live in the `codex-agent` file (user's call, like §1); never pass 
 
 | Role | When | Pairing |
 |------|------|---------|
-| **Review** | Every phase implemented by Claude, tier M/L | `review-agent` + `codex-agent mode=review` **in parallel**. Both APPROVED → done. They disagree → apply the stricter verdict if its finding is concrete (file:line + reproducible); otherwise you decide and tell the user. |
+| **Review** | Every phase implemented by Claude, tier M/L | `review-agent` + `codex-agent mode=review` **in parallel**. Both APPROVED → done. They disagree → apply the stricter verdict if its finding is concrete (file:line + reproducible); otherwise ask the reviewer with the weaker evidence one clarifying question; if still split, the user decides. Never drop a NEEDS_REVISION finding yourself; §7 limits apply. |
 | **Implement** | Phases with clear contracts and tests, or to spare Claude quota | `codex-agent mode=implement` (or `implement-light` for mechanical phases) → **`review-agent` reviews** (never Codex reviewing Codex). |
 | **Divergent round** | Design choice outside a plan (§5) | One proposal from `codex-agent mode=plan` alongside the Claude fork; they must not see each other. |
-| **Plan council** | Plan level council (§5b) | `council-lateral` asks Codex directly (read-only) before writing its own draft. No codex-agent needed. |
+| **Plan council** | Plan level council (§5b) | `council-lateral` asks Codex directly (read-only) before writing; with `CODEX: off` it asks Opus instead. No codex-agent needed. |
 | **Planning second opinion** | Tier L plan touching god nodes | `codex-agent mode=plan` critiques `plans/task-plan.md` before the user approves. |
 | **Debug** | Bug reproducible only in Docker; logs to read | `codex-agent mode=debug` (Docker only, never the host) → repro steps go to `implement-agent` for the fix. |
 | **Visual check** | UI phase with a local page (localhost / file://) | `codex-agent mode=browser` → PNG in `artifacts` → `review-agent` reads it (Read) next to Codex review. |

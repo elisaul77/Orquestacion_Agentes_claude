@@ -124,6 +124,30 @@ class DoctorTest(unittest.TestCase):
         self.assertEqual(self.status(res, "council agents"), "warn")
         self.assertIn("council-risk", next(r for r in res if r["check"] == "council agents")["detail"])
 
+    def test_stale_skill_copy_warns_same_version_ok_absent_silent(self):
+        from unittest import mock
+        (self.home / ".claude/skills/subagent-pool/SKILL.md").write_text('version: "9.12.0"\n')
+        other = self.home / ".agents/skills/subagent-pool/SKILL.md"
+        rel = (".agents/skills/subagent-pool/SKILL.md",)
+        with mock.patch("doctor.OTHER_COPIES", rel):
+            # older copy: warns, detail names the copy and both versions, fix is the rsync/remove advice
+            other.parent.mkdir(parents=True)
+            other.write_text('version: "9.5.0"\n')
+            r = next(x for x in doctor.run_checks() if x["check"] == "stale skill copy ~/.agents")
+            self.assertEqual((r["status"], r["detail"]), ("warn", "~/.agents: v9.5.0 (installed v9.12.0)"))
+            self.assertIn("rsync -a --exclude __pycache__", r["fix"])
+            self.assertIn("or remove it if unused", r["fix"])
+            # numeric, not string, comparison: 9.9.0 < 9.12.0
+            other.write_text('version: "9.9.0"\n')
+            self.assertEqual(self.status(doctor.run_checks(), "stale skill copy ~/.agents"), "warn")
+            # same version: ok
+            other.write_text('version: "9.12.0"\n')
+            r = next(x for x in doctor.run_checks() if x["check"] == "stale skill copy ~/.agents")
+            self.assertEqual((r["status"], r["fix"]), ("ok", ""))
+            # absent copy: no row at all
+            other.unlink()
+            self.assertFalse([x for x in doctor.run_checks() if x["check"].startswith("stale skill copy")])
+
 
 if __name__ == "__main__":
     unittest.main()

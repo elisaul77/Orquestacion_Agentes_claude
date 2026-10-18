@@ -5,8 +5,8 @@
 🌐 [English](README.md) · **Español**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-v9.10.0-blueviolet.svg)](CHANGELOG.md)
-[![Tests](https://img.shields.io/badge/tests-196%20passing-3fb950.svg)](#-tests)
+[![Version](https://img.shields.io/badge/version-v9.12.0-blueviolet.svg)](CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-228%20passing-3fb950.svg)](#-tests)
 [![Claude Code](https://img.shields.io/badge/brain-Claude%20Code-8a63f0.svg)](https://claude.com/claude-code)
 [![Codex](https://img.shields.io/badge/Codex-opcional-412991.svg)](#complementos-opcionales)
 
@@ -21,7 +21,7 @@ Pensado para trabajo complejo (3 archivos o más, un módulo nuevo, un refactor)
 tú ──> Conductor (acota y delega, nunca toca el código)
           │
           ├─ plan ──────► planning-agent                      (planes simples)
-          │               o consejo de plan: spec · architect (planes grandes o con riesgo)
+          │               o consejo de plan: spec · architect (decisión importante abierta)
           │                  · lateral · risk, que debaten
           │                         │
           │                  plans/*.md ──► tu aprobación
@@ -110,12 +110,14 @@ Pídelo con tus palabras: `usa el conductor para…`, `delega en subagentes`, `t
 Antes de planificar, el Conductor resume en una línea cómo ha leído la tarea:
 
 ```
-Tier L · feature · council
+Tier M · fix · single · urgency normal · uncertainty high · risk low — causa desconocida, módulo de auth sin tocar
 ```
 
 - El **tier** es el esfuerzo: S, M o L.
 - La **operación** puede ser feature, fix, tweak o refactor. Cada una tiene un primer paso obligatorio; por ejemplo, un fix empieza con un test que falla.
 - El **nivel de plan** dice quién escribe el plan: single, duo o council.
+- **Urgencia, incertidumbre y riesgo** son otros tres ejes. La urgencia fija la prioridad y nunca quita controles; la incertidumbre dice cuánto investigar; el riesgo, cuánta revisión de especialista.
+- La línea es la primera línea obligatoria del Conductor para tier M y L. El tier S usa una sola línea: `Tier S · fix — direct`.
 
 Si no estás de acuerdo, dilo y se hace como tú dices: `basta con un solo planner`, `que el plan lo haga el consejo`, `hazlo directo`. No hay nada más que configurar.
 
@@ -150,7 +152,7 @@ Si una tarea se interrumpe, se retoma desde `plans/{task}-state.md`; el Conducto
 | `planning-agent` | Explora el repo (con graphify si lo hay) y escribe un plan por fases | ❌ |
 | `council-spec` | Consejo: qué significa "listo", en criterios que se puedan probar | ❌ |
 | `council-architect` | Consejo: fases sobre los archivos reales; escribe el plan final | ❌ |
-| `council-lateral` | Consejo: la opción no obvia (no construirlo, la mitad de piezas, un supuesto falso) | ❌ |
+| `council-lateral` | Consejo: la opción no obvia (no construirlo, la mitad de piezas, un supuesto falso) — consulta a Codex, o a Opus sin Codex *(experimental — escrito y revisado, aún no medido en ejecuciones reales)* | ❌ |
 | `council-risk` | Consejo: qué se rompe y cómo se demostrará cada afirmación | ❌ |
 | `implement-agent` | Implementa una fase, empezando por el test | ✅ el único |
 | `review-agent` | APPROVED / NEEDS_REVISION / FAILED, con evidencia para cada criterio | ❌ |
@@ -163,21 +165,25 @@ El modelo de cada agente se define en su propio archivo (`model:`) y lo decides 
 
 ## 🔄 Cómo avanza una tarea
 
-**1. El esfuerzo según el tamaño**
+**1. Admisión y triage de cuatro ejes.** El Conductor fija el objetivo y qué significa que salga bien, y luego puntúa cuatro ejes por separado: **urgencia** (prioridad; nunca quita controles), **esfuerzo** (S, M o L, abajo), **incertidumbre** (investigar, consultar o comparar alternativas) y **riesgo** (controles y revisión de especialista). El tier S se hace directo, sin archivo de caso. Para M y L el archivo de caso es `plans/{task}-state.md`. Si el diagnóstico cambia el alcance o el riesgo, el Conductor vuelve a hacer el triage.
 
 | Tier | Señal | Flujo |
 |---|---|---|
 | S | 1–2 archivos, arreglo claro | Se hace directo, sin orquestar |
 | M | 3–6 archivos, una sola zona | Plan, y luego implementación y revisión por fase |
-| L | Módulo nuevo, refactor entre componentes o una decisión de diseño | Lo mismo, pero el plan lo escribe el consejo |
+| L | Módulo nuevo, refactor entre componentes, decisión de diseño | Lo mismo; el nivel de plan decide quién escribe el plan |
 
-**2. Quién escribe el plan**
+**2. Diagnóstico con falsador.** `planning-agent`, en modo Diagnóstico, devuelve hechos, hipótesis, evidencia, lo que falta (proyecto, especialista o usuario), la intervención propuesta y un **falsador**: la hipótesis más la observación (un comando y su resultado esperado) que la desmentiría. Dos rondas sin evidencia nueva detienen el bucle.
+
+**3. Consultar o planificar.** Una **consulta** es un especialista que responde a una pregunta acotada (review-agent `mode=consult specialty=<x>`, o planning-agent para hechos de código) *(experimental — escrito y revisado, aún no medido en ejecuciones reales)*. El **consejo** solo se convoca cuando, tras el diagnóstico, queda abierta una decisión importante (open important decision).
 
 | Nivel de plan | Cuándo | Quién |
 |---|---|---|
-| single | Enfoque claro, petición precisa | `planning-agent` |
-| duo | Decisión de diseño abierta o petición vaga | architect + lateral, con borradores a ciegas; el architect sintetiza |
-| council | Tier L, o cualquier cosa que toque seguridad, una API pública, datos o dinero | los cuatro miembros, con una ronda de debate |
+| single | Enfoque claro: Tier M, o Tier L sin decisión importante abierta | `planning-agent` |
+| duo | Una elección abierta que no es importante, o una petición vaga | architect + lateral, con borradores a ciegas; el architect sintetiza |
+| council | Queda una decisión importante abierta tras el diagnóstico | los cuatro miembros, con una ronda de debate |
+
+Los cambios sensibles (seguridad, una API pública, datos o dinero) suben el eje de **riesgo**: reciben revisión de especialista y nunca convocan por sí solos al consejo.
 
 ```
 council   R1  borradores a ciegas ── spec · architect · lateral · risk (nadie lee a nadie)
@@ -188,9 +194,20 @@ council   R1  borradores a ciegas ── spec · architect · lateral · risk (n
 
 El Conductor solo marca las rondas; el contenido del debate nunca pasa por él. Sin la bandera de equipos, las mismas rondas se hacen por archivos. El protocolo completo está en [council.md](skills/subagent-pool/assets/council.md).
 
-**3. En cada fase:** `implement-agent` implementa y `review-agent` revisa. Si Codex está activo, también revisa en paralelo. Las fases que tocan seguridad reciben además una revisión de seguridad. Un NEEDS_REVISION da derecho a dos reintentos; después decides tú. Cada fase aprobada se guarda en `plans/{task}-state.md`.
+**4. Por fase, con ruteo según el origen.** `implement-agent` → `review-agent`, y Codex revisa en paralelo si está activo. Un NEEDS_REVISION también indica un `FAILURE_ORIGIN`, y el Conductor encamina el arreglo según él:
 
-**4. Cierre:** un informe final con lo que cambió, lo verificado, lo no verificado y los riesgos. El commit espera tu visto bueno.
+```
+review ─► FAILURE_ORIGIN ─► implementation → implement-agent (máx. 2 bucles por fase)
+                         ─► diagnosis      → planning-agent, citando el falsador
+                         ─► scope          → nuevo triage
+                         (3 re-enrutamientos por caso en total, después decides tú)
+```
+
+*Ruteo según el origen (`FAILURE_ORIGIN` y sus re-enrutamientos): experimental — escrito y revisado, aún no medido en ejecuciones reales.* Un hallazgo de un NEEDS_REVISION es vinculante: el Conductor nunca lo descarta, lo rebaja ni lo aplaza por su cuenta. Lo vuelve a delegar o te pregunta, y puedes aceptarlo como riesgo registrado.
+
+FAILED va primero a ti. Cada fase aprobada se guarda en `plans/{task}-state.md`.
+
+**5. Cierre: verificado, no desplegado.** Un informe final con lo que cambió, lo verificado, lo no verificado y los riesgos. Cerrar un caso significa que está verificado. Nunca autoriza publicar ni desplegar, que siguen siendo de nivel de aprobación. El commit espera tu visto bueno.
 
 ---
 
@@ -253,6 +270,12 @@ Son mediciones sobre tareas de prueba, sacadas de [`research.md`](skills/subagen
 
 El coste del consejo (entre 4 y 6 veces el de un plan simple) todavía es una estimación; mira [Lo que falta](#%EF%B8%8F-lo-que-falta).
 
+### Qué se midió
+
+- **Banco A/B** (`competition/`): 10 ejecuciones válidas de 12 directorios de ejecución, resultados iguales entre versiones. Cada ejecución está listada en [competition/RESULTS.md](competition/RESULTS.md). En una, la v9.10 ignoró un NEEDS_REVISION, y de ahí salió la regla de revisión vinculante (v9.12).
+- **Uso real** (un proyecto de Forja y el caso del Hospital): el bloque de WARNINGS, la regla de no ejecutar git por parte del Conductor y la línea de orquestación explícita (v9.12) salen de ahí.
+- **Aún sin medir:** el enrutamiento por FAILURE_ORIGIN, los re-enrutamientos, la consulta y la segunda voz del lateral. Son experimentales (marcados arriba).
+
 ---
 
 ## 🧪 Tests
@@ -261,7 +284,7 @@ El coste del consejo (entre 4 y 6 veces el de un plan simple) todavía es una es
 python3 -B -m unittest discover -s skills/subagent-pool/scripts
 ```
 
-**196 tests**, solo con la biblioteca estándar. Dos se saltan en Python < 3.11 porque necesitan `tomllib`.
+**228 tests**, solo con la biblioteca estándar. Dos se saltan en Python < 3.11 porque necesitan `tomllib`.
 
 | Archivo | Tests | Qué cubre |
 |---|---|---|
@@ -271,11 +294,12 @@ python3 -B -m unittest discover -s skills/subagent-pool/scripts
 | `test_trim_output.py` | 12 | El recorte de la salida de tests nunca pierde una línea de fallo (con salida real de unittest y pytest) |
 | `test_cost_tracker.py` | 9 | Registro de costes: deduplicación de ids en streaming, subagentes, informe |
 | `test_install.py` | 14 | Instalador: dry run, fusión de settings sin sobrescribir, copia de seguridad, bloque de CLAUDE.md, complemento Codex |
-| `test_doctor.py` | 9 | Chequeo de instalación: desajustes, equipos remotos, roles de Codex, consejo, bandera de equipos |
+| `test_doctor.py` | 10 | Chequeo de instalación: desajustes, equipos remotos, roles de Codex, consejo, bandera de equipos |
 | `test_sync_codex_agents.py` | 9 | Sincronización de agentes a roles de Codex: escapado TOML, bloques YAML, archivos ajenos |
 | `test_instincts.py` | 4 | Almacén de lecciones por proyecto |
 | `test_mutate.py` | 4 | La prueba de mutación corre en una copia aislada |
-| `test_council.py` | 4 | Los agentes del consejo tienen `SendMessage` y el protocolo coincide con la skill |
+| `test_council.py` | 5 | Los agentes del consejo tienen `SendMessage` y el protocolo coincide con la skill |
+| `test_caseflow.py` | 30 | Las reglas del flujo de casos están escritas (solo estructura, no comportamiento de enrutamiento) |
 
 `skill-review.sh` no tiene tests automáticos; su `--dry-run` imprime todos los comandos sin ejecutarlos.
 
@@ -284,7 +308,7 @@ python3 -B -m unittest discover -s skills/subagent-pool/scripts
 ## 🔒 Seguridad
 
 - **Niveles de aprobación.** Lo que se edita dentro del alcance aprobado y los tests van solos. Cualquier cosa fuera de ese alcance se reporta. Borrar, migrar, tocar secretos, hacer push, publicar o desplegar vuelve como `BLOCKED` hasta que lo apruebas.
-- **Codex** corre en sandbox (`read-only`, y como mucho `workspace-write`). El miembro lateral del consejo solo llama a Codex en modo `read-only`.
+- **Codex** corre en sandbox (`read-only`, y como mucho `workspace-write`). El miembro lateral del consejo solo llama a Codex (`read-only`) o a Opus (sin herramientas).
 - **Las skills externas** se descargan solo de fuentes oficiales (`anthropics/skills`, `openai/skills`, `vercel-labs/agent-skills`) y se revisan en dos contenedores:
   - Análisis previo: `--network none`, con la skill montada en solo lectura.
   - Revisor: su única salida es un proxy squid con lista blanca hacia la API del modelo.
@@ -307,7 +331,7 @@ Orquestacion_Agentes_claude/
 │   ├── review-agent.agent.md          # Veredicto con niveles de evidencia
 │   ├── council-spec.agent.md          # Consejo: criterios de aceptación
 │   ├── council-architect.agent.md     # Consejo: fases y síntesis final
-│   ├── council-lateral.agent.md       # Consejo: la opción no obvia (consulta a Codex)
+│   ├── council-lateral.agent.md       # Consejo: la opción no obvia (consulta a Codex, o a Opus sin Codex)
 │   ├── council-risk.agent.md          # Consejo: riesgos y verificación
 │   ├── AgentArchitect.agent.md        # Diseña equipos especialistas nuevos
 │   └── optional/codex-agent.agent.md  # Puente a OpenAI Codex
@@ -333,7 +357,7 @@ Orquestacion_Agentes_claude/
     │       ├── sync_codex_agents.py   # Agentes → roles de Codex
     │       ├── codex-models.py        # Modelo de Codex más reciente por familia
     │       ├── skills_lib.py · skill_prescan.py · skill-review.sh
-    │       ├── test_*.py              # 196 tests
+    │       ├── test_*.py              # 228 tests
     │       └── fixtures/
     ├── arquitec-dev-ia/               # Documentación de contexto para IA; escribe project-context.md
     └── graphify/                      # Skill de grafo de conocimiento
@@ -360,6 +384,7 @@ Orquestacion_Agentes_claude/
 
 ## 🗺️ Lo que falta
 
+- **El enrutamiento aún no se mide.** El banco A/B hizo 10 ejecuciones válidas con resultados iguales ([competition/RESULTS.md](competition/RESULTS.md)), pero el enrutamiento por FAILURE_ORIGIN, los re-enrutamientos y la consulta son experimentales: escritos y revisados, aún no medidos en ejecuciones reales. Los tests del flujo de casos comprueban que las reglas están escritas, no que un modelo las siga.
 - **El consejo aún no se ha medido en un proyecto real.** Falta comparar un plan del consejo con el de un solo planner y medir su coste real; lo de 4 a 6 veces es una estimación.
 - **Los equipos de agentes son una bandera experimental de Claude Code** y pueden cambiar. Si cambian, el consejo pasa al modo por archivos.
 - **El revisor del contenedor 2 no se ha ejecutado de principio a fin** con una skill real.
