@@ -33,6 +33,7 @@ import argparse
 import datetime as dt
 import hashlib
 import io
+import ipaddress
 import json
 import os
 import re
@@ -69,6 +70,8 @@ GIT_ID = ["-c", "user.name=bench", "-c", "user.email=bench@localhost", "-c", "co
 # container hardening: default bridge network (the container can reach the host LAN); no home dir and no
 # docker socket are mounted; only the temp HOME (credentials, chmod 600) and the run dir are bind-mounted
 HARDENING = ["--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--pids-limit", "512", "--memory", "6g"]
+# explicit resolvers for the bridge network (never --network host): the agent must reach api.anthropic.com
+DEFAULT_DNS = ("1.1.1.1", "8.8.8.8")
 VERSION_RE = re.compile(r'version:\s*"?([\d.]+)')
 CLAUDE_JSON = {  # skips first-run onboarding inside the temp HOME; no credentials here
     "hasCompletedOnboarding": True,
@@ -239,10 +242,11 @@ exit $rc
     path.chmod(0o755)
 
 
-def docker_argv(name, uid, gid, dirs, timeout_s, model=None):
+def docker_argv(name, uid, gid, dirs, timeout_s, model=None, dns=DEFAULT_DNS):
     argv = [
         "docker", "run", "--rm", "--name", name,
         *HARDENING,
+        *[flag for server in dns for flag in ("--dns", server)],
         "--user", f"{uid}:{gid}",
         "-e", "HOME=/bench/home",
         "-e", "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1",
@@ -414,8 +418,9 @@ def build_plan(args):
     return {
         "run_id": run_id, "run_dir": run_dir, "timeout_s": timeout_s, "dirs": dirs,
         "codex": codex, "addons": ENTRY_ADDONS if codex else ENTRY_ADDONS_NO_CODEX,
-        "pins": pins, "ref_sha": ref_sha, "snapshot": snap, "kunna_cmds": kunna_cmds,
-        "docker": docker_argv(f"kunna-bench-{run_id}", os.getuid(), os.getgid(), dirs, timeout_s, args.model),
+        "pins": pins, "ref_sha": ref_sha, "snapshot": snap, "kunna_cmds": kunna_cmds, "dns": args.dns_server,
+        "docker": docker_argv(f"kunna-bench-{run_id}", os.getuid(), os.getgid(), dirs, timeout_s, args.model,
+                              args.dns_server),
         "prompt": prompt, "prompt_path": prompt_path,
     }
 
@@ -441,7 +446,8 @@ def print_dry_run(args, plan):
 
     say(f"claude env: CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1, timeout {plan['timeout_s']} s, "
         f"host kill at +{HOST_GRACE_S} s, max main-agent messages {args.max_turns} (subagent messages logged, not capped)")
-    say(f"container hardening: {' '.join(HARDENING)}; default bridge network; no docker socket, no home dir")
+    say(f"container hardening: {' '.join(HARDENING)}; default bridge network; explicit DNS {', '.join(plan['dns'])}; "
+        "no docker socket, no home dir")
     say("docker command:")
     print("  " + shlex.join(plan["docker"]))
     say(f"after the run: judged diff = excluding {', '.join(EXCLUDED_DIRS)} -> final.diff; the rest -> artifacts.diff; "
@@ -519,7 +525,8 @@ def base_meta(args, plan, versions, image_id):
             "claude_version": versions["claude"], "codex_version": versions["codex"],
             "model_requested": args.model, "model_reported": None,
             "started_utc": utc_now(), "prompt_sha256": sha256_text(plan["prompt"]),
-            "timeout_s": plan["timeout_s"], "max_turns": args.max_turns, "hardening": HARDENING}
+            "timeout_s": plan["timeout_s"], "max_turns": args.max_turns, "hardening": HARDENING,
+            "dns_servers": plan["dns"]}
 
 
 def execute(args, plan):
@@ -580,7 +587,7 @@ def execute(args, plan):
         secret_values = prepare_home(home, plan["codex"])
 
         # 4. run the container
-        argv = docker_argv(name, os.getuid(), os.getgid(), dirs, plan["timeout_s"], args.model)
+        argv = docker_argv(name, os.getuid(), os.getgid(), dirs, plan["timeout_s"], args.model, plan["dns"])
         meta["docker"] = shlex.join(argv)
         timed_out = False
         with open(dirs["out"] / "stderr.log", "wb") as err:
@@ -646,6 +653,9 @@ def parse_args(argv=None):
     ap.add_argument("--b-source", choices=("commit", "worktree"), default="commit",
                     help="commit = git archive of --b-ref (default); worktree = working tree, explicit only, "
                          "refused while skills/ or agents/ have uncommitted changes")
+    ap.add_argument("--dns-server", action="append", default=None, metavar="IP",
+                    help="resolver for the bench container (repeatable; default 1.1.1.1 and 8.8.8.8); "
+                         "recorded in meta.json as dns_servers")
     ap.add_argument("--allow-same-version", action="store_true")
     ap.add_argument("--no-codex", action="store_true",
                     help="the cell runs without Codex: install.py --with teams only, no ~/.codex/auth.json, "
@@ -655,6 +665,12 @@ def parse_args(argv=None):
         ap.error("--run must be >= 1")
     if args.max_turns < 1 or args.timeout_min <= 0:
         ap.error("--max-turns and --timeout-min must be positive")
+    args.dns_server = list(args.dns_server or DEFAULT_DNS)
+    for server in args.dns_server:
+        try:
+            ipaddress.ip_address(server)
+        except ValueError:
+            ap.error(f"--dns-server {server!r} is not an IP address")
     return args
 
 

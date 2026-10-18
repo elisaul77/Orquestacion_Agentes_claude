@@ -235,6 +235,24 @@ class DryRunTest(unittest.TestCase):
         self.assertNotIn("docker.sock", cmd)
         self.assertNotIn(str(Path.home()) + ":", cmd)
 
+    def test_docker_run_sets_explicit_dns_on_the_default_bridge(self):
+        _, p = self.plan("--system", "A", "--round", "bug", "--run", "1", "--dry-run")
+        argv = p["docker"]
+        dns = [argv[i + 1] for i, a in enumerate(argv[:-1]) if a == "--dns"]
+        self.assertEqual(dns, ["1.1.1.1", "8.8.8.8"])
+        self.assertFalse(any(a in ("--network", "--net") and argv[i + 1] == "host"
+                             for i, a in enumerate(argv[:-1])))
+        self.assertNotIn("--network=host", argv)
+        self.assertNotIn("--net=host", argv)
+
+    def test_dns_servers_are_a_repeatable_flag_and_recorded_in_meta(self):
+        _, p = self.plan("--system", "A", "--round", "bug", "--run", "1", "--dns-server", "9.9.9.9", "--dry-run")
+        argv = p["docker"]
+        self.assertEqual([argv[i + 1] for i, a in enumerate(argv[:-1]) if a == "--dns"], ["9.9.9.9"])
+        args = run.parse_args(["--system", "A", "--round", "bug", "--run", "1", "--dry-run"])
+        meta = run.base_meta(args, run.build_plan(args), {"claude": "c", "codex": "x"}, "")
+        self.assertEqual(meta["dns_servers"], ["1.1.1.1", "8.8.8.8"])
+
     def test_model_flag_pins_the_env_only_when_given(self):
         _, pinned = self.plan("--system", "A", "--round", "bug", "--run", "1", "--model", "claude-x", "--dry-run")
         _, free = self.plan("--system", "A", "--round", "bug", "--run", "1", "--dry-run")
