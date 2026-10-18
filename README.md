@@ -132,6 +132,23 @@ An interrupted task resumes from `plans/{task}-state.md`, and the Conductor offe
 
 ---
 
+## 🏥 See the agents at work
+
+**[Agent Hospital](https://github.com/elisaul77/agent-hospital)** is a separate, read-only pixel-art viewer for this
+skill. Each agent is a character in its own room (Conductor at Reception, planning-agent in Diagnosis, implement-agent
+in the Operating room, review-agent in Radiology, the council around one table), each case file is a gurney and each
+plan phase a patient. `SendMessage` capsules travel through pneumatic tubes, and pending user decisions wait in the
+Director's office. It reads `~/.claude/projects/*.jsonl` and `plans/*-state.md` only; it never runs or steers agents.
+
+![Agent Hospital](docs/agent-hospital.png)
+
+```bash
+git clone https://github.com/elisaul77/agent-hospital && cd agent-hospital
+docker compose up -d --build        # http://127.0.0.1:8700  (?mode=live to follow your real sessions)
+```
+
+---
+
 ## 🤔 What it is and what it isn't
 
 **It is not a framework.** It is Markdown files (skills and agents) that Claude Code loads, plus a few standard-library Python scripts. There is no server and no runtime.

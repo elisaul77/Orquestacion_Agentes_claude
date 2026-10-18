@@ -137,5 +137,6 @@ Models: each agent's `model:` frontmatter decides; the Conductor never overrides
 - **Prompt templates:** `skills/subagent-pool/assets/prompts.md`
 - **Definitions + troubleshooting:** `skills/subagent-pool/assets/agent-definitions.md`
 - **Full interview protocol:** `skills/subagent-pool/assets/interview-protocol.md`
+- **Visualizer (separate repo):** [Agent Hospital](https://github.com/elisaul77/agent-hospital) — read-only pixel-art view of the agents working live
 - **Plan council protocol:** `skills/subagent-pool/assets/council.md`
 - **Agents:** `agents/*.agent.md`

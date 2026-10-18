@@ -132,6 +132,24 @@ Si una tarea se interrumpe, se retoma desde `plans/{task}-state.md`; el Conducto
 
 ---
 
+## 🏥 Ver a los agentes trabajando
+
+**[Hospital de agentes](https://github.com/elisaul77/agent-hospital)** es un visor aparte, de solo lectura y en
+pixel art, para esta skill. Cada agente es un personaje en su sala (el Conductor en Recepción, planning-agent en
+Diagnóstico, implement-agent en el Quirófano, review-agent en Radiología, el consejo alrededor de una mesa), cada
+expediente es una camilla y cada fase del plan un paciente. Las cápsulas de `SendMessage` viajan por tubos
+neumáticos y las decisiones que te tocan esperan en la Dirección. Solo lee `~/.claude/projects/*.jsonl` y
+`plans/*-state.md`; nunca ejecuta ni dirige agentes.
+
+![Hospital de agentes](docs/agent-hospital.png)
+
+```bash
+git clone https://github.com/elisaul77/agent-hospital && cd agent-hospital
+docker compose up -d --build        # http://127.0.0.1:8700  (?mode=live para seguir tus sesiones reales)
+```
+
+---
+
 ## 🤔 Qué es y qué no es
 
 **No es un framework.** Son archivos Markdown (skills y agentes) que carga Claude Code, más unos pocos scripts de Python que solo usan la biblioteca estándar. No hay servidor ni runtime.
