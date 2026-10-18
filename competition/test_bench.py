@@ -377,6 +377,57 @@ class NoCodexTest(unittest.TestCase):
         self.assertNotIn("codex", ca.lower())
 
 
+class ClaudeMdTest(unittest.TestCase):
+    """--claude-md: the routing table add-on is installed in the bench container (cell suffix -cmd)."""
+
+    def plan(self, system, *extra, rnd="improve"):
+        args = run.parse_args(["--system", system, "--round", rnd, "--run", "1", "--dry-run", *extra])
+        return run.build_plan(args)
+
+    def test_default_has_no_claude_md(self):
+        p = self.plan("A", rnd="bug")
+        self.assertFalse(p["claude_md"])
+        self.assertEqual(p["addons"], "teams,codex")
+        self.assertEqual(p["run_id"], "A-bug-1")
+
+    def test_claude_md_adds_the_addon_and_the_cmd_suffix(self):
+        p = self.plan("A", "--claude-md")
+        self.assertTrue(p["claude_md"])
+        self.assertEqual(p["addons"], "teams,codex,claude-md")
+        self.assertEqual(p["run_id"], "A-improve-cmd-1")
+
+    def test_no_codex_with_claude_md_uses_the_combined_suffix(self):
+        p = self.plan("A", "--no-codex", "--claude-md")
+        self.assertEqual(p["addons"], "teams,claude-md")
+        self.assertEqual(p["run_id"], "A-improve-nocodex-cmd-1")
+        self.assertEqual(p["run_dir"].name, "A-improve-nocodex-cmd-1")
+        self.assertFalse(p["codex"])
+
+    def test_entry_script_installs_claude_md(self):
+        p = self.plan("A", "--no-codex", "--claude-md")
+        with tempfile.TemporaryDirectory() as d:
+            entry = Path(d) / "entry.sh"
+            run.write_entry(entry, p["timeout_s"], p["addons"])
+            text = entry.read_text(encoding="utf-8")
+        self.assertIn("install.py --with teams,claude-md >", text)
+        self.assertNotIn("codex", text.lower())
+
+    def test_meta_records_claude_md(self):
+        on = run.parse_args(["--system", "B", "--round", "improve", "--run", "1", "--no-codex", "--claude-md", "--dry-run"])
+        meta = run.base_meta(on, run.build_plan(on), {"claude": "c", "codex": "x"}, "")
+        self.assertIs(meta["claude_md"], True)
+        self.assertEqual(meta["run_id"], "B-improve-nocodex-cmd-1")
+        off = run.parse_args(["--system", "B", "--round", "improve", "--run", "1", "--dry-run"])
+        self.assertIs(run.base_meta(off, run.build_plan(off), {"claude": "c", "codex": "x"}, "")["claude_md"], False)
+
+    def test_a_and_b_argv_differ_only_by_name_and_paths_with_claude_md(self):
+        pa, pb = self.plan("A", "--no-codex", "--claude-md"), self.plan("B", "--no-codex", "--claude-md")
+        ca = " ".join(pa["docker"]).replace("A-improve-nocodex-cmd-1", "RUN")
+        cb = " ".join(pb["docker"]).replace("B-improve-nocodex-cmd-1", "RUN")
+        self.assertEqual(ca, cb)
+        self.assertEqual(pa["addons"], pb["addons"])
+
+
 class CellGroupingTest(unittest.TestCase):
     def test_codex_on_and_off_are_separate_cells(self):
         rows = [report.row(fake_score("A-bug-1", "A", "bug", codex=True), []),

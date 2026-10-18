@@ -63,8 +63,9 @@ DEFAULT_TIMEOUT_MIN = 45
 DEFAULT_MAX_TURNS = 400       # counts main-agent assistant messages only (no parent_tool_use_id)
 HOST_GRACE_S = 180            # the host waits this much longer than claude's own timeout before killing
 ENTRY_ADDONS = "teams,codex"
-ENTRY_ADDONS_NO_CODEX = "teams"
 NOCODEX_SUFFIX = "-nocodex"
+CLAUDE_MD_ADDON = "claude-md"  # routing table appended to the temp HOME's ~/.claude/CLAUDE.md
+CLAUDE_MD_SUFFIX = "-cmd"
 CREDENTIAL_EXIT = 3
 GIT_ID = ["-c", "user.name=bench", "-c", "user.email=bench@localhost", "-c", "commit.gpgsign=false"]
 # container hardening: default bridge network (the container can reach the host LAN); no home dir and no
@@ -391,7 +392,10 @@ def install_signal_handlers():
 def build_plan(args):
     pins = resolve_pins(args)
     codex = not args.no_codex
-    run_id = f"{args.system}-{args.round}{'' if codex else NOCODEX_SUFFIX}-{args.run}"
+    claude_md = args.claude_md
+    addons = [a for a, on in (("teams", True), ("codex", codex), (CLAUDE_MD_ADDON, claude_md)) if on]
+    run_id = (f"{args.system}-{args.round}{'' if codex else NOCODEX_SUFFIX}"
+              f"{CLAUDE_MD_SUFFIX if claude_md else ''}-{args.run}")
     run_dir = HERE / "runs" / run_id
     timeout_s = int(args.timeout_min * 60)
     dirs = {
@@ -417,7 +421,7 @@ def build_plan(args):
     prompt = prompt_path.read_text(encoding="utf-8")
     return {
         "run_id": run_id, "run_dir": run_dir, "timeout_s": timeout_s, "dirs": dirs,
-        "codex": codex, "addons": ENTRY_ADDONS if codex else ENTRY_ADDONS_NO_CODEX,
+        "codex": codex, "claude_md": claude_md, "addons": ",".join(addons),
         "pins": pins, "ref_sha": ref_sha, "snapshot": snap, "kunna_cmds": kunna_cmds, "dns": args.dns_server,
         "docker": docker_argv(f"kunna-bench-{run_id}", os.getuid(), os.getgid(), dirs, timeout_s, args.model,
                               args.dns_server),
@@ -516,7 +520,7 @@ def image_versions():
 def base_meta(args, plan, versions, image_id):
     pins = plan["pins"]
     return {"run_id": plan["run_id"], "system": args.system, "round": args.round, "run": args.run,
-            "codex": plan["codex"],
+            "codex": plan["codex"], "claude_md": plan["claude_md"],
             "a_ref": pins["a_ref"], "a_sha": pins["a_sha"], "b_ref": pins["b_ref"], "b_sha": pins["b_sha"],
             "b_source": args.b_source if args.system == "B" else "commit",
             "skill_sha": plan["ref_sha"],
@@ -656,6 +660,9 @@ def parse_args(argv=None):
     ap.add_argument("--dns-server", action="append", default=None, metavar="IP",
                     help="resolver for the bench container (repeatable; default 1.1.1.1 and 8.8.8.8); "
                          "recorded in meta.json as dns_servers")
+    ap.add_argument("--claude-md", action="store_true",
+                    help="install.py --with ...,claude-md: the routing table goes into the temp HOME's "
+                         "~/.claude/CLAUDE.md; the run name gets -cmd")
     ap.add_argument("--allow-same-version", action="store_true")
     ap.add_argument("--no-codex", action="store_true",
                     help="the cell runs without Codex: install.py --with teams only, no ~/.codex/auth.json, "
