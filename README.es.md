@@ -110,13 +110,14 @@ Pídelo con tus palabras: `usa el conductor para…`, `delega en subagentes`, `t
 Antes de planificar, el Conductor resume en una línea cómo ha leído la tarea:
 
 ```
-Tier M · fix · single · urgencia normal · incertidumbre alta · riesgo bajo
+Tier M · fix · single · urgency normal · uncertainty high · risk low — causa desconocida, módulo de auth sin tocar
 ```
 
 - El **tier** es el esfuerzo: S, M o L.
 - La **operación** puede ser feature, fix, tweak o refactor. Cada una tiene un primer paso obligatorio; por ejemplo, un fix empieza con un test que falla.
 - El **nivel de plan** dice quién escribe el plan: single, duo o council.
 - **Urgencia, incertidumbre y riesgo** son otros tres ejes. La urgencia fija la prioridad y nunca quita controles; la incertidumbre dice cuánto investigar; el riesgo, cuánta revisión de especialista.
+- La línea es la primera línea obligatoria del Conductor para tier M y L. El tier S usa una sola línea: `Tier S · fix — direct`.
 
 Si no estás de acuerdo, dilo y se hace como tú dices: `basta con un solo planner`, `que el plan lo haga el consejo`, `hazlo directo`. No hay nada más que configurar.
 
@@ -174,7 +175,7 @@ El modelo de cada agente se define en su propio archivo (`model:`) y lo decides 
 
 **2. Diagnóstico con falsador.** `planning-agent`, en modo Diagnóstico, devuelve hechos, hipótesis, evidencia, lo que falta (proyecto, especialista o usuario), la intervención propuesta y un **falsador**: la hipótesis más la observación (un comando y su resultado esperado) que la desmentiría. Dos rondas sin evidencia nueva detienen el bucle.
 
-**3. Consultar o planificar.** Una **consulta** es un especialista que responde a una pregunta acotada. El **consejo** solo se convoca cuando, tras el diagnóstico, queda abierta una decisión importante (open important decision).
+**3. Consultar o planificar.** Una **consulta** es un especialista que responde a una pregunta acotada (review-agent `mode=consult specialty=<x>`, o planning-agent para hechos de código). El **consejo** solo se convoca cuando, tras el diagnóstico, queda abierta una decisión importante (open important decision).
 
 | Nivel de plan | Cuándo | Quién |
 |---|---|---|

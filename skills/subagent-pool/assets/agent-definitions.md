@@ -36,7 +36,7 @@ flowchart LR
 | Conductor (this skill) | — | **opus** | Task, Write/Edit (plans/ only) | ❌ NEVER | `🎭 CONDUCTOR ACTIVATED` |
 | planning-agent | `planning-agent` | sonnet | Read, Glob, Grep, Bash (graphify + inspection), WebSearch, WebFetch, Write (plans/ only) | ❌ | `🤖 [planning-agent] Investigating...` · Diagnosis mode returns FACTS · HYPOTHESES · EVIDENCE · MISSING · PROPOSED_INTERVENTION · FALSIFIER |
 | implement-agent | `implement-agent` | sonnet | Read, Edit, Write, Glob, Grep, Bash | ✅ | `🤖 [implement-agent] Running Phase {N}...` |
-| review-agent | `review-agent` | sonnet | Read, Glob, Grep, Bash (read-only) | ❌ | `🤖 [review-agent] Reviewing Phase {N}...` · `mode=<specialty>` for a consult · NEEDS_REVISION / FAILED carry `FAILURE_ORIGIN` (implementation \| diagnosis \| scope \| none) |
+| review-agent | `review-agent` | sonnet | Read, Glob, Grep, Bash (read-only) | ❌ | `🤖 [review-agent] Reviewing Phase {N}...` · `mode=<specialty>` for a specialty review (returns a STATUS verdict) · `mode=consult specialty=<x>` for a consult (no STATUS, no FAILURE_ORIGIN) · NEEDS_REVISION / FAILED carry `FAILURE_ORIGIN` (implementation \| diagnosis \| scope \| none) |
 | council-spec · council-architect · council-lateral · council-risk | same | sonnet | Read, Write, Glob, Grep, Bash, **SendMessage** (+ WebSearch/WebFetch for architect) | council folder only · architect also writes `plans/{task}-draft.md` | `🧭` `🏛️` `🌀` `⚠️ [council-…]` |
 | AgentArchitect | `AgentArchitect` | **opus** | Read, Write, Glob, Grep, Bash | `plans/team-*.md` (design) · new `.claude/agents/*.agent.md` (generate, after approval, never overwrite) | `🏗️ [AgentArchitect] Designing team...` |
 

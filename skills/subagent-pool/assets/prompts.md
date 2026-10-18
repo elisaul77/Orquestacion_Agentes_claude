@@ -8,7 +8,7 @@ Write prompts as directives (what + why + files + constraints), not background e
 2. implement-agent
 3. review-agent
 3b. review-agent — specialty mode (security, api, data, ui, perf, ops)
-4. Revision after NEEDS_REVISION
+4. Revision after NEEDS_REVISION with FAILURE_ORIGIN: implementation
 5. Divergent fork (creativity round)
 6. AgentArchitect
 7. Final report to the user
@@ -217,7 +217,9 @@ Checklists (one per specialty; if the specialty is not listed here, there is no 
   4. Logging: errors logged with context and without secrets; log level set per environment
   5. Resource limits: CPU, memory and disk limits set for new services or jobs
 
-## 4. Revision after NEEDS_REVISION
+## 4. Revision after NEEDS_REVISION with FAILURE_ORIGIN: implementation (max 2 per phase)
+
+Other origins are not sent here: diagnosis → use the §1 Diagnosis brief, citing the disproved falsifier; scope → re-triage per SKILL §7; both count toward the 3 re-routes.
 
 ```
 Task(description="Phase {N} fix #{k}", subagent_type="implement-agent", prompt="""
@@ -391,12 +393,12 @@ File-mode fallback (teams flag off): the same prompts through `Task` without `na
 ## 12. Consult (one specialist, one bounded question)
 
 One question, one existing agent, one answer. No council, no new agent, no plan. Use `planning-agent` for a code fact
-(what calls this, where is the config read); use `review-agent mode=<specialty>` for a judgement (checklists in §3b).
+(what calls this, where is the config read); use `review-agent mode=consult specialty=<specialty>` for a judgement (checklists in §3b).
 A consult result goes into the case file as evidence; it does not change any review STATUS.
 
 ```
 Task(description="Consult {specialty}: {short question}", subagent_type="review-agent" | "planning-agent", prompt="""
-mode={specialty}      # review-agent only; delete this line for planning-agent
+mode=consult specialty={specialty}      # review-agent only; delete this line for planning-agent
 QUESTION: {one bounded question, answerable in one value, yes/no, or file:line}
 CONTEXT: {only what the answer needs: files ✓exists, command outputs, the hypothesis it tests}
 EXPECTED RESULT: {the shape of the answer, e.g. "yes/no + file:line"}

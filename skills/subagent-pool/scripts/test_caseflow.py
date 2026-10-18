@@ -117,6 +117,52 @@ class CaseFlowTest(unittest.TestCase):
         self.assertTrue(ok, "one SKILL.md line must state the cap of 3 re-routes, re-triage, "
                             "and global / per case / whole case")
 
+    # R1 (review fix 1): consult and specialty review share one discriminator, `mode=consult specialty=<x>`.
+    def test_R1_consult_discriminator_in_prompts_and_review_agent(self):
+        for name, text in (("prompts.md", self.prompts), ("review-agent.agent.md", self.review)):
+            self.assertTrue(lines_with(text, "mode=consult", "specialty="),
+                            f"{name} must carry the discriminator mode=consult specialty=<x>")
+        self.assertIn("Consult mode", self.review, "review-agent must have a Consult mode section")
+
+    # R1b (review fix 1): `mode=<specialty>` is a specialty review with a STATUS verdict, never a consult.
+    # A line that names both `mode=<specialty>` and a consult is only accepted when it also spells `mode=consult`.
+    def test_R1b_specialty_mode_is_never_called_a_consult(self):
+        bad = re.compile(r"mode=<specialty>[^\n]{0,40}consult", re.I)
+        docs = [p for p in SKILL.rglob("*.md") if "__pycache__" not in p.parts]
+        docs += list(AGENTS_DIR.rglob("*.md")) + [ROOT / "AGENTS.md"] + list(ROOT.glob("README*.md"))
+        offenders = []
+        for path in docs:
+            for lineno, line in enumerate(read(path).splitlines(), 1):
+                if bad.search(line) and "mode=consult" not in line.lower():
+                    offenders.append(f"{path.relative_to(ROOT)}:{lineno}")
+        self.assertEqual(offenders, [], "`mode=<specialty>` must be a specialty review (STATUS verdict); "
+                                        "a consult is `mode=consult specialty=<x>`")
+
+    # R2 (review fix 2): the review frontmatter routes NEEDS_REVISION by FAILURE_ORIGIN, not always to implement-agent.
+    def test_R2_review_frontmatter_routes_by_failure_origin(self):
+        frontmatter = self.review.split("---", 2)[1]
+        self.assertNotIn("re-invoke implement-agent", frontmatter)
+        self.assertNotIn("If it returns NEEDS_REVISION", " ".join(frontmatter.split()),
+                         "the frontmatter sentence must not leave NEEDS_REVISION dangling after 'If it returns'")
+        self.assertTrue(lines_with(frontmatter, "NEEDS_REVISION is routed by FAILURE_ORIGIN"),
+                        "review-agent frontmatter must say NEEDS_REVISION is routed by FAILURE_ORIGIN")
+
+    # R2b (review fix 2): the revision template is titled for the implementation origin only.
+    def test_R2b_revision_template_names_implementation_origin(self):
+        self.assertIn("## 4. Revision after NEEDS_REVISION with FAILURE_ORIGIN: implementation (max 2 per phase)",
+                      self.prompts)
+
+    # R3 (triage fix 3): the exact triage template, the first-output rule, and the tier S form.
+    def test_R3_triage_line_template_and_first_output(self):
+        template = ("Tier {S|M|L} · {operation} · {single|duo|council} · urgency {low|normal|high} · "
+                    "uncertainty {low|med|high} · risk {low|med|high} — {one-clause reason}")
+        self.assertIn(template, self.skill)
+        self.assertIn("Post the triage line", self.skill)
+        self.assertIn("1. Post the triage line.", self.skill)
+        self.assertIn("Tier S · {operation} — direct", self.skill)
+        self.assertTrue(lines_with(self.skill, "classification", "triage"),
+                        "the case file classification field must take the triage line")
+
 
 if __name__ == "__main__":
     unittest.main()

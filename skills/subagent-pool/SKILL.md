@@ -81,7 +81,9 @@ Security triggers, public API, data or money raise the **risk** axis (tier floor
 
 **Admission.** Write down the objective, the available context, the constraints and the success criterion. Ask only what is missing (§4).
 
-**Triage.** One line: `Tier · operation · plan level · urgency · uncertainty · risk`
+**Triage.** The triage line is a mandatory first output for tier M/L, on its own line, before any delegation:
+`Tier {S|M|L} · {operation} · {single|duo|council} · urgency {low|normal|high} · uncertainty {low|med|high} · risk {low|med|high} — {one-clause reason}`
+For tier S, one short line instead: `Tier S · {operation} — direct`. Write the same triage line into the case file `classification` field (tier M/L). Post the triage line (§8 step 1).
 
 | Axis | Decides |
 |------|---------|
@@ -100,7 +102,7 @@ Urgency only changes order and depth (minimal fix now + a follow-up case); it ne
 - MISSING → `project` (another diagnosis round) · `specialist` (consult) · `user` (ask, append the answer to the case file, resume).
 - Bound: stop after 2 rounds without new evidence and escalate to the user.
 
-**Consult.** A consult is one specialist answering one bounded question (question + context + expected result), using an existing agent with a specialty lens (review-agent `mode=<specialty>`, or planning-agent for code facts; checklists in `assets/prompts.md`). It never convenes the council and adds no agent.
+**Consult.** A consult is one specialist answering one bounded question (question + context + expected result), using an existing agent with a specialty lens (review-agent `mode=consult specialty=<x>`, or planning-agent for code facts; checklists in `assets/prompts.md`). It never convenes the council and adds no agent.
 
 **Case file.** The case file is `plans/{task}-state.md` with: objective, classification (and reason), owner, status, hypotheses, evidence, decisions, changes, verification, next action, security-trigger baseline, diagnosis rounds without new evidence, re-route count.
 Tier S has no case file: three lines in chat (objective, change, how it was checked).
@@ -269,6 +271,8 @@ At the end of tier M/L, suggest the user run `/verify` on the whole change (only
 **Integrity:** implementers must never weaken, skip or delete tests to make them pass; reviewers check the test diff and run at least one independent check of their own. Prefer a reviewer on a different model than the implementer (the defaults do this).
 
 ## 8. Flow
+
+1. Post the triage line. It comes before any delegation (§2b): mandatory for tier M/L; tier S uses its one-line form.
 
 ```mermaid
 flowchart LR

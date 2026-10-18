@@ -8,7 +8,7 @@ The Conductor now works a task as a case: it triages on four axes, diagnoses bef
 - **Admission and four-axis triage.** One line: `Tier · operation · plan level · urgency · uncertainty · risk`. Urgency sets priority and never removes controls. Re-triage happens when the diagnosis changes the scope or the risk.
 - **Diagnosis block with a falsifier.** planning-agent returns facts, hypotheses, evidence, what is missing, the proposed intervention and a falsifier: the observation that would disprove the hypothesis. Two rounds without new evidence stop the loop.
 - **Review routing by `FAILURE_ORIGIN`.** The review contract adds `implementation | diagnosis | scope | none`. One ordered decision tree routes each NEEDS_REVISION; a missing origin is asked once, then goes to the user. One global cap of 3 re-routes per case, kept across re-triage.
-- **Consult and specialty review.** A consult is one specialist and one bounded question. review-agent's `mode=<specialty>` gets a checklist per specialty, so a specialist can't rubber-stamp.
+- **Consult and specialty review.** A consult is one specialist and one bounded question. `mode=<specialty>` (verdict, with a checklist per specialty) vs `mode=consult specialty=<x>` (no verdict), so a specialist can't rubber-stamp.
 - **Case file in `plans/{task}-state.md`:** objective, classification, owner, status, hypotheses, evidence, decisions, changes, verification, next action, plus the counters. Tier S has none.
 - **Close means verified, not deployed.** Closing never authorizes a publish or a deploy. The Approve row is unchanged.
 - **Council run on issue #17** built the case-flow plan.
@@ -16,8 +16,12 @@ The Conductor now works a task as a case: it triages on four axes, diagnoses bef
 - **Reviews found and fixed before release:**
   - Phase 1: tests that could pass without checking the rule. Tightened.
   - Phase 2: overlapping plan levels; a case that could close before its last phase; a falsifier that tested the implementation instead of the hypothesis; a budget check that blocked approved phases.
-- Tests: 206 in total (196 before, plus 10 in `test_caseflow.py`). The new tests are structural: they prove the rules are written, not that a model routes correctly.
+- Tests: 211 in total, 2 skipped (a Python 3.11 gate in `test_sync_codex_agents.py`). `test_caseflow.py` has 14 (10, plus 4 for the Codex fixes). The new tests are structural: they prove the rules are written, not that a model routes correctly.
 - **Routing behavior is NOT VERIFIED.** Only the A/B competition (`competition/`, pending) measures whether a model follows the case flow. Until it runs, the routing is written, not measured.
+- **Fixes after the Codex review:**
+  - A consult and a specialty review no longer look alike. A consult is `mode=consult specialty=<x>`; review-agent answers it with ANSWER · EVIDENCE · CONFIDENCE · UNKNOWNS, no STATUS, never escalates to the council.
+  - review-agent no longer sends every NEEDS_REVISION to implement-agent. Routing follows `FAILURE_ORIGIN` (SKILL §7); the revision template covers the implementation origin only, and diagnosis and scope go to their own routes.
+  - **The triage line was never printed.** The A/B pilot showed neither run posted it. It is now a mandatory first output for tier M/L (`Tier {S|M|L} · {operation} · {single|duo|council} · urgency … · uncertainty … · risk … — reason`), the first step of the flow in SKILL §8, and the case file `classification` field.
 
 ## v9.10.0 — 2026-10-17 · Installer and INSTALL.md for agents
 

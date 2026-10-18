@@ -110,13 +110,14 @@ Ask in plain language: `use the conductor to…`, `delegate to subagents`, `comp
 Before planning, the Conductor states its reading of the task in one line:
 
 ```
-Tier M · fix · single · urgency normal · uncertainty high · risk low
+Tier M · fix · single · urgency normal · uncertainty high · risk low — cause unknown, auth module untouched
 ```
 
 - **Tier** is the effort (S, M or L).
 - **Operation** is feature, fix, tweak or refactor. Each one has a mandatory first move; a fix, for example, starts with a failing test.
 - **Plan level** is who writes the plan: single, duo or council.
 - **Urgency, uncertainty and risk** are three more axes. Urgency sets priority and never removes controls; uncertainty sets how much to investigate; risk sets how much specialist review.
+- The line is the Conductor's mandatory first line for tier M and L. Tier S gets one line instead: `Tier S · fix — direct`.
 
 If you disagree, say so and that wins: `a single planner is enough`, `use the council for the plan`, `do it directly`. Nothing else needs configuring.
 
@@ -174,7 +175,7 @@ Each agent's model is set in its own file (`model:`), and you decide it. The Con
 
 **2. Diagnosis with a falsifier.** `planning-agent`, in Diagnosis mode, returns facts, hypotheses, evidence, what is missing (project, specialist or user), the proposed intervention and a **falsifier**: the hypothesis plus the observation (a command and its expected result) that would disprove it. Two rounds without new evidence stop the loop.
 
-**3. Consult, or plan.** A **consult** is one specialist answering one bounded question. A **council** runs only when an **open important decision** remains after diagnosis.
+**3. Consult, or plan.** A **consult** is one specialist answering one bounded question (review-agent `mode=consult specialty=<x>`, or planning-agent for code facts). A **council** runs only when an **open important decision** remains after diagnosis.
 
 | Plan level | When | Who |
 |---|---|---|
