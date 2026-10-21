@@ -134,19 +134,19 @@ Si una tarea se interrumpe, se retoma desde `plans/{task}-state.md`; el Conducto
 
 ## 🏥 Ver a los agentes trabajando
 
-**[Hospital de agentes](https://github.com/elisaul77/agent-hospital)** es un visor aparte, de solo lectura y en
-pixel art, para esta skill. Cada agente es un personaje en su sala (el Conductor en Recepción, planning-agent en
-Diagnóstico, implement-agent en el Quirófano, review-agent en Radiología, el consejo alrededor de una mesa), cada
-expediente es una camilla y cada fase del plan un paciente. Las cápsulas de `SendMessage` viajan por tubos
-neumáticos y las decisiones que te tocan esperan en la Dirección. Solo lee `~/.claude/projects/*.jsonl` y
-`plans/*-state.md`; nunca ejecuta ni dirige agentes.
+**[Hospital de agentes](https://github.com/elisaul77/agent-hospital)** muestra en una vista isométrica y de solo lectura la actividad de Claude Code **y Codex**. Cada agente es un personaje; una sesión confirmada de subagent-pool abre el hospital completo con recepción, espera, diagnóstico, quirófano, revisión, consejo, dirección, archivo y alta. Con otra skill se muestran las salas pertinentes a la actividad observada. El consejo se convoca para decisiones importantes abiertas; su recorrido en dos pasos, desde escritorios hasta la mesa, está planificado para una versión posterior. El visor no ejecuta ni dirige agentes.
 
-![Hospital de agentes](docs/agent-hospital.png)
+![Hospital de agentes: vista isométrica del modo demo](docs/agent-hospital.png)
 
 ```bash
 git clone https://github.com/elisaul77/agent-hospital && cd agent-hospital
-docker compose up -d --build        # http://127.0.0.1:8700  (?mode=live para seguir tus sesiones reales)
+docker compose up -d --build
+# Demo completa: http://127.0.0.1:8700/?mode=demo
+docker compose -f docker-compose.yml -f compose.live.yml up -d --build
+# Sesiones reales: http://127.0.0.1:8700/?mode=live
 ```
+
+El modo live monta transcripciones y expedientes con `:ro`. En Codex, esta skill escribe `Hospital session: codex-<CODEX_THREAD_ID>` en el expediente cuando dispone del ID real; el visor exige también evidencia de subagentes para abrir el hospital completo. [Ver el GIF y la guía del hospital](https://github.com/elisaul77/agent-hospital).
 
 ---
 
