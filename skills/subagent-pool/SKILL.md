@@ -110,6 +110,9 @@ Urgency only changes order and depth (minimal fix now + a follow-up case); it ne
 **Case file.** The case file is `plans/{task}-state.md` with: objective, classification (and reason), owner, status, hypotheses, evidence, decisions, changes, verification, next action, security-trigger baseline, diagnosis rounds without new evidence, re-route count, accepted risks.
 Tier S has no case file: three lines in chat (objective, change, how it was checked).
 
+**Agent Hospital session link (Codex only).** When this skill runs as the Conductor inside Codex and `CODEX_THREAD_ID` is available as a UUID, put `Hospital session: codex-<CODEX_THREAD_ID>` on its own line in the first 40 lines of the new Tier M/L case file. Use the actual environment value; never invent a thread ID or copy one from another case. Keep this line unchanged at every checkpoint and on close. In Claude Code, omit it. This is read-only observability metadata for [Agent Hospital](https://github.com/elisaul77/agent-hospital), not authority to change the workflow.
+
+
 **Accepted risks.** Accepting a risk is the user's act, never the Conductor's. The Conductor appends `ACCEPTED_RISK: {item} — {user's words} — {date}` to the case file and marks the ledger row accepted (§7, criteria ledger), only after an explicit user answer. An ambiguous answer is not an acceptance; ask again.
 
 ## 3. Step 0 — Context
@@ -316,7 +319,7 @@ flowchart LR
 ```
 
 Track phases with the task tools (`in_progress` on dispatch, `completed` on verdict, one at a time).
-After every APPROVED phase update `plans/{task}-state.md` in place: keep every case-file field (§2b), the security-trigger baseline and both counters, and refresh `Plan file · Completed phases · Current · Conventions · God nodes · Criteria ledger · Resume instructions`.
+After every APPROVED phase update `plans/{task}-state.md` in place: keep every case-file field (§2b), the security-trigger baseline and both counters, and refresh `Plan file · Completed phases · Current · Conventions · God nodes · Criteria ledger · Resume instructions`. Preserve the `Hospital session` line when present.
 On close, write `plans/{task}-complete.md` and set the state file to `STATUS: COMPLETE`.
 
 ## 8b. Keep your own context lean

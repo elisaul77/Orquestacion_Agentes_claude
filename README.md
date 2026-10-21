@@ -134,18 +134,19 @@ An interrupted task resumes from `plans/{task}-state.md`, and the Conductor offe
 
 ## 🏥 See the agents at work
 
-**[Agent Hospital](https://github.com/elisaul77/agent-hospital)** is a separate, read-only pixel-art viewer for this
-skill. Each agent is a character in its own room (Conductor at Reception, planning-agent in Diagnosis, implement-agent
-in the Operating room, review-agent in Radiology, the council around one table), each case file is a gurney and each
-plan phase a patient. `SendMessage` capsules travel through pneumatic tubes, and pending user decisions wait in the
-Director's office. It reads `~/.claude/projects/*.jsonl` and `plans/*-state.md` only; it never runs or steers agents.
+**[Agent Hospital](https://github.com/elisaul77/agent-hospital)** is a read-only isometric view of **Claude Code and Codex** activity. Each agent is a character. A confirmed subagent-pool session opens the full hospital: reception, waiting room, diagnosis, operating room, review, council, direction, archive and discharge. With another skill, it shows the rooms relevant to observed activity. The council is convened for open important decisions; the two-step desk-to-table animation is planned for a later version. The viewer never runs or steers agents.
 
-![Agent Hospital](docs/agent-hospital.png)
+![Agent Hospital: isometric demo view](docs/agent-hospital.png)
 
 ```bash
 git clone https://github.com/elisaul77/agent-hospital && cd agent-hospital
-docker compose up -d --build        # http://127.0.0.1:8700  (?mode=live to follow your real sessions)
+docker compose up -d --build
+# Full demo: http://127.0.0.1:8700/?mode=demo
+docker compose -f docker-compose.yml -f compose.live.yml up -d --build
+# Real sessions: http://127.0.0.1:8700/?mode=live
 ```
+
+Live mode mounts transcripts and case files read-only. In Codex, this skill writes `Hospital session: codex-<CODEX_THREAD_ID>` in the case file when the real ID is available; the viewer also requires observed subagent evidence before opening the full hospital. [See the hospital GIF and guide](https://github.com/elisaul77/agent-hospital).
 
 ---
 
