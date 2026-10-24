@@ -1,5 +1,14 @@
 # Changelog
 
+## v9.13.0 — 2026-10-24 · Specs in the repo (spec-anchored) with EARS requirement IDs
+
+Ideas from MoureDev's Spec Driven Development course (youtube.com/watch?v=5HaOxAAA5qI): the spec stays in the repo next to the code, and every requirement has an ID that can be traced.
+
+- **S1 Spec folder in the project (SKILL §2c).** Tier M/L features, refactors and behavior-changing fixes get `specs/NNN-slug/` with `spec.md` (what and why, no stack, out of scope included), `plan.md` (how) and `tasks.md` (checkboxes, each with its RF and a verifiable "done" line). `plans/` stays the Conductor's working state. planning-agent drafts them under `plans/{task}-spec/`; the Conductor moves them on approval.
+- **S1 Spec sync before Gate 2.** If the case has deviations, accepted risks or plan changes, implement-agent updates the spec folder to match the code (new brief, `prompts.md` §2b) and review checks spec ↔ code. An RF is never rewritten to excuse a failing criterion; that is the user's call.
+- **S2 RF-n in EARS.** Functional requirements are `RF-n` in one EARS pattern (ubiquitous, When, While, If…then, Where). The criteria ledger gains an `RF` column, implement briefs say `Covers: RF-…`, review CRITERIA cite the RF, and Gate 2 shows the verdict RF by RF.
+- Tests: `test_caseflow.py` has 32 (2 new, S1–S2). Structural: they prove the rules are written, not that a model follows them. Not yet measured in a real run.
+
 ## v9.12.0 — 2026-10-18 · Binding reviews, warnings, no git by the Conductor
 
 This release also ships the v9.11.0 case flow (below), which was never published. The changes come from the A/B bench in `competition/` and from two real conversations (a Forja project and the Hospital case). The animated flow is in `docs/proposals/flujo-v9-12.html`.

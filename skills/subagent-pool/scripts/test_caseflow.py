@@ -331,6 +331,26 @@ class CaseFlowTest(unittest.TestCase):
         self.assertTrue(lines_with(self.review, "WARNINGS_RULING", "empty", "only when WARNINGS is \"none\""),
                         "review-agent must state that an empty WARNINGS_RULING is valid only when WARNINGS is none")
 
+    # ---- v9.13.0 (spec-anchored specs + EARS requirement IDs)
+
+    # S1: specs/NNN-slug/ with spec/plan/tasks lives in the repo, and the spec is synced before Gate 2.
+    def test_S1_spec_folder_and_sync_before_gate2(self):
+        for f in ("specs/NNN-slug/", "spec.md", "plan.md", "tasks.md", "Spec sync before Gate 2"):
+            self.assertIn(f, self.skill, f"SKILL.md must describe {f}")
+        self.assertIn("Spec sync", self.prompts, "prompts.md needs the spec sync brief")
+        self.assertTrue(lines_with(self.skill, "Never edit an RF", "user's decision"),
+                        "the sync must never rewrite an RF to excuse a failing criterion")
+        self.assertTrue(lines_with(self.skill, "Gate 2", "spec sync"), "Gate 2 must come after the spec sync")
+
+    # S2: RF-n in EARS, cited by ledger rows, tasks, implement and review contracts.
+    def test_S2_rf_ids_in_ears_traced_everywhere(self):
+        for pat in ("When <trigger>", "While <state>", "If <condition>, then", "Where <feature>"):
+            self.assertIn(pat, self.skill, f"SKILL.md must list the EARS pattern {pat}")
+        self.assertIn("| # | RF | Criterion |", self.skill, "the criteria ledger needs an RF column")
+        self.assertIn("Covers: {RF-n", self.prompts, "the implement brief must name the RF-n it covers")
+        self.assertIn("{RF-n or n/a}", self.review, "review-agent CRITERIA must cite the RF-n")
+        self.assertIn("RF-n", self.planning, "planning-agent must draft RF-n requirements")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -138,7 +138,7 @@ ORIGIN_EVIDENCE: {one line; "n/a" with APPROVED}
 FINDINGS:
   - {file}:{line} — {issue or confirmation} {[INVARIANT]/[TEST-INTEGRITY]/[CRITICAL]/[MAJOR]}
 CRITERIA:
-  - {#} {criterion} — [OBSERVED|DERIVED|INFERRED|UNKNOWN] {proof: command → result}
+  - {#} {RF-n or n/a} {criterion} — [OBSERVED|DERIVED|INFERRED|UNKNOWN] {proof: command → result}
 INDEPENDENT_CHECK: {what you ran yourself → result}
 REQUIRED_CHANGES: {specific, actionable list, or "none"}
 WARNINGS_RULING: {one line per implementer WARNINGS item: fixed | acceptable | must fix, or "none"}

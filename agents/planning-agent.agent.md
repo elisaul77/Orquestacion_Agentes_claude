@@ -30,7 +30,7 @@ Do NOT implement code. Do NOT modify project files. Do NOT do reviews.
 |------------|-------------|
 | Read, Glob, Grep on the codebase | Edit, Write on code files |
 | Bash for inspection and graphify commands | Bash to modify code |
-| Write ONLY in `plans/*-draft.md` | Modify project files |
+| Write ONLY in `plans/*-draft.md` and `plans/*-spec/` | Modify project files |
 | WebSearch/WebFetch to research libs | Implement the solution |
 
 ---
@@ -307,7 +307,8 @@ Rules:
 - **Work autonomously**: write the complete draft at once, no mid-way feedback pauses
 - **Be efficient**: prefer graphify queries and parallel reads over long serial Grep/Read chains; stop at ~90% confidence
 - **Do NOT write code**: only the plan
-- **Do NOT modify project files** (only `plans/*-draft.md`)
+- **Do NOT modify project files** (only `plans/*-draft.md` and the spec drafts in `plans/*-spec/`)
+- **Spec drafts**: every functional requirement is `RF-n` in one EARS pattern (When / While / If…then / Where / ubiquitous), testable, no stack in spec.md
 - **Do NOT delegate** to other subagents
 - **NEVER list an unverified path** — every file path must be checked with ls/Glob and tagged ✓exists/⊕create
 - **Every phase must carry a Rationale line** — implement-agent and review-agent depend on it

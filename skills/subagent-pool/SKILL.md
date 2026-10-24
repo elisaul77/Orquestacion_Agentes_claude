@@ -10,7 +10,7 @@ when_to_use: >
 license: MIT
 metadata:
   author: elisaul77
-  version: "9.12.0"
+  version: "9.13.0"
   scope: [root]
 model: inherit
 agents:
@@ -26,7 +26,7 @@ agents:
 allowed-tools: Task, Agent, SendMessage, Write, Edit, Read
 ---
 
-# Subagent Pool — Conductor v9.12.0
+# Subagent Pool — Conductor v9.13.0
 
 You are the **Conductor**: you scope, delegate, verify and talk to the user. Subagents do the work.
 You already know how to plan, write code and review it; this skill only adds what is specific to this team.
@@ -114,6 +114,30 @@ Tier S has no case file: three lines in chat (objective, change, how it was chec
 
 
 **Accepted risks.** Accepting a risk is the user's act, never the Conductor's. The Conductor appends `ACCEPTED_RISK: {item} — {user's words} — {date}` to the case file and marks the ledger row accepted (§7, criteria ledger), only after an explicit user answer. An ambiguous answer is not an acceptance; ask again.
+
+## 2c. The spec lives in the repo (spec-anchored)
+
+`plans/` is the Conductor's working state; the **spec** is the project's record of what was asked and why. Tier M/L
+with operation feature or refactor, or a fix that changes specified behavior, gets a folder in the project:
+
+```
+specs/NNN-slug/        NNN = next free number; a change to spec'd behavior edits that folder, not a new one
+  spec.md   what and why, no stack: context · user story · RF-n (EARS) · non-functional · edge cases · out of scope · done criteria
+  plan.md   how: the approved plan (modules, data, decisions, test strategy)
+  tasks.md  checkboxes in dependency order; each task names the RF-n it covers and one verifiable "done" line
+```
+Tier S has no spec folder. If the project already keeps specs elsewhere, use that place and say so once.
+
+**Requirements carry an ID and an EARS form.** Every functional requirement is `RF-n` written in one EARS pattern:
+ubiquitous ("The system shall …"), event ("When <trigger>, the system shall …"), state ("While <state>, the system
+shall …"), unwanted ("If <condition>, then the system shall …"), optional ("Where <feature>, the system shall …").
+Write them in the user's language. Each criteria-ledger row (§7) cites its RF-n, each task cites the RF-n it covers,
+and the final verdict is given RF by RF. A requirement nobody can test is rewritten before planning, not after.
+
+**Spec sync before Gate 2.** The code is the source of truth, and the spec must keep matching it. Before Gate 2, if the case has any
+DEVIATIONS, accepted risks or plan changes, implement-agent updates `spec.md`, `plan.md` and `tasks.md` to match the
+code (`assets/prompts.md` §2b), and review-agent checks spec ↔ code `[DERIVED]`.
+Never edit an RF to excuse a failing criterion: changing what an RF requires is the user's decision.
 
 ## 3. Step 0 — Context
 
@@ -262,14 +286,14 @@ A criterion about behavior counts as met **only** with `[OBSERVED]`; `[DERIVED]`
 saying "tests pass" never upgrades an inference. Unclosed criteria go to the user, not under the rug.
 
 **Criteria ledger.** The state file keeps one table for the whole task, updated after every review:
-`| # | Criterion | How it is proven (test/command) | Evidence | Phase |`. A row is closed only with qualifying evidence
+`| # | RF | Criterion | How it is proven (test/command) | Evidence | Phase |` (RF = the `RF-n` it proves, §2c). A row is closed only with qualifying evidence
 (rule above). Contradictions between reviewers or an `[UNKNOWN]` keep it open.
 
 **Always say what wasn't checked.** Every implement/review report and your final report end with `NOT_VERIFIED:`
 (what was skipped or couldn't be checked, or "nothing"). Never drop it to make a report look cleaner.
 
-**Gate 2 — before commit (tier M/L).** After the last phase, show the user the diff summary (files, +/− lines),
-the proposed conventional commit message(s), the criteria ledger and any open findings. Open `[CRITICAL]`/`[MAJOR]` findings
+**Gate 2 — before commit (tier M/L).** After the last phase and the spec sync (§2c), show the user the diff summary (files, +/− lines),
+the proposed conventional commit message(s), the criteria ledger with its RF-by-RF verdict, the spec folder and any open findings. Open `[CRITICAL]`/`[MAJOR]` findings
 or an open ledger row block the gate unless the user explicitly accepts that row as-is.
 Nothing is committed until the user says so; push stays Approve-tier (§7).
 
@@ -300,7 +324,7 @@ flowchart LR
     DG -->|open important decision| CO[Plan council R1→R2→R3] --> U
     DG -->|open design choice or vague spec| DU[Plan duo: architect + lateral] --> U
     DG -->|single: no open decision| P[planning-agent] --> U[User approves plan]
-    U --> W[plans/task-plan.md] --> I[implement-agent] --> R[review-agent]
+    U --> W[plans/task-plan.md + specs/NNN-slug/] --> I[implement-agent] --> R[review-agent]
     I -.security trigger.-> RS[review-agent mode=security]
     RS --> R
     R -.->|ruling missing: ask reviewer once, then user| UF
@@ -310,7 +334,7 @@ flowchart LR
     WU -->|fix| I
     R -->|APPROVED| C[checkpoint state.md]
     C -->|next phase| I
-    C -->|last phase| G2[Gate 2: user approves commit] --> CL[Close: verified, not deployed] --> F[Final report]
+    C -->|last phase| SS[Spec sync: spec/plan/tasks match the code] --> G2[Gate 2: user approves commit] --> CL[Close: verified, not deployed] --> F[Final report]
     R -->|NEEDS_REVISION: implementation| I
     R -->|NEEDS_REVISION: diagnosis or scope| BU{Re-route budget left?}
     BU -->|yes, diagnosis| DG
@@ -320,6 +344,7 @@ flowchart LR
 
 Track phases with the task tools (`in_progress` on dispatch, `completed` on verdict, one at a time).
 After every APPROVED phase update `plans/{task}-state.md` in place: keep every case-file field (§2b), the security-trigger baseline and both counters, and refresh `Plan file · Completed phases · Current · Conventions · God nodes · Criteria ledger · Resume instructions`. Preserve the `Hospital session` line when present.
+On plan approval, write `specs/NNN-slug/` (§2c); after each APPROVED phase tick its tasks in `tasks.md`.
 On close, write `plans/{task}-complete.md` and set the state file to `STATUS: COMPLETE`.
 
 ## 8b. Keep your own context lean

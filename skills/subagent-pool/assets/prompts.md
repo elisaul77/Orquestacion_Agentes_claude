@@ -6,6 +6,7 @@ Write prompts as directives (what + why + files + constraints), not background e
 ## Contents
 1. planning-agent
 2. implement-agent
+2b. Spec sync (before Gate 2)
 3. review-agent
 3b. review-agent — specialty mode (security, api, data, ui, perf, ops)
 4. Revision after NEEDS_REVISION with FAILURE_ORIGIN: implementation
@@ -40,6 +41,9 @@ Architecture: {≤200 chars} | Stack: {stack} | Language: {language}
 God nodes: {list} | Communities: {list}
 
 Write the full plan to plans/{task}-draft.md and return only the summary below.
+Also draft specs/NNN-slug/spec.md (what and why, no stack: context, user story, RF-n each in one EARS pattern,
+non-functional, edge cases, out of scope, done criteria) and tasks.md (checkboxes in dependency order, each task
+with the RF-n it covers and one verifiable "done" line) under plans/{task}-spec/; the Conductor moves them on approval.
 
 STATUS: PLAN_READY | NEED_CLARIFICATION
 PLAN_FILE: plans/{task}-draft.md
@@ -89,6 +93,7 @@ Hypothesis / falsifier: {required when the Conductor diagnosed the fix itself (S
 Rationale: {why — the criterion to self-correct with}
 Contracts/Invariants: {falsifiable guarantees; breaking one → report under DEVIATIONS}
 Acceptance criteria: {bullets}
+Covers: {RF-n list from specs/NNN-slug/spec.md, or "n/a"} — tick the matching tasks in specs/NNN-slug/tasks.md when done
 Files: {path ✓exists | path ⊕create}
 Steps: {numbered}
 Verify with: {exact command(s)}  — long output: `set -o pipefail; {cmd} 2>&1 | python3 ~/.claude/skills/subagent-pool/scripts/trim_output.py`
@@ -112,6 +117,25 @@ NEXT: {remaining, or "complete"}
 """)
 ```
 
+## 2b. Spec sync (before Gate 2, SKILL.md §2c)
+
+```
+Task(description="Spec sync: {task}", subagent_type="implement-agent", prompt="""
+Spec sync for specs/NNN-slug/ — make spec.md, plan.md and tasks.md match the code as built.
+
+Deviations and plan changes: {list from the case file}
+Accepted risks: {ACCEPTED_RISK lines, or "none"}
+Rules: edit only files in specs/NNN-slug/. Record how the code really does it in plan.md; tick done tasks and add
+any task that was added. Never change what an RF-n requires: if code and RF disagree, report it under DEVIATIONS
+and leave the RF as it is (the user decides).
+
+STATUS: DONE | BLOCKED | PARTIAL
+FILES_CHANGED: path:lines — what
+DEVIATIONS: {RF/code mismatches left for the user, or "none"}
+NOT_VERIFIED: {or "nothing"}
+""")
+```
+
 ## 3. review-agent
 
 ```
@@ -128,7 +152,8 @@ Tests reported: {implementer TESTS line}
 Deviations reported: {list or "none"}
 Conventions: lang={language}, stack={stack}
 Security: {apply OWASP | N/A — no external input}
-Open ledger rows to rule on: {criterion list from the state file}
+Open ledger rows to rule on: {criterion list from the state file, each with its RF-n}
+Spec: specs/NNN-slug/spec.md — rule on the RF-n this phase covers
 WARNINGS to rule on: {the implementer's WARNINGS list, or "none"}
 Case file: plans/{task}-state.md (security-trigger baseline listed there)
 Falsifier (diagnosis, from the case file, or n/a): {hypothesis + command + expected result, or "n/a"}
@@ -137,7 +162,7 @@ STATUS: APPROVED | NEEDS_REVISION | FAILED
 FAILURE_ORIGIN: implementation | diagnosis | scope | none
 ORIGIN_EVIDENCE: {one line; "n/a" with APPROVED}
 FINDINGS: file:line — issue  ([INVARIANT] / [CRITICAL] / [MAJOR] / [TEST-INTEGRITY] tags)
-CRITERIA: {#} {criterion} — [OBSERVED|DERIVED|INFERRED|UNKNOWN] {proof: command → result}
+CRITERIA: {#} {RF-n or n/a} {criterion} — [OBSERVED|DERIVED|INFERRED|UNKNOWN] {proof: command → result}
 INDEPENDENT_CHECK: {what you ran yourself beyond the implementer's tests → result}
 REQUIRED_CHANGES: {specific + actionable, or "none"}
 WARNINGS_RULING: {one line per WARNINGS item: fixed | acceptable | must fix, or "none"}
