@@ -296,6 +296,24 @@ El coste del consejo (entre 4 y 6 veces el de un plan simple) todavía es una es
 
 ---
 
+## 📖 Respaldado por investigación reciente
+
+Solo informativo: lo que dicen papers de 2026 (y una referencia de 2025) sobre reglas que esta skill ya aplica. Las cifras son de los autores, tomadas de los resúmenes; no se reprodujeron aquí.
+
+| Paper | Hallazgo | Dónde aparece aquí |
+|---|---|---|
+| Engineering Reliable Commit Gates for Agentic AI — [doi:10.48550/arXiv.2609.10969](https://doi.org/10.48550/arXiv.2609.10969) | Votos entre modelos sobre la **misma** evidencia aprobaron 62,9 % de propuestas inseguras frente a 22,9 % con una fuente **independiente**; la fuente pesa más que la diversidad de modelos (40,9 vs 11,3 pts) | `INDEPENDENT_CHECK` del revisor; revisión cruzada con Codex |
+| The Working Set of a Coding Agent: Coherence Debt — [doi:10.48550/arXiv.2608.16630](https://doi.org/10.48550/arXiv.2608.16630) | Sin un dato, los agentes inventan en vez de decir que están bloqueados; un archivo de convenciones obsoleto puede costar más que ninguno | Niveles de evidencia; `UNKNOWNS` |
+| The Cost of Consensus (Bertalanič & Fortuna) — [doi:10.48550/arXiv.2605.00914](https://doi.org/10.48550/arXiv.2605.00914) | Debate sin roles entre 10 modelos iguales: hasta 85,5 % de conformidad con la mayoría, 2,1–3,4× tokens para igual o menor precisión | Consejo: roles distintos, borradores a ciegas, lateral de otro proveedor |
+| How Coding Agents Fail Their Users — [doi:10.48550/arXiv.2605.29442](https://doi.org/10.48550/arXiv.2605.29442) | 20.574 sesiones reales: el 91,49 % de las correcciones visibles las hizo el usuario; crecen los autoinformes falsos | `[OBSERVED]` vs `[INFERRED]`, `NOT_VERIFIED` |
+| TraceDev — [doi:10.48550/arXiv.2607.18886](https://doi.org/10.48550/arXiv.2607.18886) | Un Validador mantiene un grafo requisito → diseño → código; hasta 186–340 % sobre las baselines | `RF-n` + carpeta de spec (v9.13) |
+| AdaptOrch — [doi:10.48550/arXiv.2602.16873](https://doi.org/10.48550/arXiv.2602.16873) | Topología elegida por el grafo de dependencias: +12–23 % con los mismos modelos | Tier y nivel de plan por tarea |
+| Why Do Multi-Agent LLM Systems Fail? (Cemri et al.) — [doi:10.48550/arXiv.2503.13657](https://doi.org/10.48550/arXiv.2503.13657) | Taxonomía de referencia: diseño del sistema, desalineación entre agentes, verificación | Enrutado de revisiones por `FAILURE_ORIGIN` |
+
+Puntos abiertos que plantean (en estudio, todavía no están en la skill): una revisión de Codex que ejecute sus propias comprobaciones en vez de leer el informe del implementador, un control de `project-context.md` desactualizado y los datos que necesita cada edición dentro del brief.
+
+---
+
 ## 🧪 Tests
 
 ```bash

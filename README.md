@@ -296,6 +296,24 @@ The council's cost (about +4–6× a single plan) is still an estimate; see [Wha
 
 ---
 
+## 📖 Backed by recent research
+
+Informative only: what 2026 papers (plus one 2025 reference) say about the rules this skill already follows. Numbers are the authors' own, taken from the abstracts; not reproduced here.
+
+| Paper | Finding | Where it shows up here |
+|---|---|---|
+| Engineering Reliable Commit Gates for Agentic AI — [doi:10.48550/arXiv.2609.10969](https://doi.org/10.48550/arXiv.2609.10969) | Cross-model votes over **shared** evidence approved 62.9 % of unsafe proposals vs 22.9 % with an **independent** source; evidence source beats model diversity (40.9 vs 11.3 pts) | Reviewer `INDEPENDENT_CHECK`; Codex cross-review |
+| The Working Set of a Coding Agent: Coherence Debt — [doi:10.48550/arXiv.2608.16630](https://doi.org/10.48550/arXiv.2608.16630) | Missing facts make agents fabricate instead of reporting blocked; a stale conventions file can cost more than none | Evidence levels; `UNKNOWNS` |
+| The Cost of Consensus (Bertalanič & Fortuna) — [doi:10.48550/arXiv.2605.00914](https://doi.org/10.48550/arXiv.2605.00914) | Unguided debate among 10 identical models: up to 85.5 % majority conformity, 2.1–3.4× tokens for equal or lower accuracy | Council: distinct roles, blind drafts, lateral on another vendor |
+| How Coding Agents Fail Their Users — [doi:10.48550/arXiv.2605.29442](https://doi.org/10.48550/arXiv.2605.29442) | 20,574 real sessions: 91.49 % of visible fixes needed the user; inaccurate self-reporting is a growing share | `[OBSERVED]` vs `[INFERRED]`, `NOT_VERIFIED` |
+| TraceDev — [doi:10.48550/arXiv.2607.18886](https://doi.org/10.48550/arXiv.2607.18886) | A Validator keeps a requirement → design → code graph; up to 186–340 % over baselines | `RF-n` + spec folder (v9.13) |
+| AdaptOrch — [doi:10.48550/arXiv.2602.16873](https://doi.org/10.48550/arXiv.2602.16873) | Topology chosen from the dependency graph: +12–23 % with the same models | Tier and plan level per task |
+| Why Do Multi-Agent LLM Systems Fail? (Cemri et al.) — [doi:10.48550/arXiv.2503.13657](https://doi.org/10.48550/arXiv.2503.13657) | Reference taxonomy: system design, inter-agent misalignment, task verification | Review routing by `FAILURE_ORIGIN` |
+
+Open points these papers raise (under study, not in the skill yet): a Codex review that runs its own checks instead of reading the implementer's report, a staleness check for `project-context.md`, and edit-dependent facts inside the implement brief.
+
+---
+
 ## 🧪 Tests
 
 ```bash
