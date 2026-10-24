@@ -95,6 +95,7 @@ Contracts/Invariants: {falsifiable guarantees; breaking one → report under DEV
 Acceptance criteria: {bullets}
 Covers: {RF-n list from specs/NNN-slug/spec.md, or "n/a"} — tick the matching tasks in specs/NNN-slug/tasks.md when done
 Files: {path ✓exists | path ⊕create}
+Facts: {signatures, paths, names, values, conventions this edit depends on, each with its source file:line; "none" only if the phase needs none}
 Steps: {numbered}
 Verify with: {exact command(s)}  — long output: `set -o pipefail; {cmd} 2>&1 | python3 ~/.claude/skills/subagent-pool/scripts/trim_output.py`
 Conventions: lang={language}, stack={stack}
@@ -102,6 +103,7 @@ Graph warnings: {god nodes / hidden deps — never omit if present}
 Governance: Auto = edits inside listed files + tests. Notify = anything else → DEVIATIONS.
   Approve = delete/overwrite data, migrations, secrets, push/publish/deploy → STOP, STATUS: BLOCKED.
 Never weaken, skip or delete tests to make them pass. Never swallow errors (empty catch, error → null/[] without context).
+A name, path, signature or value you need that is not in Facts or in a file you read → STATUS: BLOCKED naming it. Never guess one.
 
 STATUS: DONE | BLOCKED | PARTIAL
 FIRST_MOVE: {evidence, e.g. "test_x failed before the fix (exit 1), passes after"}

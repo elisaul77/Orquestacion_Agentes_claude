@@ -5,7 +5,7 @@
 🌐 **English** · [Español](README.es.md)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-v9.13.0-blueviolet.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v9.14.0-blueviolet.svg)](CHANGELOG.md)
 [![Tests](https://img.shields.io/badge/tests-228%20passing-3fb950.svg)](#-tests)
 [![Claude Code](https://img.shields.io/badge/brain-Claude%20Code-8a63f0.svg)](https://claude.com/claude-code)
 [![Codex](https://img.shields.io/badge/Codex-optional-412991.svg)](#optional-add-ons)
@@ -310,7 +310,7 @@ Informative only: what 2026 papers (plus one 2025 reference) say about the rules
 | AdaptOrch — [doi:10.48550/arXiv.2602.16873](https://doi.org/10.48550/arXiv.2602.16873) | Topology chosen from the dependency graph: +12–23 % with the same models | Tier and plan level per task |
 | Why Do Multi-Agent LLM Systems Fail? (Cemri et al.) — [doi:10.48550/arXiv.2503.13657](https://doi.org/10.48550/arXiv.2503.13657) | Reference taxonomy: system design, inter-agent misalignment, task verification | Review routing by `FAILURE_ORIGIN` |
 
-Open points these papers raise (under study, not in the skill yet): a Codex review that runs its own checks instead of reading the implementer's report, a staleness check for `project-context.md`, and edit-dependent facts inside the implement brief.
+Since v9.14 the skill also applies three points from these papers: a Codex review that runs its own checks instead of reading the implementer's report, a staleness check for `project-context.md`, and edit-dependent facts inside the implement brief.
 
 ---
 
