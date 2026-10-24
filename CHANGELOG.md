@@ -1,5 +1,14 @@
 # Changelog
 
+## v9.14.0 — 2026-10-24 · Evidence: facts in the brief, Codex's own checks, stale context
+
+From the papers in the README's research section (DOIs there), read in full: Coherence Debt (doi:10.48550/arXiv.2608.16630) and Commit Gates (doi:10.48550/arXiv.2609.10969).
+
+- **E1 Facts in the brief, no guessing.** The implement brief carries `Facts:` (signatures, paths, names, values, conventions, each with file:line). implement-agent stops with `BLOCKED` on a missing fact instead of guessing (the paper measured Haiku saying "blocked" in 12.5 % of fact-withheld trials). review-agent greps every new identifier, path, key and literal in the diff; one that exists nowhere is `[MAJOR]`.
+- **E2 Codex needs its own evidence.** In review mode Codex runs its own commands; a criterion backed only by the implementer's report is DERIVED at most. A Codex APPROVED counts as independent confirmation only with OBSERVED criteria (shared evidence approved 62.9 % of unsafe proposals vs 22.9 % independent).
+- **E3 Stale context check.** Step 0 compares `project-context.md` with the last commit on the code it describes; if it is older or contradicts the code, the Conductor says so and proposes an update, and never puts a contradicted line into a brief (a stale standard was followed in 39/39 trials).
+- Tests: `test_caseflow.py` has 35 (3 new, E1–E3). Structural; not yet measured in a real run.
+
 ## v9.13.0 — 2026-10-24 · Specs in the repo (spec-anchored) with EARS requirement IDs
 
 Ideas from MoureDev's Spec Driven Development course (youtube.com/watch?v=5HaOxAAA5qI): the spec stays in the repo next to the code, and every requirement has an ID that can be traced.

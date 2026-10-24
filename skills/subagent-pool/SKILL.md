@@ -10,7 +10,7 @@ when_to_use: >
 license: MIT
 metadata:
   author: elisaul77
-  version: "9.13.0"
+  version: "9.14.0"
   scope: [root]
 model: inherit
 agents:
@@ -26,7 +26,7 @@ agents:
 allowed-tools: Task, Agent, SendMessage, Write, Edit, Read
 ---
 
-# Subagent Pool — Conductor v9.13.0
+# Subagent Pool — Conductor v9.14.0
 
 You are the **Conductor**: you scope, delegate, verify and talk to the user. Subagents do the work.
 You already know how to plan, write code and review it; this skill only adds what is specific to this team.
@@ -145,6 +145,10 @@ Never edit an RF to excuse a failing criterion: changing what an RF requires is 
 2. Read `.claude/project-context.md`. Missing → stop and say so in two lines: suggest `Skill("arquitec-dev-ia")`,
    or continue if the user says "proceed without context" (also fine for empty new projects).
 3. Present → keep stack, language, god nodes, communities, graphify status. Confirm in **one line**, never dump it.
+   **Stale context is worse than none.** Compare its date with the last commit touching the code it describes
+   (`git log -1 --format=%cs -- <paths>`). If the code is newer, or a convention or path in it contradicts the code, say so
+   in one line and propose updating it (arquitec-dev-ia) before planning. Never put a contradicted line into a brief:
+   agents follow a written standard even when it is wrong, and the code wins.
 4. Tier M/L → detect the Codex bridge once (§10b) and record `CODEX: on|off`.
 5. Tier M/L and the project is not your working directory → say so in one line: its `.claude/rules/*.md` won't load
    in this session (subagents get files by path, not the rules). Suggest reopening Claude Code in the project folder
@@ -217,6 +221,8 @@ asks Codex when `CODEX: on`), `council-risk` (what breaks, how to prove it). Pro
 
 Templates with return contracts: `assets/prompts.md`. The essentials:
 
+- **Hand over the facts each edit depends on.** Signatures, paths, names, values and conventions the phase needs go in the
+  brief under `Facts`, read from the code, not from memory. Haiku rarely says it is blocked when a fact is missing; it guesses.
 - **Delegate outcomes, not keystrokes.** Objective + why (Rationale) + Contracts/Invariants + acceptance criteria +
   files (`✓exists`/`⊕create`, verified by planning-agent) + constraints + return contract.
 - **Match detail to the agent's model.** Opus/Sonnet: outcome + criteria is enough. Haiku: also give numbered,
@@ -442,7 +448,7 @@ Codex models live in the `codex-agent` file (user's call, like §1); never pass 
 
 | Role | When | Pairing |
 |------|------|---------|
-| **Review** | Every phase implemented by Claude, tier M/L | `review-agent` + `codex-agent mode=review` **in parallel**. Both APPROVED → done. They disagree → apply the stricter verdict if its finding is concrete (file:line + reproducible); otherwise ask the reviewer with the weaker evidence one clarifying question; if still split, the user decides. Never drop a NEEDS_REVISION finding yourself; §7 limits apply. |
+| **Review** | Every phase implemented by Claude, tier M/L | `review-agent` + `codex-agent mode=review` **in parallel**. A Codex APPROVED counts as an independent confirmation only if its `criteria` show commands it ran itself (OBSERVED); one resting only on the implementer's report is the same evidence source and confirms nothing. Both APPROVED → done. They disagree → apply the stricter verdict if its finding is concrete (file:line + reproducible); otherwise ask the reviewer with the weaker evidence one clarifying question; if still split, the user decides. Never drop a NEEDS_REVISION finding yourself; §7 limits apply. |
 | **Implement** | Phases with clear contracts and tests, or to spare Claude quota | `codex-agent mode=implement` (or `implement-light` for mechanical phases) → **`review-agent` reviews** (never Codex reviewing Codex). |
 | **Divergent round** | Design choice outside a plan (§5) | One proposal from `codex-agent mode=plan` alongside the Claude fork; they must not see each other. |
 | **Plan council** | Plan level council (§5b) | `council-lateral` asks Codex directly (read-only) before writing; with `CODEX: off` it asks Opus instead. No codex-agent needed. |

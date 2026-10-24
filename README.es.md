@@ -5,7 +5,7 @@
 🌐 [English](README.md) · **Español**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-v9.13.0-blueviolet.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v9.14.0-blueviolet.svg)](CHANGELOG.md)
 [![Tests](https://img.shields.io/badge/tests-228%20passing-3fb950.svg)](#-tests)
 [![Claude Code](https://img.shields.io/badge/brain-Claude%20Code-8a63f0.svg)](https://claude.com/claude-code)
 [![Codex](https://img.shields.io/badge/Codex-opcional-412991.svg)](#complementos-opcionales)
@@ -310,7 +310,7 @@ Solo informativo: lo que dicen papers de 2026 (y una referencia de 2025) sobre r
 | AdaptOrch — [doi:10.48550/arXiv.2602.16873](https://doi.org/10.48550/arXiv.2602.16873) | Topología elegida por el grafo de dependencias: +12–23 % con los mismos modelos | Tier y nivel de plan por tarea |
 | Why Do Multi-Agent LLM Systems Fail? (Cemri et al.) — [doi:10.48550/arXiv.2503.13657](https://doi.org/10.48550/arXiv.2503.13657) | Taxonomía de referencia: diseño del sistema, desalineación entre agentes, verificación | Enrutado de revisiones por `FAILURE_ORIGIN` |
 
-Puntos abiertos que plantean (en estudio, todavía no están en la skill): una revisión de Codex que ejecute sus propias comprobaciones en vez de leer el informe del implementador, un control de `project-context.md` desactualizado y los datos que necesita cada edición dentro del brief.
+Desde la v9.14 la skill aplica además tres puntos de estos papers: una revisión de Codex que ejecuta sus propias comprobaciones en vez de leer el informe del implementador, un control de `project-context.md` desactualizado y los datos que necesita cada edición dentro del brief.
 
 ---
 

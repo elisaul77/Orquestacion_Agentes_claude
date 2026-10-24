@@ -32,6 +32,9 @@ Why: contract bugs compile, run and look reasonable. An oracle written before re
 Don't trust the implementer's report. Run the tests yourself, and add **at least one check of your own** the implementer
 didn't run (an edge input, a held-out case, a build, a grep for leftovers). Report it under `INDEPENDENT_CHECK`.
 
+**Look for invented facts.** Every new identifier, import, path, config key or literal value in the diff must exist in
+the repo or in the brief's `Facts`. Grep for each one; one that exists nowhere is a `[MAJOR]` finding (origin implementation).
+
 **See it running when the phase changes behavior a user can see** (CLI output, API response, UI). If the repo has a
 launch recipe (`.claude/skills/run-*/SKILL.md` or `.claude/skills/verify/SKILL.md`), follow it: launch the app, exercise
 the changed path once, stop it. No recipe → try the obvious launch from README/Makefile/compose; if that fails, say

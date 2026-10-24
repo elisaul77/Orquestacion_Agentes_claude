@@ -56,7 +56,7 @@ Effort and sandbox per mode (fixed):
    in implement/plan/coordinate mode use DONE/BLOCKED. Never weaken, skip or delete tests.
    Every schema key is required (OpenAI strict mode): use [] for `artifacts`/`criteria`/`unknowns`/`subagents`/`warnings`/`warnings_ruling` when they don't apply,
    \"nothing\" for `not_verified`, and \"none\" for `failure_origin` unless review mode returns NEEDS_REVISION or FAILED.
-   In review mode fill `criteria` (OBSERVED only if you ran it) and `warnings_ruling` (one string per implementer warning: fixed | acceptable | must fix, then the reason).
+   In review mode run your own commands (tests, greps, a build): the implementer's report is the same evidence source as the code, so a criterion backed only by it is DERIVED at most. Fill `criteria` (OBSERVED only if you ran it) and `warnings_ruling` (one string per implementer warning: fixed | acceptable | must fix, then the reason).
    In implement mode fill `warnings` (noticed but not fixed)."
 3. Resolve `$MODEL` for the mode from `MODELS_JSON` (see above), then run from the project root
    (timeout 590000 ms for implement). Include `-m "$MODEL"` only when `$MODEL` is not null:

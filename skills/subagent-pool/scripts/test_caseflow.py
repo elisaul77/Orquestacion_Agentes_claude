@@ -40,6 +40,7 @@ class CaseFlowTest(unittest.TestCase):
         cls.prompts = read(SKILL / "assets" / "prompts.md")
         cls.review = read(AGENTS_DIR / "review-agent.agent.md")
         cls.planning = read(AGENTS_DIR / "planning-agent.agent.md")
+        cls.implement = read(AGENTS_DIR / "implement-agent.agent.md")
 
     # A1 (AC1): the old security/API/data/money => council rule is gone from every user-facing doc.
     def test_A1_old_council_trigger_removed(self):
@@ -350,6 +351,27 @@ class CaseFlowTest(unittest.TestCase):
         self.assertIn("Covers: {RF-n", self.prompts, "the implement brief must name the RF-n it covers")
         self.assertIn("{RF-n or n/a}", self.review, "review-agent CRITERIA must cite the RF-n")
         self.assertIn("RF-n", self.planning, "planning-agent must draft RF-n requirements")
+
+
+    # ---- v9.14.0 (evidence: facts in the brief, Codex's own evidence, stale context)
+
+    # E1: facts each edit depends on go in the brief; a missing fact blocks; the reviewer greps for invented ones.
+    def test_E1_facts_in_brief_and_no_guessing(self):
+        self.assertIn("Facts: {signatures", self.prompts, "implement brief needs a Facts line")
+        self.assertIn("Never guess a fact", self.implement, "implement-agent must block instead of guessing")
+        self.assertIn("Look for invented facts", self.review, "review-agent must grep the diff for invented facts")
+
+    # E2: Codex review needs its own evidence to count as independent.
+    def test_E2_codex_review_needs_own_evidence(self):
+        codex = read(AGENTS_DIR / "optional" / "codex-agent.agent.md")
+        self.assertIn("run your own commands", codex)
+        self.assertTrue(lines_with(self.skill, "Codex APPROVED", "independent confirmation", "same evidence source"),
+                        "SKILL.md must say a Codex approval on the implementer's report confirms nothing")
+
+    # E3: a stale project-context.md is checked against the code before planning.
+    def test_E3_stale_context_check(self):
+        self.assertIn("Stale context is worse than none", self.skill)
+        self.assertIn("git log -1 --format=%cs", self.skill)
 
 
 if __name__ == "__main__":
