@@ -6,6 +6,7 @@
 - Removed the planner/council's fixed 3–10 phases and graph-community boundaries. Graphs still guide dependencies and risk. Detail the next increment; refresh provisional later outcomes before dispatch and finish the full accepted scope.
 - Aligned briefs, implementation and review around outcome/quality evidence, with remaining cross-cutting targets and verification triggers retained. Governance, models, permissions and spec structure are unchanged.
 - Existing structural checks retained; model behavior requires independent scenario validation, not wording tests.
+- **Creative/demo exception.** A demo, prototype, game or visual piece with one deliverable goes direct (`Tier S · creative — direct`), never orchestrated, whatever its file count. From a real Codex run that spent the whole budget planning and polling subagents for a "sorpréndeme" demo and never delivered it.
 
 ## v9.14.0 — 2026-10-24 · Evidence: facts in the brief, Codex's own checks, stale context
 
