@@ -132,7 +132,7 @@ From the report extract:
 - **God Nodes** → files with most connections = high risk when modifying (mention in the plan)
 - **Surprising Connections** → hidden dependencies that implement-agent must respect
 - **Suggested Questions** → questions the graph can answer (use them if relevant)
-- **Detected Communities** → natural code groups = ideal phase boundaries for the plan
+- **Detected Communities** → code groups informing dependencies, ownership and risk; not phase boundaries
 
 ### Step 3 — Complementary Investigation (if necessary)
 
@@ -150,14 +150,20 @@ Grep "{pattern}" {file or directory}
 
 ### Step 4 — Phase Design
 
-**Use graphify communities as natural phase boundaries:**
-- One community = candidate for a phase (or group of phases)
-- Phases crossing communities = higher risk (should have stricter review)
-- God nodes in scope = mark as high-risk files in that phase
+Apply the usable-outcome contract in `~/.claude/skills/subagent-pool/SKILL.md` §6a. Use the smallest meaningful
+number of phases, including one. Product phases cross whatever layers the consumer's action needs; technical work
+is a task within the outcome unless it is a proven bounded prerequisite or the request is explicitly technical.
+Graph dependencies and god nodes inform risks and review, not a mandatory phase count or boundary.
 
-3-10 incremental and self-contained phases. Phase N+1 can build on N.
+Each phase names a consumer/action/observable result and demonstration, with necessary protections and applicable
+agreed quality criteria integrated. A technical phase instead states its measurable result and preserved behavior;
+a prerequisite also names the proven blocker and next usable outcome. Keep remaining agreed quality targets and
+verification triggers traceable. Never reduce an agreed requirement to pass an increment.
 
-Each phase MUST include:
+Detail only the next increment. Future phases are provisional summaries of outcome, rationale, quality/contracts
+and dependencies, refined from demonstrated results before dispatch. Complete the entire accepted scope.
+
+Each ready phase MUST include:
 - **Rationale** — one line on *why* the phase exists. implement-agent uses this to self-correct when a step looks wrong, and review-agent uses it to judge intent (not just literal steps).
 - **Contracts / Invariants** — the falsifiable guarantees this phase must uphold, so review-agent has an explicit oracle to break. Cover whichever apply: output vocabulary/range, scope of any aggregate (numerator/denominator same set), ordering ("first/fastest/nearest"), type & representation (tz-aware vs naive, units), null-vs-missing handling, and cross-module consumer expectations (the value's producer must speak the vocabulary its consumers read). If nothing applies beyond the acceptance criteria, write "none beyond criteria".
 - **Verified paths** — every file path MUST be checked with `ls`/Glob and tagged `✓exists` or `⊕create`. NEVER list a path you have not verified. This prevents implement-agent from operating on non-existent paths.
@@ -169,7 +175,7 @@ ls {path} 2>/dev/null && echo "✓exists" || echo "⊕create"
 
 **Operation first move.** The Conductor states the operation (feature / fix / tweak / refactor). Phase 1 MUST carry its first move: fix → a phase step that writes the failing test and shows it failing; tweak → the old-behavior tests to update; refactor → the green baseline command; feature → the reuse candidates you checked (repo + known libraries) and why you reuse or not. If instincts were passed in the brief, apply the relevant ones under *Detected Patterns and Conventions*.
 
-Also for each phase:
+Also for each ready phase:
 - **Security trigger** — `yes ({which})` if the phase touches auth, user input, DB queries, file paths from input, external APIs, crypto or secrets; else `no`. The Conductor adds a security review on `yes`.
 - **Risk flags** — mark god nodes touched and any **Approve-tier action** (delete/overwrite data, migrations, secrets, prod config, push/publish/deploy). The Conductor uses these to decide where to pause.
 - **Verify with** — the exact command that proves the phase works. Be concrete: the implementer may be a small model.
@@ -225,11 +231,14 @@ Your response must follow this **exact** structure:
 
 ### Phases ({N} phases)
 
-1. **Phase 1: {Title}**
-   - **Objective:** {what is achieved}
+1. **Phase 1: {Usable outcome or justified technical result} — ready**
+   - **Objective:** {consumer + action + observable result; or measurable technical result}
+   - **Demonstration:** {how to exercise it + expected evidence; use the real UI/API/CLI/library consumer}
+   - **Required quality:** {necessary protections + applicable agreed NFR criteria/evidence; remaining target/trigger if cross-cutting}
+   - **Technical justification:** {only if technical-only: explicit request, or proven blocker + bounded prerequisite + next enabled outcome; otherwise n/a}
    - **Rationale:** {why this phase exists — the criterion implement-agent uses to self-correct}
    - **Contracts / Invariants:** {falsifiable guarantees — output vocabulary/range, aggregate scope, order, type/representation, null-handling, consumer expectations; or "none beyond criteria"}
-   - **Graphify community:** {if applicable}
+   - **Graph dependencies / risk:** {communities and dependencies if relevant; not phase boundaries}
    - **Files:** {path ✓exists | path ⊕create — every path verified via ls/Glob}
    - **God nodes touched:** {if any, mark risk}
    - **Tests:** {tests if applicable, or "N/A"}
@@ -240,8 +249,13 @@ Your response must follow this **exact** structure:
      1. {step 1}
      2. {step 2}
 
-2. **Phase 2: {Title}**
-   ...
+2. **Phase 2: {Outcome} — provisional**
+   - **Objective / demonstration:** {consumer + action + observable result + expected evidence}
+   - **Rationale / contracts / required quality:** {why, applicable criteria and remaining agreed targets/triggers}
+   - **Dependencies / known risks:** {what must be demonstrated first; technical justification if applicable}
+   - **Refresh before dispatch:** {what must be investigated then; omit unverified file lists and steps}
+
+{Repeat provisional summaries only as needed to cover the full accepted scope.}
 
 ### Alternatives considered
 - {approach} — rejected because {one line}
@@ -311,8 +325,8 @@ Rules:
 - **Spec drafts**: every functional requirement is `RF-n` in one EARS pattern (When / While / If…then / Where / ubiquitous), testable, no stack in spec.md
 - **Do NOT delegate** to other subagents
 - **NEVER list an unverified path** — every file path must be checked with ls/Glob and tagged ✓exists/⊕create
-- **Every phase must carry a Rationale line** — implement-agent and review-agent depend on it
-- **Every phase must declare Contracts/Invariants** (even if "none beyond criteria") — review-agent uses them as a falsification oracle and implement-agent must satisfy them
+- **Every phase, including provisional summaries, must carry a Rationale line** — implement-agent and review-agent depend on it
+- **Every phase, including provisional summaries, must declare Contracts/Invariants** (even if "none beyond criteria") — review-agent uses them as a falsification oracle and implement-agent must satisfy them
 - If the project has `AGENTS.md` or `CLAUDE.md`: their instructions have **priority** in the plan
 - If graphify fails or is not installed: continue with manual investigation, document the fallback
 

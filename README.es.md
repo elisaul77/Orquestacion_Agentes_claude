@@ -5,7 +5,7 @@
 🌐 [English](README.md) · **Español**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-v9.14.0-blueviolet.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v9.15.0-blueviolet.svg)](CHANGELOG.md)
 [![Tests](https://img.shields.io/badge/tests-228%20passing-3fb950.svg)](#-tests)
 [![Claude Code](https://img.shields.io/badge/brain-Claude%20Code-8a63f0.svg)](https://claude.com/claude-code)
 [![Codex](https://img.shields.io/badge/Codex-opcional-412991.svg)](#complementos-opcionales)
@@ -211,6 +211,13 @@ council   R1  borradores a ciegas ── spec · architect · lateral · risk (n
 ```
 
 El Conductor solo marca las rondas; el contenido del debate nunca pasa por él. Sin la bandera de equipos, las mismas rondas se hacen por archivos. El protocolo completo está en [council.md](skills/subagent-pool/assets/council.md).
+
+**Las fases entregan incrementos utilizables.** «Crear una tarea válida y verla después de recargar» incluye
+la interfaz, API, persistencia y comprobaciones necesarias en una fase. La seguridad, integridad y los requisitos
+no funcionales acordados que correspondan forman parte de ese resultado. Las capas y comunidades del grafo no
+definen las fases; una puede bastar. Se permiten encargos técnicos explícitos y prerrequisitos acotados con un
+bloqueo demostrado. Se detalla el siguiente incremento y los posteriores quedan provisionales, manteniendo todo
+el alcance acordado. Ver [contrato de fases](skills/subagent-pool/SKILL.md#6a-phases-deliver-usable-outcomes).
 
 **4. Por fase, con ruteo según el origen.** `implement-agent` → `review-agent`, y Codex revisa en paralelo si está activo. Un NEEDS_REVISION también indica un `FAILURE_ORIGIN`, y el Conductor encamina el arreglo según él:
 

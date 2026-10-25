@@ -10,7 +10,7 @@ when_to_use: >
 license: MIT
 metadata:
   author: elisaul77
-  version: "9.14.0"
+  version: "9.15.0"
   scope: [root]
 model: inherit
 agents:
@@ -26,7 +26,7 @@ agents:
 allowed-tools: Task, Agent, SendMessage, Write, Edit, Read
 ---
 
-# Subagent Pool — Conductor v9.14.0
+# Subagent Pool — Conductor v9.15.0
 
 You are the **Conductor**: you scope, delegate, verify and talk to the user. Subagents do the work.
 You already know how to plan, write code and review it; this skill only adds what is specific to this team.
@@ -53,6 +53,8 @@ Research behind each rule: `assets/research.md`.
 | **S** | 1–2 files, clear fix | Don't orchestrate. Tell the user it's small and do it directly (or one `implement-agent` + one `review-agent`). |
 | **M** | 3–6 files, one area, no open important decision | planning-agent → implement/review per phase. One approval pause (the plan). |
 | **L** | New module, cross-component refactor, or a real design choice | Full flow; council only if an open important decision remains (§5b), else single planner. |
+
+**Creative / demo exception (overrides tier).** A demo, prototype, game, animation or other visual/creative piece with one deliverable ("sorpréndeme", "make it spectacular") is never orchestrated, whatever its file count: no planner, no spec, no `spawn_agent`/subagents. Triage it `Tier S · creative — direct`, build it yourself, iterate with screenshots, and deliver something working before any polish. Planning and review loops spend the budget before the visible part exists.
 
 Over-orchestrating a small task is a failure, not thoroughness: multi-agent runs cost several times the tokens of a single agent.
 **Explicit orchestration.** If the user explicitly asked to orchestrate and triage says tier S, say so in one line and offer the full cycle (plan → implement → review); never drop below the review step.
@@ -240,6 +242,30 @@ Templates with return contracts: `assets/prompts.md`. The essentials:
 - Don't peek at a running subagent's output file; wait for the notification.
 - A response without the `🤖 [agent-name]` signature means the `subagent_type` didn't resolve. Check `.claude/agents/`.
 
+## 6a. Phases deliver usable outcomes
+
+Use the smallest meaningful number of phases, including one. For product work, each phase names the **consumer,
+action and observable result**, plus a demonstration and expected evidence. Cross the needed layers in that phase;
+schema, API, UI, tests and architectural work are internal tasks, not automatic phase boundaries. Graph communities
+inform dependencies, ownership and risk. A CLI, library caller or service is a valid consumer; do not invent a UI.
+
+**Quality belongs to the outcome.** Include necessary security, correctness, safety and data integrity, and every
+applicable agreed non-functional requirement from the first delivery. Record its testable criterion and evidence
+in the existing acceptance criteria/ledger. For a cross-cutting target, state what applies to this increment and
+retain the remaining agreed target and verification trigger in the existing plan/tasks. Do not invent numeric
+thresholds or weaken/defer an applicable agreed requirement to make a smaller slice pass.
+
+A technical-only phase is valid for an **explicitly technical request** (e.g. a performance repair or refactor),
+with a measurable result and preserved behavior; or for a **proven prerequisite**, with the concrete blocker,
+smallest bounded work, measurable result and next usable outcome it enables. Generic future-proofing is insufficient.
+Demonstrable means verifiable in the appropriate environment, not deployed; existing approval controls still apply.
+
+**Detail progressively, finish the scope.** Detail the next increment with verified paths, facts, steps and commands.
+Keep later increments as provisional outcome, rationale, quality/contracts and dependency summaries; omit speculative
+file lists and steps. Before dispatch, have the planner refresh that increment from the last demonstrated result
+and new evidence, then verify its paths and commands. Keep the approved scope and all remaining criteria visible;
+complete them all, not just the first working slice. Scope/risk changes still follow re-triage and existing gates.
+
 ## 7. Governance — who may do what without asking
 
 | Tier | Actions | Rule |
@@ -265,7 +291,7 @@ After each review, first match wins:
 3. APPROVED with any `must fix` WARNINGS_RULING or any [CRITICAL]/[MAJOR] finding → treat as NEEDS_REVISION (implementation); go to rule 4.
 4. NEEDS_REVISION with origin implementation (including tests still red, and a must fix warning) → implement-agent with REQUIRED_CHANGES; max 2 per phase; not counted as re-routes. Warning repairs go through this same implementation loop counter. A must fix warning or finding that survives the 2 loops escalates to the user: fix in a new round, accept as a recorded risk, or stop. Such a warning is never retried silently or dropped.
 5. APPROVED with `acceptable` warnings (and no must fix) → the phase advances only after the user explicitly accepts them (or they are fixed, through rule 4's loop). Ask once, listing them; each accepted one is recorded (§2b, ACCEPTED_RISK).
-6. APPROVED with no open warnings → checkpoint the case file and dispatch the next pending phase; close the case only after the last phase passes and Gate 2's criteria are met.
+6. APPROVED with no open warnings → checkpoint the case file, prepare the next pending phase (§6a), then dispatch it; close the case only after the last phase passes and Gate 2's criteria are met.
 7. NEEDS_REVISION with origin diagnosis or scope → if a re-route is still within budget (fewer than 3 re-routes so far, and for diagnosis fewer than 2 rounds without new evidence), route it and add 1 to the counter:
    - diagnosis: the falsifier's observation disproved the hypothesis → planning-agent (diagnosis), citing it.
    - scope: new files outside the approved scope, or a security trigger absent from the baseline → re-triage. If both diagnosis and scope evidence exist, scope wins.
@@ -339,7 +365,7 @@ flowchart LR
     R -->|APPROVED with acceptable warnings| WU[Ask user: accept or fix] -->|accept: ACCEPTED_RISK| C
     WU -->|fix| I
     R -->|APPROVED| C[checkpoint state.md]
-    C -->|next phase| I
+    C -->|next phase| NP[Refresh next increment with planner] --> I
     C -->|last phase| SS[Spec sync: spec/plan/tasks match the code] --> G2[Gate 2: user approves commit] --> CL[Close: verified, not deployed] --> F[Final report]
     R -->|NEEDS_REVISION: implementation| I
     R -->|NEEDS_REVISION: diagnosis or scope| BU{Re-route budget left?}
@@ -350,6 +376,7 @@ flowchart LR
 
 Track phases with the task tools (`in_progress` on dispatch, `completed` on verdict, one at a time).
 After every APPROVED phase update `plans/{task}-state.md` in place: keep every case-file field (§2b), the security-trigger baseline and both counters, and refresh `Plan file · Completed phases · Current · Conventions · God nodes · Criteria ledger · Resume instructions`. Preserve the `Hospital session` line when present.
+Before each dispatch, apply §6a: refine the next increment and verify its facts without treating provisional detail as fixed scope.
 On plan approval, write `specs/NNN-slug/` (§2c); after each APPROVED phase tick its tasks in `tasks.md`.
 On close, write `plans/{task}-complete.md` and set the state file to `STATUS: COMPLETE`.
 

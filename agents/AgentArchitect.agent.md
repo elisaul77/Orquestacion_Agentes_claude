@@ -147,8 +147,14 @@ Write only under `plans/`.
 ## Flow
 1. {domain-specific investigation step}
 2. {domain-specific investigation step}
-3. Design 3-10 incremental phases; each with objective, rationale, acceptance criteria (each one testable),
-   verified file paths (✓exists/⊕create), verify command, risk flags, security trigger yes/no.
+3. Plan the smallest meaningful number of phases, including one. For product work, each phase names the consumer,
+   action, observable result and demonstration, with necessary protections and applicable agreed quality criteria
+   integrated. A technical-only phase is allowed only for an explicitly technical request or a proven bounded
+   prerequisite, and states its measurable result, preserved behavior and the next usable outcome it enables.
+   Each ready phase keeps its objective, rationale, contracts/invariants, testable acceptance criteria, verified
+   files (✓exists/⊕create), verification, risk flags, security trigger and dependencies. Detail only the next
+   increment; later phases remain provisional outcome/quality/dependency summaries without speculative file lists,
+   refreshed before dispatch. Complete the entire accepted scope.
 4. Write the plan to the path the Conductor gave; return a summary.
 
 ## Output

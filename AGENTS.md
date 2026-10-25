@@ -76,7 +76,7 @@ flowchart LR
 
 | Skill | Trigger | Version |
 |-------|---------|---------|
-| `subagent-pool` | "delegate", "orchestrate", "conductor", "complex task" | 9.14 |
+| `subagent-pool` | "delegate", "orchestrate", "conductor", "complex task" | 9.15 |
 | `arquitec-dev-ia` | "create AGENTS.md", "document architecture", "structure for AI", "output style", "add rules", "prepare for orchestration" | 5.0 |
 | `graphify` | `/graphify` | — |
 
@@ -94,13 +94,13 @@ flowchart LR
 
 ---
 
-## Workflow v9.14
+## Workflow v9.15
 
 1. Conductor reads `.claude/project-context.md` (HALT and suggest `arquitec-dev-ia` if missing); offers to resume an unfinished `plans/*-state.md`
 2. Admission and triage: the mandatory first line for tier M/L is `Tier {S|M|L} · {operation} · {single|duo|council} · urgency {low|normal|high} · uncertainty {low|med|high} · risk {low|med|high} — {one-clause reason}`, e.g. `Tier M · fix · single · urgency normal · uncertainty high · risk low — cause unknown, auth module untouched`; tier S is `Tier S · fix — direct`; urgency never removes controls; the user can override it
 3. Asks only questions that change the plan (max 3, each with a default); states other assumptions
 4. Case flow (`skills/subagent-pool/SKILL.md` §2b): diagnosis by `planning-agent` (facts · hypotheses · evidence · missing · proposed intervention · falsifier) → consult one specialist (review-agent `mode=consult specialty=<x>`, or planning-agent for code facts), or the council **only when an open important decision remains** (duo for an open non-important choice or a vague spec; single otherwise) → plan (council protocol: `skills/subagent-pool/assets/council.md`). Security, API, data and money raise the risk axis; they never convene the council alone
-5. The plan lands in `plans/{task}-draft.md` → ⏸️ **PAUSE** for approval
+5. Phases deliver usable outcomes with required quality (SKILL §6a); detail the next increment, keep later outcome summaries provisional, and complete the accepted scope. The plan lands in `plans/{task}-draft.md` → ⏸️ **PAUSE** for approval
 6. Per phase: `implement-agent` → `review-agent` (contract-first + independent check); a NEEDS_REVISION routes by `FAILURE_ORIGIN` (implementation → implement-agent, max 2 loops; diagnosis → planning-agent; scope → re-triage); 3 re-routes per case in total, then the user decides
    - FAILED → consult the user first
    - A NEEDS_REVISION finding is binding: the Conductor never drops, downgrades or defers it on its own; it re-delegates per FAILURE_ORIGIN or asks the user, who may accept it as a recorded risk

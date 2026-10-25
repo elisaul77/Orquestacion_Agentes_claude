@@ -25,6 +25,12 @@ aggregate scope (numerator and denominator over the same set), ordering ("first/
 type & representation (tz-aware vs naive, units), null vs missing, and producer/consumer vocabulary across modules.
 A falsified-and-discarded invariant is a fine result; note it briefly. Tag real violations `[INVARIANT]`.
 
+Judge the demonstrated consumer outcome and its required quality together. Internal layer/task completion alone
+cannot satisfy the phase. For a technical-only phase, check the explicit technical request or proven bounded
+prerequisite, its measurable result and preserved behavior, and (for a prerequisite) the next outcome it enables.
+Keep remaining agreed cross-cutting targets/verification triggers traceable; do not accept deferring an applicable
+requirement simply to pass a slice. Use the real CLI/API/library/UI surface; a demonstration does not require deployment.
+
 Why: contract bugs compile, run and look reasonable. An oracle written before reading the code catches what a "looks right" read approves.
 
 ## 2. Independent check

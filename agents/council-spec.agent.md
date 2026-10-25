@@ -22,7 +22,7 @@ limits shared by all members. The Conductor's brief gives the task, the council 
 ## R1 — blind draft
 Write `{council_dir}/spec.md`. Do **not** read the other drafts yet. Read only the project files you need (read-only Bash).
 - **Problem** in one sentence, in the user's terms.
-- **Acceptance criteria**, numbered, each testable by a command or an observation (no "works well", "is fast").
+- **Acceptance criteria**, numbered, each testable by a command or an observation (no "works well", "is fast"). Connect consumer/action/result to the necessary protections and applicable agreed NFRs (§6a); retain cross-cutting targets and verification triggers without weakening them.
 - **Edge cases and failure inputs** the implementation must handle.
 - **Non-goals** — what is explicitly out of scope.
 - **Ambiguities** — each with the default you would assume and the cost of being wrong.
@@ -35,7 +35,7 @@ Then end your turn with one line: `R1 done: {council_dir}/spec.md`.
   accept with the resulting wording (`accept → <final text>`), or reject with a reason (SendMessage + append). End with `R2b done: {m} answered`. Never write to the log after R2b;
   a point you find later goes to `architect` directly, in one logged message.
 
-Your lens: is every proposed phase traceable to a criterion? Does any draft quietly change the scope?
+Your lens: is every proposed phase a demonstrable outcome with its required quality (or a justified technical result), traceable to a criterion? Does any draft quietly change the scope?
 Log format: `spec->{to}: {text}`.
 
 ## Rules

@@ -40,6 +40,9 @@ Pre-loaded context (project-context.md):
 Architecture: {≤200 chars} | Stack: {stack} | Language: {language}
 God nodes: {list} | Communities: {list}
 
+Apply SKILL.md §6a: phases deliver demonstrable consumer outcomes with required quality, or justified technical results.
+Detail the next increment with verified paths/facts/commands; later outcomes, quality and dependencies stay provisional.
+Cover the full accepted scope. Graph communities inform dependencies and risk, not phase boundaries or count.
 Write the full plan to plans/{task}-draft.md and return only the summary below.
 Also draft specs/NNN-slug/spec.md (what and why, no stack: context, user story, RF-n each in one EARS pattern,
 non-functional, edge cases, out of scope, done criteria) and tasks.md (checkboxes in dependency order, each task
@@ -48,7 +51,7 @@ with the RF-n it covers and one verifiable "done" line) under plans/{task}-spec/
 STATUS: PLAN_READY | NEED_CLARIFICATION
 PLAN_FILE: plans/{task}-draft.md
 TLDR: {1-3 sentences}
-PHASES: {N} — one line each: title · files count · risk (god node? approve-tier action?)
+PHASES: {N} — one line each: outcome · ready/provisional · files count if ready · risk (god node? approve-tier action?)
 OPEN_QUESTIONS: {only those that change the plan, each with a proposed default, or "none"}
 """)
 ```
@@ -87,7 +90,10 @@ For Haiku, keep Steps numbered and concrete and give the exact verify command. F
 Task(description="Phase {N}: {title}", subagent_type="implement-agent", prompt="""
 Phase {N}: {title}   (plan: plans/{task}-plan.md)
 
-Objective: {one sentence}
+Objective: {consumer + action + observable result; or justified measurable technical result}
+Demonstration: {exercise + expected evidence on the real consumer surface}
+Required quality: {necessary protections + applicable agreed NFR criteria/evidence; remaining target/trigger if cross-cutting}
+Technical justification: {explicit technical request, or proven blocker + bounded prerequisite + next enabled outcome; otherwise n/a}
 Operation: {feature | fix | tweak | refactor} — first move: {e.g. "fix: write the failing test first and show it failing"}
 Hypothesis / falsifier: {required when the Conductor diagnosed the fix itself (SKILL §2b, inline falsifier): hypothesis + the observation that would disprove it; the implementer writes the failing test from it first; otherwise "n/a"}
 Rationale: {why — the criterion to self-correct with}
@@ -144,7 +150,10 @@ NOT_VERIFIED: {or "nothing"}
 Task(description="Review Phase {N}: {title}", subagent_type="review-agent", prompt="""
 Review Phase {N}: {title}
 
-Objective: {one sentence}
+Objective: {consumer + action + observable result; or justified measurable technical result}
+Demonstration: {exercise + expected evidence on the real consumer surface}
+Required quality: {necessary protections + applicable agreed NFR criteria/evidence; remaining target/trigger if cross-cutting}
+Technical justification: {explicit technical request, or proven blocker + bounded prerequisite + next enabled outcome; otherwise n/a}
 Operation: {feature | fix | tweak | refactor} — check the first move was honored
 Rationale: {judge intent, not only literal steps}
 Contracts/Invariants: {declared ones — derive others, try to break each BEFORE reading the code}
@@ -372,7 +381,7 @@ Task(description="Coordinate: {scope}", subagent_type="codex-agent", prompt="""
 mode=coordinate   max_agents={≤3}
 Plan: plans/{task}-plan.md — run phases {list} (independent, disjoint files)
 Roles allowed: {e.g. implement-agent, VidImplementer}   (synced in ~/.codex/agents)
-Per phase: objective · files · acceptance criteria · verify command   (same fields as §2)
+Per phase: outcome · demonstration · required quality · technical justification if applicable · verified files/facts · acceptance criteria · verify command (same fields as §2; ready phases only)
 Governance: Approve-tier actions → BLOCKED, never performed.
 """)
 ```
@@ -395,6 +404,7 @@ Context: {stack · language · god nodes · graphify EXISTS/NOT_EXISTS}
 User decisions (invariants): {each one}
 Constraints / out of scope: {list}
 Members: {duo: architect, lateral | council: spec, architect, lateral, risk}   Council dir: plans/council/{task}
+Phase policy: SKILL.md §6a — usable outcomes with integrated quality; next increment detailed, later ones provisional; complete accepted scope.
 Plan file (R3): plans/{task}-draft.md
 Lens for swapped seat: {specialty (security | api | data | ui | perf | ops) or none}
 ```

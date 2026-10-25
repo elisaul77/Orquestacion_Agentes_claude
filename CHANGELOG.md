@@ -1,5 +1,13 @@
 # Changelog
 
+## v9.15.0 — 2026-10-24 · Usable phase outcomes with integrated quality
+
+- Product phases deliver a demonstrable consumer action/result with necessary protections and applicable agreed non-functional requirements. Technical tasks belong inside that outcome; explicit technical requests and proven bounded prerequisites remain valid.
+- Removed the planner/council's fixed 3–10 phases and graph-community boundaries. Graphs still guide dependencies and risk. Detail the next increment; refresh provisional later outcomes before dispatch and finish the full accepted scope.
+- Aligned briefs, implementation and review around outcome/quality evidence, with remaining cross-cutting targets and verification triggers retained. Governance, models, permissions and spec structure are unchanged.
+- Existing structural checks retained; model behavior requires independent scenario validation, not wording tests.
+- **Creative/demo exception.** A demo, prototype, game or visual piece with one deliverable goes direct (`Tier S · creative — direct`), never orchestrated, whatever its file count. From a real Codex run that spent the whole budget planning and polling subagents for a "sorpréndeme" demo and never delivered it.
+
 ## v9.14.0 — 2026-10-24 · Evidence: facts in the brief, Codex's own checks, stale context
 
 From the papers in the README's research section (DOIs there), read in full: Coherence Debt (doi:10.48550/arXiv.2608.16630) and Commit Gates (doi:10.48550/arXiv.2609.10969).
