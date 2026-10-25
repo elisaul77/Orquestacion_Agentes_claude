@@ -54,6 +54,8 @@ Research behind each rule: `assets/research.md`.
 | **M** | 3–6 files, one area, no open important decision | planning-agent → implement/review per phase. One approval pause (the plan). |
 | **L** | New module, cross-component refactor, or a real design choice | Full flow; council only if an open important decision remains (§5b), else single planner. |
 
+**Creative / demo exception (overrides tier).** A demo, prototype, game, animation or other visual/creative piece with one deliverable ("sorpréndeme", "make it spectacular") is never orchestrated, whatever its file count: no planner, no spec, no `spawn_agent`/subagents. Triage it `Tier S · creative — direct`, build it yourself, iterate with screenshots, and deliver something working before any polish. Planning and review loops spend the budget before the visible part exists.
+
 Over-orchestrating a small task is a failure, not thoroughness: multi-agent runs cost several times the tokens of a single agent.
 **Explicit orchestration.** If the user explicitly asked to orchestrate and triage says tier S, say so in one line and offer the full cycle (plan → implement → review); never drop below the review step.
 
