@@ -5,7 +5,7 @@
 🌐 **English** · [Español](README.es.md)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-v9.14.0-blueviolet.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v9.15.0-blueviolet.svg)](CHANGELOG.md)
 [![Tests](https://img.shields.io/badge/tests-228%20passing-3fb950.svg)](#-tests)
 [![Claude Code](https://img.shields.io/badge/brain-Claude%20Code-8a63f0.svg)](https://claude.com/claude-code)
 [![Codex](https://img.shields.io/badge/Codex-optional-412991.svg)](#optional-add-ons)
@@ -211,6 +211,12 @@ council   R1  blind drafts ── spec · architect · lateral · risk (nobody r
 ```
 
 The Conductor only signals the rounds; the debate content never passes through it. Without the agent-teams flag the same rounds run through files. Full protocol: [council.md](skills/subagent-pool/assets/council.md).
+
+**Phases deliver usable increments.** “Create a valid task and see it after reload” includes the needed UI, API,
+storage and quality checks in one phase. Security, integrity and applicable agreed non-functional requirements
+belong to that outcome. Graph communities and layers do not set phase boundaries; one phase may be enough.
+Explicit technical work and proven bounded prerequisites remain valid. Only the next increment gets detailed;
+later outcomes are provisional, while the full agreed scope remains required. See [the phase contract](skills/subagent-pool/SKILL.md#6a-phases-deliver-usable-outcomes).
 
 **4. Per phase, routed by origin.** `implement-agent` → `review-agent`, plus a Codex review in parallel if Codex is on. A NEEDS_REVISION also names a `FAILURE_ORIGIN`, and the Conductor routes the fix by it:
 

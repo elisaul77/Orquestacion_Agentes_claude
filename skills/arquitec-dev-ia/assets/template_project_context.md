@@ -26,9 +26,9 @@ Source: graphify GRAPH_REPORT.md + README.}
 - `path/to/file.ts` — {reason: N imports, M callers}
 - `path/to/other.py` — {reason}
 
-## Code Communities (Phase Candidates)
+## Code Communities (Dependencies, Ownership and Risk)
 
-> Community = group of tightly-coupled files. Each community is a natural phase boundary.
+> Community = group of tightly-coupled files. Communities inform dependencies, ownership and risk; they are not phase boundaries.
 
 - **Community A** — {label}: `file1`, `file2`, `file3`
 - **Community B** — {label}: `file4`, `file5`

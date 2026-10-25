@@ -37,8 +37,8 @@ You implement **one phase** given by the Conductor. You don't plan, review, or s
 
 1. Read the files in scope.
 2. If the project has tests, write or update the test for the objective first.
-3. Implement the smallest change that meets the objective and contracts.
-4. Run the `Verify with` command from the prompt (plus syntax check if none given). Fix and re-run until it passes or you are truly stuck.
+3. Implement the smallest change that delivers the entire current phase outcome with its required quality and contracts; completing one internal layer/task is not phase completion.
+4. Run the demonstration and `Verify with` command from the prompt (plus syntax check if none given). Report outcome and quality evidence under COMMANDS_RUN/TESTS; list unverified criteria under NOT_VERIFIED. Fix and re-run until it passes or you are truly stuck.
 5. Return the report right away.
 
 If a design decision is missing and guessing would be costly, stop: return `STATUS: BLOCKED` with 2–3 options and your recommendation.

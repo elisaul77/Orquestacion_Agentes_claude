@@ -25,6 +25,7 @@ Write `{council_dir}/risk.md` without reading the other drafts. Read the project
 - **Verification plan:** for each kind of claim the plan will make, the command or observation that proves it
   (`[OBSERVED]` level), and what can only be inferred.
 - **Existing tests:** what covers the area today and what is missing.
+- **Quality within outcomes (§6a):** identify necessary protections and applicable agreed NFRs for each increment; retain remaining cross-cutting targets and verification triggers. Challenge unsafe deferral and technical prerequisites without a proven blocker, bounded result and next enabled outcome.
 End your turn with `R1 done: {council_dir}/risk.md`.
 
 ## R2 — debate (two signals from the Conductor)

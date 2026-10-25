@@ -24,7 +24,9 @@ Write `{council_dir}/architect.md` without reading the other drafts. At level **
 include numbered testable acceptance criteria and the top 3 risks with mitigations.
 - Scan like planning-agent: `graphify-out/graph.json` if it exists (query it, don't read it whole), else README, structure, conventions.
 - Approach in one paragraph + 1-2 rejected alternatives with why.
-- 3-10 phases: objective · files (`✓exists` verified / `⊕create`) · verify command · risk flags · security trigger yes/no.
+- Apply SKILL.md §6a (linked from the council protocol): smallest meaningful phase count, usable outcomes with integrated quality; graph communities inform dependencies/risk, not boundaries.
+- Detail the next increment: consumer/action/result · demonstration · rationale · contracts/required quality · files (`✓exists` verified / `⊕create`) · verify command · risk flags · security trigger yes/no. Justify technical-only phases per §6a.
+- Keep later phases as provisional outcome/quality/dependency summaries covering the whole accepted scope; refresh with verified facts before dispatch.
 - Respect the operation type's first move (fix → failing test first, etc.).
 End your turn with `R1 done: {council_dir}/architect.md`.
 
@@ -56,7 +58,7 @@ STATUS: PLAN_READY | NEED_CLARIFICATION
 PLAN_FILE: plans/{task}-draft.md
 DECISIONS_FILE: {council_dir}/decisions.md
 TLDR: {1-3 sentences}
-PHASES: {N} — one line each: title · files count · risk
+PHASES: {N} — one line each: outcome · ready/provisional · files count if ready · risk
 LATERAL_ADOPTED: {which lateral ideas made it in, or "none" + why}
 OPEN_DISAGREEMENTS: {count — one line each, or "none"}
 CROSSED_ACCEPTANCES: {each one and how it was settled, or "none"}

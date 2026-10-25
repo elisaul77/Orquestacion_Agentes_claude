@@ -39,6 +39,12 @@ plans/council/{task}/
 plans/{task}-draft.md   R3: the plan (architect), same format as planning-agent
 ```
 
+## Phase design
+
+Read `../SKILL.md` §6a for the shared usable-outcome contract. Architect applies it to phase boundaries and progressive
+detail; spec pairs outcomes with quality criteria; risk checks necessary protections and justified prerequisites.
+Duo covers the same obligations. Future summaries remain provisional; the full accepted scope remains required.
+
 ## Rounds — the Conductor is a clock, not a postman
 
 The Conductor never carries content between members. It only starts each round and waits for everyone to finish it.
