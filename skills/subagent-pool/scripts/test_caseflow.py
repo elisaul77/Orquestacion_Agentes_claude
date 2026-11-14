@@ -156,7 +156,8 @@ class CaseFlowTest(unittest.TestCase):
     # R3 (triage fix 3): the exact triage template, the first-output rule, and the tier S form.
     def test_R3_triage_line_template_and_first_output(self):
         template = ("Tier {S|M|L} · {operation} · {single|duo|council} · urgency {low|normal|high} · "
-                    "uncertainty {low|med|high} · risk {low|med|high} — {one-clause reason}")
+                    "uncertainty {low|med|high} · risk {low|med|high} · "
+                    "error cost {local|costly|blind} — {one-clause reason}")  # v9.17: fifth axis
         self.assertIn(template, self.skill)
         self.assertIn("Post the triage line", self.skill)
         self.assertIn("1. Post the triage line.", self.skill)

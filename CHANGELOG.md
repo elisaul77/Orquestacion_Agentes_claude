@@ -1,5 +1,14 @@
 # Changelog
 
+## v9.17.0 — 2026-11-13 · Port operation, error cost, feedback contract (unifies the two v9.16 lines)
+
+A second line numbered "v9.16" existed unpublished in `~/.agents` (Codex copy) alongside the published v9.16.0 (HTML human view). This release merges both on top of v9.15 and renumbers the unpublished one.
+- **Operation `port`** (stack/language migration): characterization tests and a differential harness (old system as oracle) before any port; no big-bang; ROI line, rollback path and plan-gate approval (§7). Ports get a spec folder like features/refactors (§2c).
+- **Error cost axis in triage** (`local|costly|blind`, five axes now): the question is what a failure costs and who sees it; it sets gate depth.
+- **Greenfield stack choice / stack decision record** in `plan.md`: constraints, 2-3 candidate stacks, new failure modes per candidate; strict typing/lint by default for agent-maintained code. `council-risk` also reports the new failure modes a choice introduces.
+- **Feedback contract and blind spots** in every brief (fastest deterministic verifier with exact command; what no agent can observe and how the phase will), and **static feedback before review** (compiler/typecheck/lint baseline in the report).
+- Includes v9.16.0's §8d HTML human view unchanged.
+
 ## v9.16.0 — 2026-11-13 · Human view in HTML (§8d, optional)
 
 Idea from Thariq's "The Unreasonable Effectiveness of HTML" (Claude Code team): a person rarely reads more than ~100 lines of Markdown, so the summary meant for people can be a web page. Agents keep working in Markdown.

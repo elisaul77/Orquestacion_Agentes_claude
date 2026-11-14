@@ -1,4 +1,4 @@
-# Plan council — protocol (subagent-pool v9.9)
+# Plan council — protocol (subagent-pool v9.16.0)
 
 A plan decides most of the outcome; a wrong spec fails every phase after it. The council builds the plan with four
 lenses instead of one, and makes them disagree on purpose.
@@ -8,7 +8,7 @@ lenses instead of one, and makes them disagree on purpose.
 | Specifier | `council-spec` | `spec` | What exactly counts as done, and how will we know? |
 | Architect + synthesizer | `council-architect` | `architect` | How do we build it, in what order, in which real files? |
 | Lateral thinker | `council-lateral` | `lateral` | What is the non-obvious solution? (asks Codex when on, else Opus) |
-| Risk + verification | `council-risk` | `risk` | What breaks, and how do we prove it didn't? |
+| Risk + verification | `council-risk` | `risk` | What breaks, how do we prove it didn't, and what new failure modes does the choice introduce? |
 
 ## Why this shape (verified / measured)
 
