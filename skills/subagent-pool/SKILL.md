@@ -10,7 +10,7 @@ when_to_use: >
 license: MIT
 metadata:
   author: elisaul77
-  version: "9.16.0"
+  version: "9.17.0"
   scope: [root]
 model: inherit
 agents:
@@ -26,7 +26,7 @@ agents:
 allowed-tools: Task, Agent, SendMessage, Write, Edit, Read
 ---
 
-# Subagent Pool — Conductor v9.16.0
+# Subagent Pool — Conductor v9.17.0
 
 You are the **Conductor**: you scope, delegate, verify and talk to the user. Subagents do the work.
 You already know how to plan, write code and review it; this skill only adds what is specific to this team.
@@ -68,8 +68,14 @@ that goes into the plan and into every implement brief:
 | **fix** | Behavior is wrong | Reproduce it as a failing test (or a failing command) **before** touching the code; the fix turns it green |
 | **tweak** | Works, but should behave differently | Change the behavior **and** the tests that pin the old behavior, in the same phase |
 | **refactor** | Behavior stays, structure improves | Tests green before and after every phase; no test assertion may change |
+| **port** | Behavior stays, stack/language changes (migration) | Characterization tests + a differential harness (old system as oracle) **before** any port; no big-bang; strangle the old path incrementally |
 
 Tie-breaker: a change that touches a security trigger (§7) or a public API/contract is at least tier M.
+
+**Greenfield stack choice.** Starting a project is a planning decision, not a taste: compare 2–3 candidate stacks on
+the real constraints (robustness — memory safety, type strictness, ecosystem maturity —, latency, security, deployment,
+team, budget), record the new failure modes each one introduces, and pick by fit. For code that agents will maintain,
+strict typing/lint is the default unless a constraint rules it out. The user approves it with the plan (§2c).
 
 **Plan level (decide with the tier, add it to the same line: `Tier L · feature · council`).** Not every plan needs many voices:
 
@@ -86,7 +92,7 @@ Security triggers, public API, data or money raise the **risk** axis (tier floor
 **Admission.** Write down the objective, the available context, the constraints and the success criterion. Ask only what is missing (§4).
 
 **Triage.** The triage line is a mandatory first output for tier M/L, on its own line, before any delegation:
-`Tier {S|M|L} · {operation} · {single|duo|council} · urgency {low|normal|high} · uncertainty {low|med|high} · risk {low|med|high} — {one-clause reason}`
+`Tier {S|M|L} · {operation} · {single|duo|council} · urgency {low|normal|high} · uncertainty {low|med|high} · risk {low|med|high} · error cost {local|costly|blind} — {one-clause reason}`
 For tier S, one short line instead: `Tier S · {operation} — direct`. Write the same triage line into the case file `classification` field (tier M/L). Post the triage line (§8 step 1).
 
 | Axis | Decides |
@@ -95,9 +101,13 @@ For tier S, one short line instead: `Tier S · {operation} — direct`. Write th
 | Effort | tier and flow (S/M/L) |
 | Uncertainty | investigate, consult or compare alternatives |
 | Risk | controls and specialist verification |
+| Error cost | gate depth: what a failure costs and who would see it (local/cheap vs costly/irreversible vs blind/unobservable) |
 
-Triage scores four separate axes: urgency (priority), effort (S/M/L), uncertainty (investigate, consult or compare alternatives), risk (controls and specialist verification).
+Triage scores five separate axes: urgency (priority), effort (S/M/L), uncertainty (investigate, consult or compare alternatives), risk (controls and specialist verification), and error cost (gate depth).
 Urgency only changes order and depth (minimal fix now + a follow-up case); it never removes controls. Urgency is not complexity.
+**Error economics.** The question is not "will it fail?" but "what happens when it does, and who sees it?". A cheap,
+local, observable failure takes the light flow; an expensive, irreversible or unobservable one gets a human gate and a
+specialist check before it can land. No language or process removes failure; the goal is to move it to the cheapest place.
 
 **Re-triage.** Re-triage when diagnosis or review changes the scope or the risk of the case.
 
@@ -120,7 +130,7 @@ Tier S has no case file: three lines in chat (objective, change, how it was chec
 ## 2c. The spec lives in the repo (spec-anchored)
 
 `plans/` is the Conductor's working state; the **spec** is the project's record of what was asked and why. Tier M/L
-with operation feature or refactor, or a fix that changes specified behavior, gets a folder in the project:
+with operation feature, refactor or port, or a fix that changes specified behavior, gets a folder in the project:
 
 ```
 specs/NNN-slug/        NNN = next free number; a change to spec'd behavior edits that folder, not a new one
@@ -129,6 +139,12 @@ specs/NNN-slug/        NNN = next free number; a change to spec'd behavior edits
   tasks.md  checkboxes in dependency order; each task names the RF-n it covers and one verifiable "done" line
 ```
 Tier S has no spec folder. If the project already keeps specs elsewhere, use that place and say so once.
+
+**Stack decision record (greenfield or a new service).** `plan.md` starts with the real constraints (robustness —
+memory safety, type strictness, ecosystem maturity —, latency, security, deployment, team, budget), 2–3 candidate
+stacks, their fit per constraint, and the new failure modes each one introduces. Pick by fit, never by popularity or
+"best language". For code that agents will maintain, strict typing/lint is the default unless a constraint rules it out;
+if a candidate wins only by familiarity, name that as the reason.
 
 **Requirements carry an ID and an EARS form.** Every functional requirement is `RF-n` written in one EARS pattern:
 ubiquitous ("The system shall …"), event ("When <trigger>, the system shall …"), state ("While <state>, the system
@@ -194,7 +210,8 @@ If a known attractor shows up (same idea every run), name it and rule it out ("n
 
 The plan decides most of the outcome, so at plan level `council` four members build it and disagree on purpose:
 `council-spec` (what is done), `council-architect` (how, and synthesizer), `council-lateral` (the non-obvious way,
-asks Codex when `CODEX: on`), `council-risk` (what breaks, how to prove it). Protocol, layout and limits:
+asks Codex when `CODEX: on`), `council-risk` (what breaks, how to prove it, and which new failure modes the choice
+introduces). Protocol, layout and limits:
 `assets/council.md`; template: `assets/prompts.md` §11.
 
 1. **Brief.** Write `plans/council/{task}/brief.md` (task, tier, operation + first move, project context, user
@@ -225,6 +242,13 @@ Templates with return contracts: `assets/prompts.md`. The essentials:
 
 - **Hand over the facts each edit depends on.** Signatures, paths, names, values and conventions the phase needs go in the
   brief under `Facts`, read from the code, not from memory. Haiku rarely says it is blocked when a fact is missing; it guesses.
+- **Feedback contract.** Every brief names the fastest deterministic verifier (compiler/typecheck, linter, or a test
+  subset), its exact command, expected exit/result and runtime. Keep the inner loop under ~2 min; if the full suite is
+  slower, give the focused subset and run the full one at phase exit. No verifier → the first phase creates one. A slow
+  or fuzzy checker multiplies the cost of every agent turn.
+- **Blind spots.** The brief states what no agent can observe here (UI, runtime, hardware, production data) and how the
+  phase will observe it (run recipe, screenshot, logs, user check). A criterion nobody can observe stays `[UNKNOWN]`
+  and goes to the user; it never closes a phase.
 - **Delegate outcomes, not keystrokes.** Objective + why (Rationale) + Contracts/Invariants + acceptance criteria +
   files (`✓exists`/`⊕create`, verified by planning-agent) + constraints + return contract.
 - **Match detail to the agent's model.** Opus/Sonnet: outcome + criteria is enough. Haiku: also give numbered,
@@ -274,6 +298,11 @@ complete them all, not just the first working slice. Scope/risk changes still fo
 | **Notify** | New file outside listed scope, new dev-only dependency, deviation from plan | Proceed, report under DEVIATIONS, you mention it to the user |
 | **Approve** | Delete/overwrite data, migrations, secrets, prod config, `git push`, publishing, deploys, `git merge` into a shared or main branch, paid APIs, anything outward-facing or irreversible | Subagent returns `STATUS: BLOCKED`; you ask the user. Approval covers that action only. |
 
+**Ports and major upgrades.** A stack/language port (operation `port`) or a major dependency upgrade is approved with the plan,
+with a one-line ROI (error cost × frequency vs port + maintenance cost), a rollback path and tests first (§2).
+The plan gate is the approval; destructive per-step actions remain Approve-tier. "AI made it cheap" is not the same as
+"it is justified".
+
 **Pauses that change control, not rubber stamps:**
 - Always: plan approval (tier M/L).
 - Per phase: only if the phase touches a god node, has an Approve-tier action, got `FAILED`, or the user asked for per-phase pauses.
@@ -309,6 +338,10 @@ Cap: at most 3 re-routes per case (to diagnosis or triage), counted globally in 
 database queries, file-system paths built from input, external API calls, cryptography or secrets, dispatch
 `review-agent mode=security` **in parallel** with the normal review (`assets/prompts.md` §3b). The stricter verdict wins.
 No trigger → no security pass.
+
+**Static feedback before review.** A phase is ready for review only with the compiler/typecheck/lint/SAST result at the
+recorded baseline, command included in the report. The compiler is the cheapest reviewer: `review-agent` should spend
+its budget on semantics, not on errors a checker already reports. A new warning is a DEVIATION, not noise.
 
 **Evidence levels — "I saw it" vs "I assume it".** Every acceptance criterion the reviewer rules on carries one tag:
 `[OBSERVED]` (ran a command/test/launch and saw the result) · `[DERIVED]` (read directly from the artifact: the file,
@@ -409,7 +442,8 @@ writes (`add`/`seen`/`contradict`/`promote`) go to implement-agent as a short ta
 - **Cost ledger.** A `Stop` hook runs `python3 <skill>/scripts/cost_tracker.py hook`: it sums tokens per model for the
   session **including its subagents** and appends a snapshot to `~/.claude/metrics/costs.jsonl`. Report:
   `cost_tracker.py report [--days N] [--csv]`. Dollars only if the user filled `~/.claude/metrics/prices.json`.
-  Use it to back cost claims (fork vs fresh, model choice) with data instead of one-off tests, and for the budget stop (§7).
+  Use it to back cost claims (fork vs fresh, model choice) with data instead of one-off tests, to compare a port
+  against an incremental fix (§7), and for the budget stop (§7).
   Setup snippet: `assets/hooks.md`.
 - **Instincts.** Small learned rules with confidence (0.3 → 0.9): `scripts/instincts.py`. In Step 0, run
   `instincts.py list --min 0.5` through planning-agent and pass the hits into briefs under *Conventions*. After a task,

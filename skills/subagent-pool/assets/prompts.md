@@ -1,4 +1,4 @@
-# Task Templates — Conductor v9.9
+# Task Templates — Conductor v9.16.0
 
 Copy, fill, send. Every prompt ends with the agent's return contract so the handoff is parseable.
 Write prompts as directives (what + why + files + constraints), not background essays.
@@ -27,11 +27,14 @@ Write prompts as directives (what + why + files + constraints), not background e
 Task(description="Plan: {brief}", subagent_type="planning-agent", prompt="""
 Investigate and draft a plan for: {one-line task}
 
-Tier: {M | L}   Operation: {feature | fix | tweak | refactor} — first move: {from SKILL.md §2}
+Tier: {M | L}   Operation: {feature | fix | tweak | refactor | port} — first move: {from SKILL.md §2}
 Instincts for this project: {output of `instincts.py list --min 0.5`, or "none"}
 Scope: {existing project | new folder} — {stack or "detect"}
 Graphify: {EXISTS at graphify-out/graph.json | NOT_EXISTS, ~N files}
 Chosen approach: {from divergent round, or "pick the simplest sound one; list 1-2 rejected alternatives"}
+Stack decision (greenfield/new service): {constraints → 2-3 candidates → fit → new failure modes, or "n/a"}
+Feedback contract: {fastest deterministic verifier + command + expected result + runtime, or "create it in phase 0"}
+Blind spots: {what no agent can observe here (UI/runtime/hardware/prod data) + how the phase observes it}
 Assumptions already stated to the user: {list or "none"}
 Out of scope: {what NOT to touch}
 Constraints: {hard limits}
@@ -51,6 +54,7 @@ with the RF-n it covers and one verifiable "done" line) under plans/{task}-spec/
 STATUS: PLAN_READY | NEED_CLARIFICATION
 PLAN_FILE: plans/{task}-draft.md
 TLDR: {1-3 sentences}
+STACK: {chosen stack + one-line fit rationale + new failure modes, or "n/a"}
 PHASES: {N} — one line each: outcome · ready/provisional · files count if ready · risk (god node? approve-tier action?)
 OPEN_QUESTIONS: {only those that change the plan, each with a proposed default, or "none"}
 """)
@@ -64,7 +68,7 @@ Use when a failure has no known cause yet (SKILL.md §2b). The output is an unde
 Task(description="Diagnose: {symptom}", subagent_type="planning-agent", prompt="""
 Diagnose: {one-line symptom, exact error text if known}
 
-Operation: {fix | tweak | feature | refactor}
+Operation: {fix | tweak | feature | refactor | port}
 Case file: plans/{task}-state.md   (hypotheses, evidence and rounds so far are there; read it, do not write it)
 Prior hypotheses and their FALSIFIER results: {list, or "none"}
 Round: {k} — rounds without new evidence so far: {0 | 1}
@@ -94,8 +98,9 @@ Objective: {consumer + action + observable result; or justified measurable techn
 Demonstration: {exercise + expected evidence on the real consumer surface}
 Required quality: {necessary protections + applicable agreed NFR criteria/evidence; remaining target/trigger if cross-cutting}
 Technical justification: {explicit technical request, or proven blocker + bounded prerequisite + next enabled outcome; otherwise n/a}
-Operation: {feature | fix | tweak | refactor} — first move: {e.g. "fix: write the failing test first and show it failing"}
+Operation: {feature | fix | tweak | refactor | port} — first move: {e.g. "fix: write the failing test first and show it failing"}
 Hypothesis / falsifier: {required when the Conductor diagnosed the fix itself (SKILL §2b, inline falsifier): hypothesis + the observation that would disprove it; the implementer writes the failing test from it first; otherwise "n/a"}
+Oracle (port only): {old path/command + how the differential harness compares old vs new outputs; "n/a" otherwise}
 Rationale: {why — the criterion to self-correct with}
 Contracts/Invariants: {falsifiable guarantees; breaking one → report under DEVIATIONS}
 Acceptance criteria: {bullets}
@@ -103,6 +108,8 @@ Covers: {RF-n list from specs/NNN-slug/spec.md, or "n/a"} — tick the matching 
 Files: {path ✓exists | path ⊕create}
 Facts: {signatures, paths, names, values, conventions this edit depends on, each with its source file:line; "none" only if the phase needs none}
 Steps: {numbered}
+Feedback: {checker + exact command + expected exit/result + runtime cap; focused subset if the full suite is slow}
+Blind spots: {what you cannot observe (UI/runtime/hardware/prod data) + how you will observe it before claiming DONE}
 Verify with: {exact command(s)}  — long output: `set -o pipefail; {cmd} 2>&1 | python3 ~/.claude/skills/subagent-pool/scripts/trim_output.py`
 Conventions: lang={language}, stack={stack}
 Graph warnings: {god nodes / hidden deps — never omit if present}
@@ -154,8 +161,11 @@ Objective: {consumer + action + observable result; or justified measurable techn
 Demonstration: {exercise + expected evidence on the real consumer surface}
 Required quality: {necessary protections + applicable agreed NFR criteria/evidence; remaining target/trigger if cross-cutting}
 Technical justification: {explicit technical request, or proven blocker + bounded prerequisite + next enabled outcome; otherwise n/a}
-Operation: {feature | fix | tweak | refactor} — check the first move was honored
+Operation: {feature | fix | tweak | refactor | port} — check the first move was honored
 Rationale: {judge intent, not only literal steps}
+Feedback contract: {verifier + expected result + runtime; check it exercises the change, not just the happy path}
+Static baseline: {typecheck/lint/SAST command → result vs recorded baseline}
+Blind spots: {what cannot be observed; those criteria are [UNKNOWN], never [INFERRED] as met}
 Contracts/Invariants: {declared ones — derive others, try to break each BEFORE reading the code}
 Acceptance criteria: {bullets}
 Files changed (implementer report): {list}
@@ -403,6 +413,8 @@ Project: {abs path}         CODEX: {on|off}
 Context: {stack · language · god nodes · graphify EXISTS/NOT_EXISTS}
 User decisions (invariants): {each one}
 Constraints / out of scope: {list}
+Decision under debate: {the open important decision, or "none — approach is clear"}
+Feedback contract: {fastest verifier + command + expected result, or "to be created"}
 Members: {duo: architect, lateral | council: spec, architect, lateral, risk}   Council dir: plans/council/{task}
 Phase policy: SKILL.md §6a — usable outcomes with integrated quality; next increment detailed, later ones provisional; complete accepted scope.
 Plan file (R3): plans/{task}-draft.md
