@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{TASK}} — vista del plan</title>
+<!-- subagent-pool §8d. Generated from plans/*.md and specs/*; the .md files stay the source of truth.
+     Fill every {{PLACEHOLDER}}; delete a <section> whose data does not exist. Single file, no external assets. -->
+<style>
+:root{--bg:#fff;--fg:#1c1f26;--mut:#5b6472;--card:#f3f5f8;--line:#d9dee6;--ok:#1a7f4b;--warn:#b26a00;--bad:#c0392b;--acc:#2f5bea}
+@media (prefers-color-scheme:dark){:root{--bg:#14171c;--fg:#e8ebf0;--mut:#9aa4b2;--card:#1d2127;--line:#2c323b;--ok:#4cc38a;--warn:#e0a03a;--bad:#ff7b6b;--acc:#7aa2ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,sans-serif}
+main{max-width:900px;margin:0 auto;padding:24px 16px}
+h1{margin:0 0 4px}h2{margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}
+.mut{color:var(--mut)}.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin:10px 0}
+.grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+.tag{display:inline-block;border-radius:99px;padding:0 9px;font-size:13px;border:1px solid currentColor}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}
+nav{position:sticky;top:0;background:var(--bg);padding:8px 0;border-bottom:1px solid var(--line);display:flex;gap:14px;flex-wrap:wrap}
+nav a{color:var(--acc);text-decoration:none}
+button{background:var(--acc);color:#fff;border:0;border-radius:6px;padding:8px 14px;font:inherit;cursor:pointer}
+pre{background:var(--card);padding:10px;border-radius:6px;overflow:auto}
+</style></head><body><main>
+<h1>{{TASK}}</h1>
+<div class="mut">Tier {{TIER}} · {{OPERATION}} · estado: <b>{{STATUS}}</b> · {{DATE}} · fuente: <code>plans/{{TASK_SLUG}}-state.md</code></div>
+<nav><a href="#plan">Plan</a><a href="#fases">Fases</a><a href="#decisiones">Decisiones</a><a href="#review">Review</a><a href="#aprobar">Aprobar</a></nav>
+
+<section id="plan"><h2>Plan</h2>
+<!-- 3–6 lines: objective, approach, out of scope. One inline SVG or CSS flow of the modules/data flow if it clarifies. -->
+{{PLAN_SUMMARY}}</section>
+
+<section id="fases"><h2>Fases</h2>
+<table><tr><th>#</th><th>Entrega</th><th>RF</th><th>Estado</th></tr>
+<!-- one row per phase; status tag class ok|warn|bad -->
+{{PHASE_ROWS}}</table></section>
+
+<section id="decisiones"><h2>Decisiones y alternativas</h2>
+<!-- council or divergent round: one .card per option inside .grid, each labelled "Sacrifica: …". Mark the chosen one. -->
+<div class="grid">{{OPTION_CARDS}}</div></section>
+
+<section id="review"><h2>Review</h2>
+<!-- findings from review-agent, one row each, severity tag bad|warn|ok, file:line -->
+<table><tr><th>Severidad</th><th>Hallazgo</th><th>Dónde</th></tr>{{FINDING_ROWS}}</table></section>
+
+<section id="aprobar"><h2>Aprobar</h2>
+<!-- Only while the plan awaits approval. Checkboxes = open decisions; the button copies the answer as a prompt for the Conductor. -->
+<div id="opts">{{DECISION_CHECKBOXES}}</div>
+<button id="cp">Copiar decisión como prompt</button> <span id="ok" class="mut"></span></section>
+
+<script>
+document.getElementById('cp').onclick=function(){
+  var l=[].map.call(document.querySelectorAll('#opts input'),function(i){return '- '+i.dataset.q+': '+(i.checked?'SÍ':'NO')});
+  var t='Decisión sobre {{TASK}}:\n'+l.join('\n')+'\nProcede según esto.';
+  (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){ok.textContent='Copiado'},function(){prompt('Copia:',t)});
+};
+</script></main></body></html>

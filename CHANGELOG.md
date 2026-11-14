@@ -1,5 +1,13 @@
 # Changelog
 
+## v9.16.0 — 2026-11-13 · Human view in HTML (§8d, optional)
+
+Idea from Thariq's "The Unreasonable Effectiveness of HTML" (Claude Code team): a person rarely reads more than ~100 lines of Markdown, so the summary meant for people can be a web page. Agents keep working in Markdown.
+- **§8d Human view.** Tier M/L only, one `plans/{task}-view.html` rewritten in place at plan-ready, council close and task close. Built by the Conductor from files it already wrote (no new agent, no code re-read): plan summary, phase table, decision cards ("what each option sacrifices"), review findings by severity, and a "copy decision as prompt" button. New template `assets/view-template.html` (single file, dark mode, mobile).
+- **The `.md` stay the source of truth.** `plans/`, `specs/` and the case file are unchanged; subagents never read the HTML. HTML costs 2-4x more to write and makes noisy diffs, so it is not used for machine state.
+- **Off switch:** "sin html" or `HTML_VIEW: off` in the case file. Publishing the page (Artifact tool) only on the user's request.
+- First real use: a Forja fix (plan, review and open warnings in one page). Not yet measured over several tasks.
+
 ## v9.15.0 — 2026-10-24 · Usable phase outcomes with integrated quality
 
 - Product phases deliver a demonstrable consumer action/result with necessary protections and applicable agreed non-functional requirements. Technical tasks belong inside that outcome; explicit technical requests and proven bounded prerequisites remain valid.
